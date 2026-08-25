@@ -8,7 +8,7 @@ export function CreateJoin() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-20">
       <div className="flex justify-center">
-        <img src={logo} alt="Music Mind Reader" className="w-full" />
+        <img src={logo} alt="Music Mind Reader" className="w-80" />
       </div>
 
       <div className="mx-auto mt-20 flex w-72 flex-col gap-3">
