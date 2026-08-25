@@ -35,7 +35,14 @@ export const useGameStore = create<GameState>((set) => ({
 
   setCurrentPlayer: (playerId) => set({ currentPlayerId: playerId }),
 
-  selectCategory: (categoryId) => set({ selectedCategoryId: categoryId }),
+  selectCategory: (categoryId) =>
+    set((state) => {
+      if (state.selectedCategoryId === categoryId) return state
+      // Switching categories starts a fresh round - carrying over songs,
+      // guesses, or ratings from a previous selection would let a category
+      // look already-submitted or corrupt scoring for the new round.
+      return { selectedCategoryId: categoryId, songs: [], guesses: [], ratings: [], currentSongIndex: 0 }
+    }),
 
   submitSong: (playerId, categoryId, title, artist) =>
     set((state) => {
@@ -85,7 +92,7 @@ export const useGameStore = create<GameState>((set) => ({
 
   nextSong: () =>
     set((state) => ({
-      currentSongIndex: Math.min(state.currentSongIndex + 1, state.songs.length - 1),
+      currentSongIndex: Math.min(state.currentSongIndex + 1, getCurrentRoundSongs(state).length - 1),
     })),
 
   prevSong: () => set((state) => ({ currentSongIndex: Math.max(state.currentSongIndex - 1, 0) })),

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { PlayerSwitcher } from '../components/PlayerSwitcher'
@@ -13,6 +13,8 @@ export function GuessAndRate() {
   const currentSongIndex = useGameStore((s) => s.currentSongIndex)
   const currentPlayerId = useGameStore((s) => s.currentPlayerId)
   const players = useGameStore((s) => s.players)
+  const guesses = useGameStore((s) => s.guesses)
+  const ratings = useGameStore((s) => s.ratings)
   const submitGuess = useGameStore((s) => s.submitGuess)
   const submitRating = useGameStore((s) => s.submitRating)
   const nextSong = useGameStore((s) => s.nextSong)
@@ -21,6 +23,19 @@ export function GuessAndRate() {
   const [rating, setRating] = useState<number | null>(null)
 
   const song = songs[currentSongIndex]
+
+  // Re-derive the draft from the store whenever the song or the "logged in"
+  // player changes, instead of leaving stale local state - otherwise
+  // switching players mid-guess via PlayerSwitcher leaks one player's
+  // half-finished answer into whoever you switch to next.
+  useEffect(() => {
+    if (!song) return
+    const existingGuess = guesses.find((g) => g.songId === song.id && g.guesserId === currentPlayerId)
+    const existingRating = ratings.find((r) => r.songId === song.id && r.raterId === currentPlayerId)
+    setGuessedPlayerId(existingGuess?.guessedPlayerId ?? null)
+    setRating(existingRating?.value ?? null)
+  }, [song, currentPlayerId, guesses, ratings])
+
   if (!song) {
     return (
       <div className="mx-auto max-w-md px-6 py-8 text-slate-300">
@@ -46,8 +61,6 @@ export function GuessAndRate() {
       if (guessedPlayerId) submitGuess(song.id, currentPlayerId, guessedPlayerId)
       if (rating !== null) submitRating(song.id, currentPlayerId, rating)
     }
-    setGuessedPlayerId(null)
-    setRating(null)
     goToNext()
   }
 
