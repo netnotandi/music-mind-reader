@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import logo from '../assets/logo.png'
 import { PlayerSwitcher } from '../components/PlayerSwitcher'
 
 export function CreateJoin() {
@@ -6,11 +7,8 @@ export function CreateJoin() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-8 px-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-slate-100">Music Mind Reader</h1>
-        <p className="mt-2 text-slate-400">
-          Hversu vel þekkir þú tónlistarsmekk vina þinna — og hversu vel þekkja þeir þig?
-        </p>
+      <div className="flex justify-center">
+        <img src={logo} alt="Music Mind Reader" className="h-32 w-32 rounded-3xl" />
       </div>
 
       <div className="flex flex-col gap-3">
