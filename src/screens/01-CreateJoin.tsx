@@ -8,10 +8,10 @@ export function CreateJoin() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-8 px-6">
       <div className="flex justify-center">
-        <img src={logo} alt="Music Mind Reader" className="w-80" />
+        <img src={logo} alt="Music Mind Reader" className="w-full" />
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="mx-auto flex w-64 flex-col gap-3">
         <button
           type="button"
           onClick={() => navigate('/lobby')}
