@@ -17,14 +17,14 @@ export function CreateJoin() {
           onClick={() => navigate('/lobby')}
           className="rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
         >
-          Stofna leik (leikstjóri)
+          CREATE GAME
         </button>
         <button
           type="button"
           onClick={() => navigate('/lobby')}
           className="rounded-xl border border-slate-600 px-5 py-3 font-semibold text-slate-100 transition hover:border-slate-400"
         >
-          Ganga í leik
+          JOIN GAME
         </button>
       </div>
 
