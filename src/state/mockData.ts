@@ -1,5 +1,7 @@
 import type { Category, Player } from '../types'
 
+export const GAME_CODE = '4271'
+
 export const PLAYERS: Player[] = [
   { id: 'p1', name: 'Anna' },
   { id: 'p2', name: 'Björn' },

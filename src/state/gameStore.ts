@@ -6,6 +6,7 @@ interface GameState {
   players: Player[]
   categories: Category[]
   currentPlayerId: string
+  isHost: boolean
   selectedCategoryId: string | null
   songs: Song[]
   guesses: Guess[]
@@ -13,6 +14,7 @@ interface GameState {
   currentSongIndex: number
 
   setCurrentPlayer: (playerId: string) => void
+  setIsHost: (isHost: boolean) => void
   selectCategory: (categoryId: string) => void
   submitSong: (playerId: string, categoryId: string, title: string, artist: string) => void
   autofillRemainingSongs: () => void
@@ -27,6 +29,7 @@ export const useGameStore = create<GameState>((set) => ({
   players: PLAYERS,
   categories: CATEGORIES,
   currentPlayerId: PLAYERS[0].id,
+  isHost: false,
   selectedCategoryId: null,
   songs: [],
   guesses: [],
@@ -34,6 +37,8 @@ export const useGameStore = create<GameState>((set) => ({
   currentSongIndex: 0,
 
   setCurrentPlayer: (playerId) => set({ currentPlayerId: playerId }),
+
+  setIsHost: (isHost) => set({ isHost }),
 
   selectCategory: (categoryId) =>
     set((state) => {
@@ -99,6 +104,7 @@ export const useGameStore = create<GameState>((set) => ({
 
   resetGame: () =>
     set({
+      isHost: false,
       selectedCategoryId: null,
       songs: [],
       guesses: [],

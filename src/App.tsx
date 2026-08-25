@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { CreateJoin } from './screens/01-CreateJoin'
+import { JoinGame } from './screens/01b-JoinGame'
 import { Lobby } from './screens/02-Lobby'
 import { SubmitSong } from './screens/03-SubmitSong'
 import { NowPlaying } from './screens/04-NowPlaying'
@@ -12,6 +13,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<CreateJoin />} />
+          <Route path="/join" element={<JoinGame />} />
           <Route path="/lobby" element={<Lobby />} />
           <Route path="/submit" element={<SubmitSong />} />
           <Route path="/now-playing" element={<NowPlaying />} />

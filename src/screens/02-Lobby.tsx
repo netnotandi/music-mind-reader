@@ -2,10 +2,12 @@ import { useNavigate } from 'react-router-dom'
 import { CategoryPicker } from '../components/CategoryPicker'
 import { PlayerSwitcher } from '../components/PlayerSwitcher'
 import { useGameStore } from '../state/gameStore'
+import { GAME_CODE } from '../state/mockData'
 
 export function Lobby() {
   const navigate = useNavigate()
   const players = useGameStore((s) => s.players)
+  const isHost = useGameStore((s) => s.isHost)
   const selectedCategoryId = useGameStore((s) => s.selectedCategoryId)
 
   return (
@@ -19,7 +21,7 @@ export function Lobby() {
         <div className="grid h-28 w-28 place-items-center rounded-lg bg-slate-800 text-xs text-slate-500">
           QR kóði
         </div>
-        <p className="text-sm text-slate-400">Leikjakóði: 4271</p>
+        <p className="text-sm text-slate-400">Leikjakóði: {GAME_CODE}</p>
       </div>
 
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
@@ -37,19 +39,27 @@ export function Lobby() {
         ))}
       </ul>
 
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
-        Leikstjóri velur flokk
-      </h2>
-      <CategoryPicker />
+      {isHost ? (
+        <>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Leikstjóri velur flokk
+          </h2>
+          <CategoryPicker />
 
-      <button
-        type="button"
-        disabled={!selectedCategoryId}
-        onClick={() => navigate('/submit')}
-        className="mt-8 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
-      >
-        Áfram í lagaskil
-      </button>
+          <button
+            type="button"
+            disabled={!selectedCategoryId}
+            onClick={() => navigate('/submit')}
+            className="mt-8 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+          >
+            Áfram í lagaskil
+          </button>
+        </>
+      ) : (
+        <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-4 text-center text-slate-300">
+          Beðið eftir að leikstjóri velji flokk...
+        </div>
+      )}
     </div>
   )
 }
