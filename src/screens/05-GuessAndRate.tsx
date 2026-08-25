@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
-import { PlayerSwitcher } from '../components/PlayerSwitcher'
 import { SongCard } from '../components/SongCard'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 
@@ -65,12 +64,7 @@ export function GuessAndRate() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md px-6 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-100">Giska og gefa einkunn</h1>
-        <PlayerSwitcher />
-      </div>
-
+    <div className="mx-auto min-h-screen max-w-md px-6 py-12">
       <div className="mb-6">
         <SongCard title={song.title} artist={song.artist} index={currentSongIndex} total={songs.length} />
       </div>

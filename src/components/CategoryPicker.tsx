@@ -1,15 +1,5 @@
+import { accentColorFor } from '../logic/accentColors'
 import { MAX_SELECTED_CATEGORIES, useGameStore } from '../state/gameStore'
-
-// Cycled per category so a full grid of selections reads like the logo's
-// own cyan -> blue -> violet -> pink gradient instead of one flat accent.
-const ACCENT_COLORS = [
-  { border: 'border-cyan-400', bg: 'bg-cyan-400/15', text: 'text-cyan-300' },
-  { border: 'border-sky-400', bg: 'bg-sky-400/15', text: 'text-sky-300' },
-  { border: 'border-blue-400', bg: 'bg-blue-400/15', text: 'text-blue-300' },
-  { border: 'border-violet-400', bg: 'bg-violet-400/15', text: 'text-violet-300' },
-  { border: 'border-fuchsia-400', bg: 'bg-fuchsia-400/15', text: 'text-fuchsia-300' },
-  { border: 'border-pink-400', bg: 'bg-pink-400/15', text: 'text-pink-300' },
-]
 
 export function CategoryPicker() {
   const categories = useGameStore((s) => s.categories)
@@ -28,7 +18,7 @@ export function CategoryPicker() {
         {categories.map((c, i) => {
           const selected = selectedCategoryIds.includes(c.id)
           const disabled = !selected && atMax
-          const accent = ACCENT_COLORS[i % ACCENT_COLORS.length]
+          const accent = accentColorFor(i)
           return (
             <button
               key={c.id}

@@ -1,3 +1,5 @@
+import { accentColorFor } from '../logic/accentColors'
+
 interface SongCardProps {
   title: string
   artist: string
@@ -6,9 +8,11 @@ interface SongCardProps {
 }
 
 export function SongCard({ title, artist, index, total }: SongCardProps) {
+  const accent = accentColorFor(index)
+
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-800/50 p-6 text-center">
-      <p className="mb-3 text-sm text-slate-400">
+    <div className={`rounded-2xl border-2 p-6 text-center ${accent.border} ${accent.bg}`}>
+      <p className={`mb-3 text-sm font-semibold ${accent.text}`}>
         Lag {index + 1} af {total}
       </p>
       <p className="text-2xl font-bold text-slate-100">{title}</p>
