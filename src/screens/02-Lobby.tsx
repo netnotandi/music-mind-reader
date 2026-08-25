@@ -14,12 +14,14 @@ export function Lobby() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-100">Lobby</h1>
+      <h1 className="mb-4 text-center text-3xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
+        Music Mind Reader
+      </h1>
+      <div className="mb-6 flex justify-center">
         <PlayerSwitcher />
       </div>
 
-      <div className="mb-4 flex gap-4">
+      <div className="mb-4 flex justify-center gap-4">
         <div className="grid h-28 w-28 flex-shrink-0 place-items-center rounded-xl border border-dashed border-slate-600 bg-slate-800 text-xs text-slate-500">
           QR kóði
         </div>
@@ -30,7 +32,7 @@ export function Lobby() {
       </div>
 
       {selectedCategories.length > 0 && (
-        <div className="mb-6 flex flex-wrap gap-1.5">
+        <div className="mb-6 flex flex-wrap justify-center gap-1.5">
           {selectedCategories.map((c) => (
             <span
               key={c.id}
