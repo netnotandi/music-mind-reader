@@ -9,7 +9,7 @@ export function CreateJoin() {
 
   function handleCreateGame() {
     setIsHost(true)
-    navigate('/lobby')
+    navigate('/categories')
   }
 
   return (

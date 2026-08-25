@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import { CategoryPicker } from '../components/CategoryPicker'
 import { PlayerSwitcher } from '../components/PlayerSwitcher'
 import { useGameStore } from '../state/gameStore'
 import { GAME_CODE } from '../state/mockData'
@@ -8,7 +7,10 @@ export function Lobby() {
   const navigate = useNavigate()
   const players = useGameStore((s) => s.players)
   const isHost = useGameStore((s) => s.isHost)
-  const selectedCategoryId = useGameStore((s) => s.selectedCategoryId)
+  const categories = useGameStore((s) => s.categories)
+  const selectedCategoryIds = useGameStore((s) => s.selectedCategoryIds)
+
+  const selectedCategories = categories.filter((c) => selectedCategoryIds.includes(c.id))
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
@@ -17,12 +19,28 @@ export function Lobby() {
         <PlayerSwitcher />
       </div>
 
-      <div className="mb-6 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-600 py-6">
-        <div className="grid h-28 w-28 place-items-center rounded-lg bg-slate-800 text-xs text-slate-500">
+      <div className="mb-4 flex gap-4">
+        <div className="grid h-28 w-28 flex-shrink-0 place-items-center rounded-xl border border-dashed border-slate-600 bg-slate-800 text-xs text-slate-500">
           QR kóði
         </div>
-        <p className="text-sm text-slate-400">Leikjakóði: {GAME_CODE}</p>
+        <div className="flex flex-col justify-center rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
+          <p className="text-xs uppercase tracking-wide text-slate-400">Leikjakóði</p>
+          <p className="text-2xl font-bold tracking-[0.2em] text-emerald-300">{GAME_CODE}</p>
+        </div>
       </div>
+
+      {selectedCategories.length > 0 && (
+        <div className="mb-6 flex flex-wrap gap-1.5">
+          {selectedCategories.map((c) => (
+            <span
+              key={c.id}
+              className="rounded-full bg-emerald-400/20 px-2.5 py-1 text-xs text-emerald-300"
+            >
+              {c.name}
+            </span>
+          ))}
+        </div>
+      )}
 
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
         Leikmenn ({players.length})
@@ -40,24 +58,17 @@ export function Lobby() {
       </ul>
 
       {isHost ? (
-        <>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
-            Leikstjóri velur flokk
-          </h2>
-          <CategoryPicker />
-
-          <button
-            type="button"
-            disabled={!selectedCategoryId}
-            onClick={() => navigate('/submit')}
-            className="mt-8 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
-          >
-            Áfram í lagaskil
-          </button>
-        </>
+        <button
+          type="button"
+          disabled={selectedCategoryIds.length === 0}
+          onClick={() => navigate('/submit')}
+          className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+        >
+          Áfram í lagaskil
+        </button>
       ) : (
         <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-4 text-center text-slate-300">
-          Beðið eftir að leikstjóri velji flokk...
+          Beðið eftir að leikstjóri hefji leikinn...
         </div>
       )}
     </div>

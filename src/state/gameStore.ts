@@ -2,12 +2,14 @@ import { create } from 'zustand'
 import type { Category, Guess, Player, Rating, Song } from '../types'
 import { CATEGORIES, MOCK_SONG_POOL, PLAYERS } from './mockData'
 
+export const MAX_SELECTED_CATEGORIES = 3
+
 interface GameState {
   players: Player[]
   categories: Category[]
   currentPlayerId: string
   isHost: boolean
-  selectedCategoryId: string | null
+  selectedCategoryIds: string[]
   songs: Song[]
   guesses: Guess[]
   ratings: Rating[]
@@ -15,7 +17,8 @@ interface GameState {
 
   setCurrentPlayer: (playerId: string) => void
   setIsHost: (isHost: boolean) => void
-  selectCategory: (categoryId: string) => void
+  toggleCategory: (categoryId: string) => void
+  confirmCategories: () => void
   submitSong: (playerId: string, categoryId: string, title: string, artist: string) => void
   autofillRemainingSongs: () => void
   submitGuess: (songId: string, guesserId: string, guessedPlayerId: string) => void
@@ -30,7 +33,7 @@ export const useGameStore = create<GameState>((set) => ({
   categories: CATEGORIES,
   currentPlayerId: PLAYERS[0].id,
   isHost: false,
-  selectedCategoryId: null,
+  selectedCategoryIds: [],
   songs: [],
   guesses: [],
   ratings: [],
@@ -40,14 +43,20 @@ export const useGameStore = create<GameState>((set) => ({
 
   setIsHost: (isHost) => set({ isHost }),
 
-  selectCategory: (categoryId) =>
+  toggleCategory: (categoryId) =>
     set((state) => {
-      if (state.selectedCategoryId === categoryId) return state
-      // Switching categories starts a fresh round - carrying over songs,
-      // guesses, or ratings from a previous selection would let a category
-      // look already-submitted or corrupt scoring for the new round.
-      return { selectedCategoryId: categoryId, songs: [], guesses: [], ratings: [], currentSongIndex: 0 }
+      const alreadySelected = state.selectedCategoryIds.includes(categoryId)
+      if (!alreadySelected && state.selectedCategoryIds.length >= MAX_SELECTED_CATEGORIES) return state
+      const selectedCategoryIds = alreadySelected
+        ? state.selectedCategoryIds.filter((id) => id !== categoryId)
+        : [...state.selectedCategoryIds, categoryId]
+      return { selectedCategoryIds }
     }),
+
+  // Locks in the category selection and starts a fresh round - carrying
+  // over songs, guesses, or ratings from a previous round would let a
+  // category look already-submitted or corrupt scoring for the new one.
+  confirmCategories: () => set({ songs: [], guesses: [], ratings: [], currentSongIndex: 0 }),
 
   submitSong: (playerId, categoryId, title, artist) =>
     set((state) => {
@@ -60,22 +69,26 @@ export const useGameStore = create<GameState>((set) => ({
 
   autofillRemainingSongs: () =>
     set((state) => {
-      const categoryId = state.selectedCategoryId
-      if (!categoryId) return state
-      const missingPlayers = state.players.filter(
-        (p) => !state.songs.some((s) => s.playerId === p.id && s.categoryId === categoryId)
-      )
-      const newSongs = missingPlayers.map((player, i) => {
-        const pick = MOCK_SONG_POOL[i % MOCK_SONG_POOL.length]
-        const song: Song = {
-          id: `${player.id}:${categoryId}`,
-          playerId: player.id,
-          categoryId,
-          title: pick.title,
-          artist: pick.artist,
+      const newSongs: Song[] = []
+      let pickIndex = 0
+      for (const categoryId of state.selectedCategoryIds) {
+        const missingPlayers = state.players.filter(
+          (p) =>
+            !state.songs.some((s) => s.playerId === p.id && s.categoryId === categoryId) &&
+            !newSongs.some((s) => s.playerId === p.id && s.categoryId === categoryId)
+        )
+        for (const player of missingPlayers) {
+          const pick = MOCK_SONG_POOL[pickIndex % MOCK_SONG_POOL.length]
+          pickIndex++
+          newSongs.push({
+            id: `${player.id}:${categoryId}`,
+            playerId: player.id,
+            categoryId,
+            title: pick.title,
+            artist: pick.artist,
+          })
         }
-        return song
-      })
+      }
       return { songs: [...state.songs, ...newSongs] }
     }),
 
@@ -105,7 +118,7 @@ export const useGameStore = create<GameState>((set) => ({
   resetGame: () =>
     set({
       isHost: false,
-      selectedCategoryId: null,
+      selectedCategoryIds: [],
       songs: [],
       guesses: [],
       ratings: [],
@@ -114,6 +127,6 @@ export const useGameStore = create<GameState>((set) => ({
 }))
 
 export function getCurrentRoundSongs(state: GameState): Song[] {
-  if (!state.selectedCategoryId) return []
-  return state.songs.filter((s) => s.categoryId === state.selectedCategoryId)
+  if (state.selectedCategoryIds.length === 0) return []
+  return state.songs.filter((s) => state.selectedCategoryIds.includes(s.categoryId))
 }
