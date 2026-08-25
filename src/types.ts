@@ -1,9 +1,6 @@
-export type CategoryGroup = 'tegund' | 'um-mig'
-
 export interface Category {
   id: string
   name: string
-  group: CategoryGroup
 }
 
 export interface Player {

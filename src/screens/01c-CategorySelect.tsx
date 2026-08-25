@@ -16,7 +16,7 @@ export function CategorySelect() {
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-100">Veldu flokka</h1>
+        <h1 className="text-xl font-bold text-slate-100">Choose your categories</h1>
         <PlayerSwitcher />
       </div>
 

@@ -1,57 +1,53 @@
 import { MAX_SELECTED_CATEGORIES, useGameStore } from '../state/gameStore'
-import type { CategoryGroup } from '../types'
 
-const GROUP_LABELS: Record<CategoryGroup, string> = {
-  tegund: 'Tegund',
-  'um-mig': 'Um mig',
-}
+// Cycled per category so a full grid of selections reads like the logo's
+// own cyan -> blue -> violet -> pink gradient instead of one flat accent.
+const ACCENT_COLORS = [
+  { border: 'border-cyan-400', bg: 'bg-cyan-400/15', text: 'text-cyan-300' },
+  { border: 'border-sky-400', bg: 'bg-sky-400/15', text: 'text-sky-300' },
+  { border: 'border-blue-400', bg: 'bg-blue-400/15', text: 'text-blue-300' },
+  { border: 'border-violet-400', bg: 'bg-violet-400/15', text: 'text-violet-300' },
+  { border: 'border-fuchsia-400', bg: 'bg-fuchsia-400/15', text: 'text-fuchsia-300' },
+  { border: 'border-pink-400', bg: 'bg-pink-400/15', text: 'text-pink-300' },
+]
 
 export function CategoryPicker() {
   const categories = useGameStore((s) => s.categories)
   const selectedCategoryIds = useGameStore((s) => s.selectedCategoryIds)
   const toggleCategory = useGameStore((s) => s.toggleCategory)
 
-  const groups: CategoryGroup[] = ['tegund', 'um-mig']
   const atMax = selectedCategoryIds.length >= MAX_SELECTED_CATEGORIES
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm text-slate-400">
-        Veldu allt að {MAX_SELECTED_CATEGORIES} flokka ({selectedCategoryIds.length}/{MAX_SELECTED_CATEGORIES}{' '}
-        valdir)
+    <div>
+      <p className="mb-4 text-sm text-slate-400">
+        Pick up to {MAX_SELECTED_CATEGORIES} categories ({selectedCategoryIds.length}/
+        {MAX_SELECTED_CATEGORIES} selected)
       </p>
-      {groups.map((group) => (
-        <div key={group}>
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
-            {GROUP_LABELS[group]}
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {categories
-              .filter((c) => c.group === group)
-              .map((c) => {
-                const selected = selectedCategoryIds.includes(c.id)
-                const disabled = !selected && atMax
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => toggleCategory(c.id)}
-                    className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                      selected
-                        ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
-                        : disabled
-                          ? 'cursor-not-allowed border-slate-700 text-slate-600'
-                          : 'border-slate-600 text-slate-300 hover:border-slate-400'
-                    }`}
-                  >
-                    {c.name}
-                  </button>
-                )
-              })}
-          </div>
-        </div>
-      ))}
+      <div className="grid grid-cols-2 gap-3">
+        {categories.map((c, i) => {
+          const selected = selectedCategoryIds.includes(c.id)
+          const disabled = !selected && atMax
+          const accent = ACCENT_COLORS[i % ACCENT_COLORS.length]
+          return (
+            <button
+              key={c.id}
+              type="button"
+              disabled={disabled}
+              onClick={() => toggleCategory(c.id)}
+              className={`rounded-xl border-2 px-3 py-3 text-center text-sm font-medium leading-snug transition ${
+                selected
+                  ? `${accent.border} ${accent.bg} ${accent.text}`
+                  : disabled
+                    ? 'cursor-not-allowed border-slate-800 text-slate-600'
+                    : 'border-slate-700 text-slate-300 hover:border-slate-500'
+              }`}
+            >
+              {c.name}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

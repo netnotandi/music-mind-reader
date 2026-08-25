@@ -10,20 +10,22 @@ export const PLAYERS: Player[] = [
 ]
 
 export const CATEGORIES: Category[] = [
-  { id: 'rokk', name: 'Rokk', group: 'tegund' },
-  { id: 'popp', name: 'Popp', group: 'tegund' },
-  { id: 'guilty-pleasure', name: 'Guilty pleasure', group: 'tegund' },
-  { id: 'raektin', name: 'Lag fyrir ræktina', group: 'tegund' },
-  { id: 'lok-kvoldsins', name: 'Lag fyrir lok kvöldsins', group: 'tegund' },
-  { id: 'islenska', name: 'Besta íslenska lagið', group: 'tegund' },
-  { id: 'stud', name: 'Lag sem kemur mér í stuð', group: 'um-mig' },
-  { id: 'besta-allra-tima', name: 'Besta lag allra tíma', group: 'um-mig' },
-  { id: '18-ara', name: 'Lag sem ég hlustaði á 18 ára', group: 'um-mig' },
-  { id: 'enginn-byst-vid', name: 'Lag sem enginn býst við að ég fíli', group: 'um-mig' },
-  { id: 'karaoke', name: 'Lag sem ég myndi velja í karaoke', group: 'um-mig' },
-  { id: 'lysir-odrum', name: 'Lag sem lýsir einhverjum öðrum í hópnum', group: 'um-mig' },
-  { id: 'funeral', name: 'My funeral song', group: 'um-mig' },
-  { id: 'opolandi-gott', name: 'Óþolandi gott lag', group: 'um-mig' },
+  { id: 'guilty-pleasure', name: 'My Guilty Pleasure' },
+  { id: 'all-time-favourite', name: 'My All-Time Favourite' },
+  { id: 'teenage-years', name: 'A Song From My Teenage Years' },
+  { id: 'nobody-expects', name: 'A Song Nobody Expects Me to Like' },
+  { id: 'karaoke-song', name: 'My Karaoke Song' },
+  { id: 'describes-me', name: 'A Song That Describes Me' },
+  { id: 'gets-me-going', name: 'A Song That Gets Me Going' },
+  { id: 'party-starter', name: 'The Perfect Party Starter' },
+  { id: 'road-trip', name: 'The Ultimate Road Trip Song' },
+  { id: 'closing-song', name: 'The Perfect Closing Song' },
+  { id: 'funeral-song', name: 'My Funeral Song' },
+  { id: 'best-90s', name: 'The Best Song From the 90s' },
+  { id: 'best-icelandic', name: 'The Best Icelandic Song' },
+  { id: 'underrated', name: 'An Underrated Masterpiece' },
+  { id: 'describes-someone', name: 'A Song That Describes Someone Here' },
+  { id: 'main-character', name: 'My Main Character Song' },
 ]
 
 // Notað til að fylla sjálfkrafa út lög fyrir gervi-leikmenn sem "hafa ekki skilað" ennþá.
