@@ -6,12 +6,12 @@ export function CreateJoin() {
   const navigate = useNavigate()
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 pt-20">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-20">
       <div className="flex justify-center">
         <img src={logo} alt="Music Mind Reader" className="w-full" />
       </div>
 
-      <div className="mx-auto flex w-64 flex-col gap-3">
+      <div className="mx-auto mt-20 flex w-72 flex-col gap-3">
         <button
           type="button"
           onClick={() => navigate('/lobby')}
@@ -28,7 +28,7 @@ export function CreateJoin() {
         </button>
       </div>
 
-      <div className="flex justify-center">
+      <div className="mt-6 flex justify-center">
         <PlayerSwitcher />
       </div>
     </div>
