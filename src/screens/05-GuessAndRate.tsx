@@ -240,14 +240,14 @@ export function GuessAndRate() {
             onClick={handlePrevious}
             className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
           >
-            ← Edit Answers
+            Edit Answers
           </button>
           <button
             type="button"
             onClick={handleSubmitCategory}
             className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
           >
-            {isLastSongOverall ? 'Submit & See Results →' : 'Submit & Continue →'}
+            {isLastSongOverall ? 'Submit & See Results' : 'Submit & Continue'}
           </button>
         </div>
       </div>
