@@ -48,20 +48,20 @@ export function JoinGame() {
         <PlayerSwitcher />
       </div>
 
-      <div className="mb-6 flex justify-center">
-        <div className="grid h-28 w-28 place-items-center rounded-xl border border-dashed border-slate-600 bg-slate-800 text-xs text-slate-500">
-          Skanna QR
+      <div className="mb-8 flex justify-center">
+        <div className="grid h-52 w-52 place-items-center rounded-xl border border-dashed border-slate-600 bg-slate-800 text-sm text-slate-500">
+          Scan QR Code
         </div>
       </div>
 
-      <div className="mb-6 flex justify-center gap-2.5">
+      <div className="mb-6 flex justify-center gap-3.5">
         {digits.map((digit, i) => (
           <input
             key={i}
             ref={(el) => {
               inputRefs.current[i] = el
             }}
-            className="h-14 w-12 rounded-xl border border-slate-600 bg-slate-800 text-center text-xl font-bold text-slate-100 focus:border-emerald-400 focus:outline-none"
+            className="h-20 w-20 rounded-xl border border-slate-600 bg-slate-800 text-center text-2xl font-bold text-slate-100 focus:border-emerald-400 focus:outline-none"
             maxLength={1}
             value={digit}
             onChange={(e) => setDigit(i, e.target.value)}
@@ -70,14 +70,14 @@ export function JoinGame() {
         ))}
       </div>
 
-      {error && <p className="mb-4 text-center text-sm text-rose-400">Rangur kóði — reyndu aftur.</p>}
+      {error && <p className="mb-4 text-center text-sm text-rose-400">Wrong code — try again.</p>}
 
       <button
         type="button"
         onClick={handleSubmit}
         className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400"
       >
-        Ganga í leik
+        Join Game
       </button>
     </div>
   )
