@@ -1,4 +1,5 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { MenuOverlay } from './components/MenuOverlay'
 import { CreateJoin } from './screens/01-CreateJoin'
 import { JoinGame } from './screens/01b-JoinGame'
 import { CategorySelect } from './screens/01c-CategorySelect'
@@ -11,6 +12,7 @@ function App() {
   return (
     <div className="min-h-screen bg-[#010127] text-slate-100">
       <BrowserRouter>
+        <MenuOverlay />
         <Routes>
           <Route path="/" element={<CreateJoin />} />
           <Route path="/join" element={<JoinGame />} />

@@ -240,7 +240,7 @@ export function GuessAndRate() {
   if (phase === 'reviewing' || phase === 'waiting') {
     const submittedCount = categorySubmissions[song.categoryId]?.length ?? 0
     return (
-      <div className="mx-auto min-h-screen max-w-md px-6 py-12">
+      <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
         <h1 className="mb-1 text-center text-xl font-bold text-slate-100">Review your answers</h1>
         <p className="mb-6 text-center text-sm text-slate-400">{categoryName}</p>
 
@@ -303,7 +303,7 @@ export function GuessAndRate() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md px-6 py-12">
+    <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
       {isFirstOfCategory && currentSongIndex > 0 && (
         <div className="mb-6 rounded-lg border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-center text-sm text-violet-300">
           Next up: {categoryName}

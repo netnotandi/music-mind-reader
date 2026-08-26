@@ -34,7 +34,7 @@ export function SubmitSong() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md px-6 py-12">
+    <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
       {nextCategoryForMe ? (
         <>
           <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">

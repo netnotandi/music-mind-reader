@@ -14,7 +14,7 @@ export function CategorySelect() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md px-6 py-8">
+    <div className="mx-auto min-h-screen max-w-md px-6 pb-8 pt-16">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-100">Choose your categories</h1>
         <PlayerSwitcher />
