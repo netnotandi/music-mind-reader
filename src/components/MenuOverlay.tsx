@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useGameStore } from '../state/gameStore'
 
 type View = 'menu' | 'rules' | 'settings'
 
@@ -28,12 +30,22 @@ function MenuButton({ onClick, label }: { onClick: () => void; label: string }) 
 }
 
 export function MenuOverlay() {
+  const navigate = useNavigate()
+  const startNewRound = useGameStore((s) => s.startNewRound)
+  const setIsHost = useGameStore((s) => s.setIsHost)
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState<View>('menu')
 
   function close() {
     setIsOpen(false)
     setView('menu')
+  }
+
+  function goHome() {
+    startNewRound()
+    setIsHost(false)
+    close()
+    navigate('/')
   }
 
   return (
@@ -68,6 +80,7 @@ export function MenuOverlay() {
               <div className="flex flex-col gap-3">
                 <MenuButton label="Rules" onClick={() => setView('rules')} />
                 <MenuButton label="Settings" onClick={() => setView('settings')} />
+                <MenuButton label="Home" onClick={goHome} />
               </div>
             )}
 
