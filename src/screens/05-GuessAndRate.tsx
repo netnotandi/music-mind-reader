@@ -19,7 +19,8 @@ interface AnswerFormProps {
   isOwnSong: boolean
   isFirstOfCategory: boolean
   isLastOfCategory: boolean
-  availablePlayers: Player[]
+  visiblePlayers: Player[]
+  assignedElsewhere: Map<string, string>
   initialAnswer: DraftAnswer | undefined
   onPrevious: () => void
   onNext: (answer: DraftAnswer) => void
@@ -35,7 +36,8 @@ function AnswerForm({
   isOwnSong,
   isFirstOfCategory,
   isLastOfCategory,
-  availablePlayers,
+  visiblePlayers,
+  assignedElsewhere,
   initialAnswer,
   onPrevious,
   onNext,
@@ -59,20 +61,24 @@ function AnswerForm({
             Whose song is it?
           </h2>
           <div className="mb-6 flex flex-wrap gap-2">
-            {availablePlayers.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setGuessedPlayerId(p.id)}
-                className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                  guessedPlayerId === p.id
-                    ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
-                    : 'border-slate-600 text-slate-300 hover:border-slate-400'
-                }`}
-              >
-                {p.name}
-              </button>
-            ))}
+            {visiblePlayers.map((p) => {
+              const assignedTo = assignedElsewhere.get(p.id)
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setGuessedPlayerId(p.id)}
+                  className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                    guessedPlayerId === p.id
+                      ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
+                      : 'border-slate-600 text-slate-300 hover:border-slate-400'
+                  }`}
+                >
+                  {p.name}
+                  {assignedTo && <span className="ml-1 text-xs text-slate-500">· {assignedTo}</span>}
+                </button>
+              )
+            })}
           </div>
 
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
@@ -158,24 +164,36 @@ export function GuessAndRate() {
   const categoryName = categories.find((c) => c.id === song.categoryId)?.name
   const categorySongs = songs.filter((s) => s.categoryId === song.categoryId)
 
-  // Each player owns exactly one song per category, so once you've used a
-  // name as your guess for a different song in this same category, picking
-  // them again would be a contradiction - hide them instead of letting
-  // players second-guess themselves into a duplicate. Draft answers only
-  // ever hold the current category, so no categoryId filtering is needed.
-  const usedGuessesInCategory = new Set(
-    Object.entries(draftAnswers)
-      .filter(([songId]) => songId !== song.id)
-      .map(([, answer]) => answer.guessedPlayerId)
-      .filter((id): id is string => id !== null)
-  )
-  const availablePlayers = players.filter(
-    (p) => p.id !== currentPlayerId && !usedGuessesInCategory.has(p.id)
-  )
+  // Each player owns exactly one song per category, so a name already used
+  // as your guess for a different song in this category is shown (not
+  // hidden) with a hint of where it's currently assigned - picking it here
+  // "steals" it from that song instead of being blocked outright. Draft
+  // answers only ever hold the current category, so no categoryId
+  // filtering is needed.
+  const visiblePlayers = players.filter((p) => p.id !== currentPlayerId)
+  const assignedElsewhere = new Map<string, string>()
+  for (const [songId, answer] of Object.entries(draftAnswers)) {
+    if (songId === song.id || !answer.guessedPlayerId) continue
+    const assignedSong = categorySongs.find((s) => s.id === songId)
+    if (assignedSong) assignedElsewhere.set(answer.guessedPlayerId, assignedSong.title)
+  }
 
   function handleNext(answer: DraftAnswer) {
     if (!isOwnSong) {
-      setDraftAnswers((prev) => ({ ...prev, [song.id]: answer }))
+      setDraftAnswers((prev) => {
+        const next = { ...prev }
+        // Reassigning a name away from wherever it was previously picked in
+        // this category - only the guess is cleared there, not the rating.
+        if (answer.guessedPlayerId) {
+          for (const [songId, existing] of Object.entries(next)) {
+            if (songId !== song.id && existing.guessedPlayerId === answer.guessedPlayerId) {
+              next[songId] = { ...existing, guessedPlayerId: null }
+            }
+          }
+        }
+        next[song.id] = answer
+        return next
+      })
     }
     if (isLastOfCategory) {
       setPhase('reviewing')
@@ -300,7 +318,8 @@ export function GuessAndRate() {
         isOwnSong={isOwnSong}
         isFirstOfCategory={isFirstOfCategory}
         isLastOfCategory={isLastOfCategory}
-        availablePlayers={availablePlayers}
+        visiblePlayers={visiblePlayers}
+        assignedElsewhere={assignedElsewhere}
         initialAnswer={draftAnswers[song.id]}
         onPrevious={handlePrevious}
         onNext={handleNext}
