@@ -111,6 +111,80 @@ export function computeFinalScores(round: RoundData): Record<string, number> {
   return totals
 }
 
+export interface ScoreBreakdownRow {
+  label: string
+  detail: string
+  points: number
+}
+
+// Per-song detail behind a player's total score, for the Results screen's
+// expandable breakdown - one row per rule that actually contributed,
+// grouped by which song (if any) it came from.
+export function computeScoreBreakdown(round: RoundData, playerId: string): ScoreBreakdownRow[] {
+  const { songs, guesses, ratings } = round
+  const rows: ScoreBreakdownRow[] = []
+
+  const correctGuessCount = guesses.filter((g) => {
+    if (g.guesserId !== playerId) return false
+    const song = songs.find((s) => s.id === g.songId)
+    return song !== undefined && g.guessedPlayerId === song.playerId
+  }).length
+  if (correctGuessCount > 0) {
+    rows.push({
+      label: 'Correct Guesses',
+      detail: `${correctGuessCount} right guess${correctGuessCount === 1 ? '' : 'es'}`,
+      points: correctGuessCount * CORRECT_GUESS_POINTS,
+    })
+  }
+
+  const averages = songs.map((song) => ({ song, avg: averageRating(song.id, ratings) }))
+  const maxAvg = averages.length > 0 ? Math.max(...averages.map((a) => a.avg)) : 0
+
+  const duplicateGroups = new Map<string, Song[]>()
+  for (const song of songs) {
+    const key = `${song.title.trim().toLowerCase()}::${song.artist.trim().toLowerCase()}`
+    const group = duplicateGroups.get(key) ?? []
+    group.push(song)
+    duplicateGroups.set(key, group)
+  }
+
+  for (const song of songs.filter((s) => s.playerId === playerId)) {
+    const avg = averageRating(song.id, ratings)
+    rows.push({
+      label: 'Song Rating',
+      detail: `"${song.title}" avg rating ${avg.toFixed(1)}`,
+      points: avg,
+    })
+
+    if (correctGuessers(song, guesses).length === 0) {
+      rows.push({
+        label: 'Nobody Guessed',
+        detail: `No one correctly guessed "${song.title}"`,
+        points: NOBODY_GUESSED_BONUS,
+      })
+    }
+
+    if (avg > 0 && avg === maxAvg) {
+      rows.push({
+        label: 'Top Rated Song',
+        detail: `"${song.title}" was the highest-rated song`,
+        points: TOP_RATED_SONG_BONUS,
+      })
+    }
+
+    const key = `${song.title.trim().toLowerCase()}::${song.artist.trim().toLowerCase()}`
+    if ((duplicateGroups.get(key) ?? []).length >= 2) {
+      rows.push({
+        label: 'Great Minds',
+        detail: `"${song.title}" was also picked by someone else`,
+        points: GREAT_MINDS_BONUS,
+      })
+    }
+  }
+
+  return rows
+}
+
 export interface Title {
   name: string
   playerId: string

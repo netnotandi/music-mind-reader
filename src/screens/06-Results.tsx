@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { ScoreBoard } from '../components/ScoreBoard'
-import { averageRating, computeFinalScores, computeTitles } from '../logic/scoring'
+import { averageRating, computeFinalScores, computeScoreBreakdown, computeTitles } from '../logic/scoring'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 
 export function Results() {
@@ -15,6 +15,7 @@ export function Results() {
   const round = { songs, guesses, ratings }
   const scores = computeFinalScores(round)
   const titles = computeTitles(round, players)
+  const breakdowns = new Map(players.map((p) => [p.id, computeScoreBreakdown(round, p.id)]))
   const playerById = new Map(players.map((p) => [p.id, p]))
 
   return (
@@ -23,7 +24,7 @@ export function Results() {
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Scoreboard</h2>
       <div className="mb-8">
-        <ScoreBoard players={players} scores={scores} titles={titles} />
+        <ScoreBoard players={players} scores={scores} titles={titles} breakdowns={breakdowns} />
       </div>
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Songs Revealed</h2>
