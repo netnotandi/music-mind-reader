@@ -68,7 +68,7 @@ export function SubmitSong() {
               type="submit"
               className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400"
             >
-              Submit Song (anonymous)
+              Submit Song
             </button>
           </form>
         </>
