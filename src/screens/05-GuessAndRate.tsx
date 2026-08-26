@@ -127,8 +127,9 @@ export function GuessAndRate() {
   const currentPlayerId = useGameStore((s) => s.currentPlayerId)
   const players = useGameStore((s) => s.players)
   const categories = useGameStore((s) => s.categories)
-  const submitGuess = useGameStore((s) => s.submitGuess)
-  const submitRating = useGameStore((s) => s.submitRating)
+  const categorySubmissions = useGameStore((s) => s.categorySubmissions)
+  const submitCategoryAnswers = useGameStore((s) => s.submitCategoryAnswers)
+  const autofillCategorySubmissions = useGameStore((s) => s.autofillCategorySubmissions)
   const nextSong = useGameStore((s) => s.nextSong)
   const prevSong = useGameStore((s) => s.prevSong)
 
@@ -137,7 +138,7 @@ export function GuessAndRate() {
   // and submitted, so you can freely go back and change your mind on any
   // song in this category before it's locked in.
   const [draftAnswers, setDraftAnswers] = useState<Record<string, DraftAnswer>>({})
-  const [phase, setPhase] = useState<'answering' | 'reviewing'>('answering')
+  const [phase, setPhase] = useState<'answering' | 'reviewing' | 'waiting'>('answering')
 
   const song = songs[currentSongIndex]
 
@@ -191,11 +192,7 @@ export function GuessAndRate() {
     }
   }
 
-  function handleSubmitCategory() {
-    for (const [songId, answer] of Object.entries(draftAnswers)) {
-      if (answer.guessedPlayerId) submitGuess(songId, currentPlayerId, answer.guessedPlayerId)
-      if (answer.rating !== null) submitRating(songId, currentPlayerId, answer.rating)
-    }
+  function advancePastCategory() {
     setDraftAnswers({})
     if (isLastSongOverall) {
       navigate('/results')
@@ -205,7 +202,25 @@ export function GuessAndRate() {
     }
   }
 
-  if (phase === 'reviewing') {
+  function handleSubmitCategory() {
+    const answers = Object.entries(draftAnswers).map(([songId, answer]) => ({ songId, ...answer }))
+    submitCategoryAnswers(song.categoryId, currentPlayerId, answers)
+
+    const submittedCount = useGameStore.getState().categorySubmissions[song.categoryId]?.length ?? 0
+    if (submittedCount >= players.length) {
+      advancePastCategory()
+    } else {
+      setPhase('waiting')
+    }
+  }
+
+  function handleAutofillOthers() {
+    autofillCategorySubmissions(song.categoryId, currentPlayerId)
+    advancePastCategory()
+  }
+
+  if (phase === 'reviewing' || phase === 'waiting') {
+    const submittedCount = categorySubmissions[song.categoryId]?.length ?? 0
     return (
       <div className="mx-auto min-h-screen max-w-md px-6 py-12">
         <h1 className="mb-1 text-center text-xl font-bold text-slate-100">Review your answers</h1>
@@ -234,22 +249,37 @@ export function GuessAndRate() {
           })}
         </ul>
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={handlePrevious}
-            className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
-          >
-            Edit Answers
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmitCategory}
-            className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
-          >
-            {isLastSongOverall ? 'Submit & See Results' : 'Submit & Continue'}
-          </button>
-        </div>
+        {phase === 'reviewing' ? (
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handlePrevious}
+              className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
+            >
+              Edit Answers
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmitCategory}
+              className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
+            >
+              Submit ({submittedCount}/{players.length})
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-4 text-center text-slate-300">
+              Waiting for other players... ({submittedCount}/{players.length} submitted)
+            </div>
+            <button
+              type="button"
+              onClick={handleAutofillOthers}
+              className="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:border-slate-400"
+            >
+              Auto-submit for everyone else (to test the flow)
+            </button>
+          </>
+        )}
       </div>
     )
   }

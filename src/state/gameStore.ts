@@ -14,6 +14,11 @@ interface GameState {
   guesses: Guess[]
   ratings: Rating[]
   currentSongIndex: number
+  // playerIds who have submitted their guesses/ratings for a category,
+  // keyed by categoryId - the group can't advance past a category until
+  // everyone's in, so no one's answers change after someone else has
+  // already seen them locked in.
+  categorySubmissions: Record<string, string[]>
 
   setCurrentPlayer: (playerId: string) => void
   setIsHost: (isHost: boolean) => void
@@ -23,6 +28,12 @@ interface GameState {
   autofillRemainingSongs: () => void
   submitGuess: (songId: string, guesserId: string, guessedPlayerId: string) => void
   submitRating: (songId: string, raterId: string, value: number) => void
+  submitCategoryAnswers: (
+    categoryId: string,
+    playerId: string,
+    answers: { songId: string; guessedPlayerId: string | null; rating: number | null }[]
+  ) => void
+  autofillCategorySubmissions: (categoryId: string, excludePlayerId: string) => void
   nextSong: () => void
   prevSong: () => void
   resetGame: () => void
@@ -38,6 +49,7 @@ export const useGameStore = create<GameState>((set) => ({
   guesses: [],
   ratings: [],
   currentSongIndex: 0,
+  categorySubmissions: {},
 
   setCurrentPlayer: (playerId) => set({ currentPlayerId: playerId }),
 
@@ -56,7 +68,8 @@ export const useGameStore = create<GameState>((set) => ({
   // Locks in the category selection and starts a fresh round - carrying
   // over songs, guesses, or ratings from a previous round would let a
   // category look already-submitted or corrupt scoring for the new one.
-  confirmCategories: () => set({ songs: [], guesses: [], ratings: [], currentSongIndex: 0 }),
+  confirmCategories: () =>
+    set({ songs: [], guesses: [], ratings: [], currentSongIndex: 0, categorySubmissions: {} }),
 
   submitSong: (playerId, categoryId, title, artist) =>
     set((state) => {
@@ -108,6 +121,76 @@ export const useGameStore = create<GameState>((set) => ({
       ],
     })),
 
+  submitCategoryAnswers: (categoryId, playerId, answers) =>
+    set((state) => {
+      let guesses = state.guesses
+      let ratings = state.ratings
+      for (const { songId, guessedPlayerId, rating } of answers) {
+        if (guessedPlayerId) {
+          guesses = [
+            ...guesses.filter((g) => !(g.songId === songId && g.guesserId === playerId)),
+            { songId, guesserId: playerId, guessedPlayerId },
+          ]
+        }
+        if (rating !== null) {
+          ratings = [
+            ...ratings.filter((r) => !(r.songId === songId && r.raterId === playerId)),
+            { songId, raterId: playerId, value: rating },
+          ]
+        }
+      }
+      const alreadySubmitted = state.categorySubmissions[categoryId] ?? []
+      const categorySubmissions = alreadySubmitted.includes(playerId)
+        ? state.categorySubmissions
+        : { ...state.categorySubmissions, [categoryId]: [...alreadySubmitted, playerId] }
+      return { guesses, ratings, categorySubmissions }
+    }),
+
+  // Dev helper mirroring autofillRemainingSongs: fills in plausible
+  // guesses/ratings for every player who hasn't submitted this category yet
+  // (other than excludePlayerId), so the "wait for everyone" gate can be
+  // tested solo. Each simulated player's guesses are a rotation of the
+  // other players - a valid one-guess-per-name assignment by construction.
+  autofillCategorySubmissions: (categoryId, excludePlayerId) =>
+    set((state) => {
+      const alreadySubmitted = new Set(state.categorySubmissions[categoryId] ?? [])
+      const missingPlayers = state.players.filter(
+        (p) => p.id !== excludePlayerId && !alreadySubmitted.has(p.id)
+      )
+      const categorySongs = state.songs.filter((s) => s.categoryId === categoryId)
+
+      let guesses = state.guesses
+      let ratings = state.ratings
+      const newlySubmitted: string[] = []
+
+      missingPlayers.forEach((player, playerIndex) => {
+        const otherSongs = categorySongs.filter((s) => s.playerId !== player.id)
+        const candidates = state.players.filter((p) => p.id !== player.id)
+        otherSongs.forEach((song, i) => {
+          const guessedPlayerId = candidates[(i + playerIndex) % candidates.length].id
+          const rating = (i * 2 + playerIndex) % 6
+          guesses = [
+            ...guesses.filter((g) => !(g.songId === song.id && g.guesserId === player.id)),
+            { songId: song.id, guesserId: player.id, guessedPlayerId },
+          ]
+          ratings = [
+            ...ratings.filter((r) => !(r.songId === song.id && r.raterId === player.id)),
+            { songId: song.id, raterId: player.id, value: rating },
+          ]
+        })
+        newlySubmitted.push(player.id)
+      })
+
+      return {
+        guesses,
+        ratings,
+        categorySubmissions: {
+          ...state.categorySubmissions,
+          [categoryId]: [...alreadySubmitted, ...newlySubmitted],
+        },
+      }
+    }),
+
   nextSong: () =>
     set((state) => ({
       currentSongIndex: Math.min(state.currentSongIndex + 1, getCurrentRoundSongs(state).length - 1),
@@ -123,6 +206,7 @@ export const useGameStore = create<GameState>((set) => ({
       guesses: [],
       ratings: [],
       currentSongIndex: 0,
+      categorySubmissions: {},
     }),
 }))
 
