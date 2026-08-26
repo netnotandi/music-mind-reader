@@ -126,7 +126,13 @@ export const useGameStore = create<GameState>((set) => ({
     }),
 }))
 
+// Grouped by category (in selection order) rather than raw insertion order,
+// so the play queue always goes category-by-category even if a player
+// happened to submit songs for multiple categories interleaved with
+// everyone else's autofilled ones.
 export function getCurrentRoundSongs(state: GameState): Song[] {
   if (state.selectedCategoryIds.length === 0) return []
-  return state.songs.filter((s) => state.selectedCategoryIds.includes(s.categoryId))
+  return state.selectedCategoryIds.flatMap((categoryId) =>
+    state.songs.filter((s) => s.categoryId === categoryId)
+  )
 }

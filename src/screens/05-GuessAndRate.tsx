@@ -12,6 +12,7 @@ export function GuessAndRate() {
   const currentSongIndex = useGameStore((s) => s.currentSongIndex)
   const currentPlayerId = useGameStore((s) => s.currentPlayerId)
   const players = useGameStore((s) => s.players)
+  const categories = useGameStore((s) => s.categories)
   const guesses = useGameStore((s) => s.guesses)
   const ratings = useGameStore((s) => s.ratings)
   const submitGuess = useGameStore((s) => s.submitGuess)
@@ -45,6 +46,22 @@ export function GuessAndRate() {
 
   const isOwnSong = song.playerId === currentPlayerId
   const isLastSong = currentSongIndex >= songs.length - 1
+  const isFirstOfCategory = currentSongIndex === 0 || songs[currentSongIndex - 1]?.categoryId !== song.categoryId
+  const categoryName = categories.find((c) => c.id === song.categoryId)?.name
+
+  // Each player owns exactly one song per category, so once you've used a
+  // name as your guess for a different song in this same category, picking
+  // them again would be a contradiction - hide them instead of letting
+  // players second-guess themselves into a duplicate.
+  const usedGuessesInCategory = new Set(
+    guesses
+      .filter((g) => g.guesserId === currentPlayerId && g.songId !== song.id)
+      .filter((g) => songs.find((s) => s.id === g.songId)?.categoryId === song.categoryId)
+      .map((g) => g.guessedPlayerId)
+  )
+  const availablePlayers = players.filter(
+    (p) => p.id !== currentPlayerId && !usedGuessesInCategory.has(p.id)
+  )
 
   function goToNext() {
     if (!isLastSong) {
@@ -64,6 +81,12 @@ export function GuessAndRate() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-12">
+      {isFirstOfCategory && currentSongIndex > 0 && (
+        <div className="mb-6 rounded-lg border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-center text-sm text-violet-300">
+          Next up: {categoryName}
+        </div>
+      )}
+
       <div className="mb-6">
         <SongCard title={song.title} artist={song.artist} index={currentSongIndex} total={songs.length} />
       </div>
@@ -78,22 +101,20 @@ export function GuessAndRate() {
             Whose song is it?
           </h2>
           <div className="mb-6 flex flex-wrap gap-2">
-            {players
-              .filter((p) => p.id !== currentPlayerId)
-              .map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setGuessedPlayerId(p.id)}
-                  className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                    guessedPlayerId === p.id
-                      ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
-                      : 'border-slate-600 text-slate-300 hover:border-slate-400'
-                  }`}
-                >
-                  {p.name}
-                </button>
-              ))}
+            {availablePlayers.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setGuessedPlayerId(p.id)}
+                className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                  guessedPlayerId === p.id
+                    ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
+                    : 'border-slate-600 text-slate-300 hover:border-slate-400'
+                }`}
+              >
+                {p.name}
+              </button>
+            ))}
           </div>
 
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
