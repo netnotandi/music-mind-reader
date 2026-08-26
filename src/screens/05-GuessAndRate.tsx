@@ -98,14 +98,15 @@ function AnswerForm({
       )}
 
       <div className="flex gap-3">
-        <button
-          type="button"
-          disabled={isFirstOfCategory}
-          onClick={onPrevious}
-          className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
-        >
-          ← Previous Song
-        </button>
+        {!isFirstOfCategory && (
+          <button
+            type="button"
+            onClick={onPrevious}
+            className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
+          >
+            ← Previous Song
+          </button>
+        )}
         <button
           type="button"
           disabled={!isOwnSong && (!guessedPlayerId || rating === null)}
