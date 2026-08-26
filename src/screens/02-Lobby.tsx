@@ -60,14 +60,23 @@ export function Lobby() {
       </ul>
 
       {isHost ? (
-        <button
-          type="button"
-          disabled={selectedCategoryIds.length === 0}
-          onClick={() => navigate('/submit')}
-          className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
-        >
-          Start Submitting Songs
-        </button>
+        selectedCategoryIds.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => navigate('/categories')}
+            className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
+          >
+            Choose Categories
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => navigate('/submit')}
+            className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
+          >
+            Start Submitting Songs
+          </button>
+        )
       ) : (
         <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-4 text-center text-slate-300">
           Waiting for the host to start the game...

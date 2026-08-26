@@ -10,7 +10,7 @@ export function Results() {
   const songs = useGameStore(useShallow(getCurrentRoundSongs))
   const guesses = useGameStore((s) => s.guesses)
   const ratings = useGameStore((s) => s.ratings)
-  const resetGame = useGameStore((s) => s.resetGame)
+  const startNewRound = useGameStore((s) => s.startNewRound)
 
   const round = { songs, guesses, ratings }
   const scores = computeFinalScores(round)
@@ -43,8 +43,8 @@ export function Results() {
       <button
         type="button"
         onClick={() => {
-          resetGame()
-          navigate('/')
+          startNewRound()
+          navigate('/lobby')
         }}
         className="w-full rounded-xl border border-slate-600 px-5 py-3 font-semibold text-slate-100 transition hover:border-slate-400"
       >
