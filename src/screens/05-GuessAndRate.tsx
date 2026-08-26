@@ -49,7 +49,6 @@ export function GuessAndRate() {
   function goToNext() {
     if (!isLastSong) {
       nextSong()
-      navigate('/now-playing')
     } else {
       navigate('/results')
     }

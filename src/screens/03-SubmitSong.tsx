@@ -131,10 +131,10 @@ export function SubmitSong() {
       <button
         type="button"
         disabled={!allSubmitted}
-        onClick={() => navigate('/now-playing')}
+        onClick={() => navigate('/guess')}
         className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
       >
-        Áfram í spilun
+        Byrja að giska
       </button>
     </div>
   )

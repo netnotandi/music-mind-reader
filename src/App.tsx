@@ -4,7 +4,6 @@ import { JoinGame } from './screens/01b-JoinGame'
 import { CategorySelect } from './screens/01c-CategorySelect'
 import { Lobby } from './screens/02-Lobby'
 import { SubmitSong } from './screens/03-SubmitSong'
-import { NowPlaying } from './screens/04-NowPlaying'
 import { GuessAndRate } from './screens/05-GuessAndRate'
 import { Results } from './screens/06-Results'
 
@@ -18,7 +17,6 @@ function App() {
           <Route path="/categories" element={<CategorySelect />} />
           <Route path="/lobby" element={<Lobby />} />
           <Route path="/submit" element={<SubmitSong />} />
-          <Route path="/now-playing" element={<NowPlaying />} />
           <Route path="/guess" element={<GuessAndRate />} />
           <Route path="/results" element={<Results />} />
         </Routes>
