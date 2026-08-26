@@ -3,10 +3,13 @@ import type { Category, Player } from '../types'
 export const GAME_CODE = '4271'
 
 export const PLAYERS: Player[] = [
-  { id: 'p1', name: 'Anna' },
-  { id: 'p2', name: 'Björn' },
-  { id: 'p3', name: 'Katla' },
-  { id: 'p4', name: 'Dagur' },
+  { id: 'p1', name: 'Jón Þór' },
+  { id: 'p2', name: 'Halldór' },
+  { id: 'p3', name: 'Örn' },
+  { id: 'p4', name: 'Einar' },
+  { id: 'p5', name: 'Jonni' },
+  { id: 'p6', name: 'Jónsi' },
+  { id: 'p7', name: 'Bjarni' },
 ]
 
 export const CATEGORIES: Category[] = [
