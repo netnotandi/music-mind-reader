@@ -19,14 +19,14 @@ export function Results() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
-      <h1 className="mb-6 text-center text-2xl font-bold text-slate-100">Úrslit</h1>
+      <h1 className="mb-6 text-center text-2xl font-bold text-slate-100">Results</h1>
 
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Stigatafla</h2>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Scoreboard</h2>
       <div className="mb-8">
         <ScoreBoard players={players} scores={scores} titles={titles} />
       </div>
 
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Lögin afhjúpuð</h2>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Songs Revealed</h2>
       <ul className="mb-8 space-y-2">
         {songs.map((song) => (
           <li key={song.id} className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3">
@@ -38,7 +38,7 @@ export function Results() {
               <div className="text-right">
                 <p className="text-sm text-emerald-300">{playerById.get(song.playerId)?.name}</p>
                 <p className="text-xs text-slate-500">
-                  meðaleinkunn {averageRating(song.id, ratings).toFixed(1)}
+                  avg rating {averageRating(song.id, ratings).toFixed(1)}
                 </p>
               </div>
             </div>
@@ -54,7 +54,7 @@ export function Results() {
         }}
         className="w-full rounded-xl border border-slate-600 px-5 py-3 font-semibold text-slate-100 transition hover:border-slate-400"
       >
-        Nýr leikur
+        New Game
       </button>
     </div>
   )
