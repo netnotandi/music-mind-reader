@@ -36,6 +36,7 @@ interface GameState {
   autofillCategorySubmissions: (categoryId: string, excludePlayerId: string) => void
   nextSong: () => void
   prevSong: () => void
+  setSongIndex: (index: number) => void
   startNewRound: () => void
 }
 
@@ -197,6 +198,11 @@ export const useGameStore = create<GameState>((set) => ({
     })),
 
   prevSong: () => set((state) => ({ currentSongIndex: Math.max(state.currentSongIndex - 1, 0) })),
+
+  setSongIndex: (index) =>
+    set((state) => ({
+      currentSongIndex: Math.max(0, Math.min(index, getCurrentRoundSongs(state).length - 1)),
+    })),
 
   // Starts a fresh round for the same group of players still in the Lobby -
   // isHost is intentionally left alone, since everyone should go straight

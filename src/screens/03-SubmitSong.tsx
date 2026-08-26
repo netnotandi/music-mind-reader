@@ -11,6 +11,7 @@ export function SubmitSong() {
   const songs = useGameStore((s) => s.songs)
   const submitSong = useGameStore((s) => s.submitSong)
   const autofillRemainingSongs = useGameStore((s) => s.autofillRemainingSongs)
+  const setCurrentPlayer = useGameStore((s) => s.setCurrentPlayer)
 
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
@@ -24,6 +25,7 @@ export function SubmitSong() {
   const totalRequired = players.length * selectedCategories.length
   const totalSubmitted = songs.filter((s) => selectedCategoryIds.includes(s.categoryId)).length
   const allSubmitted = selectedCategories.length > 0 && totalSubmitted === totalRequired
+  const playersStillNeeded = players.filter((p) => selectedCategories.some((c) => !hasSong(p.id, c.id)))
 
   if (selectedCategories.length === 0) {
     return (
@@ -72,6 +74,22 @@ export function SubmitSong() {
             </button>
           </form>
         </>
+      ) : playersStillNeeded.length > 0 ? (
+        <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-400/10 px-4 py-3">
+          <p className="mb-3 text-emerald-300">Thanks! Pass the device to the next player:</p>
+          <div className="flex flex-wrap gap-2">
+            {playersStillNeeded.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setCurrentPlayer(p.id)}
+                className="rounded-full border border-emerald-400/60 bg-emerald-400/10 px-3 py-1.5 text-sm text-emerald-200 transition hover:border-emerald-400"
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : (
         <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-400/10 px-4 py-3 text-emerald-300">
           You've submitted a song for every category. ✓

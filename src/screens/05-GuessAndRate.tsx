@@ -136,8 +136,10 @@ export function GuessAndRate() {
   const categorySubmissions = useGameStore((s) => s.categorySubmissions)
   const submitCategoryAnswers = useGameStore((s) => s.submitCategoryAnswers)
   const autofillCategorySubmissions = useGameStore((s) => s.autofillCategorySubmissions)
+  const setCurrentPlayer = useGameStore((s) => s.setCurrentPlayer)
   const nextSong = useGameStore((s) => s.nextSong)
   const prevSong = useGameStore((s) => s.prevSong)
+  const setSongIndex = useGameStore((s) => s.setSongIndex)
 
   // Answers for the category currently being played are kept as a local
   // draft - nothing is written to the store until the category is reviewed
@@ -163,6 +165,8 @@ export function GuessAndRate() {
     currentSongIndex === songs.length - 1 || songs[currentSongIndex + 1]?.categoryId !== song.categoryId
   const categoryName = categories.find((c) => c.id === song.categoryId)?.name
   const categorySongs = songs.filter((s) => s.categoryId === song.categoryId)
+  const submittedForCategory = categorySubmissions[song.categoryId] ?? []
+  const playersStillNeeded = players.filter((p) => !submittedForCategory.includes(p.id))
 
   // Each player owns exactly one song per category, so a name already used
   // as your guess for a different song in this category is shown (not
@@ -237,6 +241,14 @@ export function GuessAndRate() {
     advancePastCategory()
   }
 
+  function handoffTo(playerId: string) {
+    const categoryFirstIndex = songs.findIndex((s) => s.categoryId === song.categoryId)
+    setCurrentPlayer(playerId)
+    setSongIndex(categoryFirstIndex)
+    setDraftAnswers({})
+    setPhase('answering')
+  }
+
   if (phase === 'reviewing' || phase === 'waiting') {
     const submittedCount = categorySubmissions[song.categoryId]?.length ?? 0
     return (
@@ -286,8 +298,22 @@ export function GuessAndRate() {
           </div>
         ) : (
           <>
-            <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-4 text-center text-slate-300">
-              Waiting for other players... ({submittedCount}/{players.length} submitted)
+            <div className="mb-4 rounded-xl border border-emerald-500/40 bg-emerald-400/10 px-4 py-3">
+              <p className="mb-3 text-emerald-300">
+                Submitted! ({submittedCount}/{players.length}) Pass the device to:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {playersStillNeeded.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handoffTo(p.id)}
+                    className="rounded-full border border-emerald-400/60 bg-emerald-400/10 px-3 py-1.5 text-sm text-emerald-200 transition hover:border-emerald-400"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
             </div>
             <button
               type="button"
