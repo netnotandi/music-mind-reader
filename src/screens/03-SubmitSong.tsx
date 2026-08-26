@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PlayerSwitcher } from '../components/PlayerSwitcher'
 import { useGameStore } from '../state/gameStore'
 
 export function SubmitSong() {
@@ -29,22 +28,17 @@ export function SubmitSong() {
   if (selectedCategories.length === 0) {
     return (
       <div className="mx-auto max-w-md px-6 py-8 text-slate-300">
-        Enginn flokkur valinn ennþá — farðu aftur í Lobby.
+        No category selected yet — go back to the Lobby.
       </div>
     )
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md px-6 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-100">Skila lagi</h1>
-        <PlayerSwitcher />
-      </div>
-
+    <div className="mx-auto min-h-screen max-w-md px-6 py-12">
       {nextCategoryForMe ? (
         <>
           <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-slate-400">Flokkur</p>
+            <p className="text-xs uppercase tracking-wide text-slate-400">Category</p>
             <p className="text-lg font-semibold text-emerald-300">{nextCategoryForMe.name}</p>
           </div>
 
@@ -60,13 +54,13 @@ export function SubmitSong() {
           >
             <input
               className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
-              placeholder="Titill lags"
+              placeholder="Song title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
             <input
               className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
-              placeholder="Flytjandi"
+              placeholder="Artist"
               value={artist}
               onChange={(e) => setArtist(e.target.value)}
             />
@@ -74,24 +68,21 @@ export function SubmitSong() {
               type="submit"
               className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400"
             >
-              Skila lagi (nafnlaust)
+              Submit Song (anonymous)
             </button>
           </form>
         </>
       ) : (
         <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-400/10 px-4 py-3 text-emerald-300">
-          Þú hefur skilað lagi fyrir alla valda flokka. ✓
+          You've submitted a song for every category. ✓
         </div>
       )}
 
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
-        Staða innsendinga ({totalSubmitted}/{totalRequired})
-      </h2>
       <div className="mb-6 overflow-x-auto rounded-lg border border-slate-700">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-700 text-slate-400">
-              <th className="px-3 py-2 text-left font-medium">Leikmaður</th>
+              <th className="px-3 py-2 text-left font-medium">Player</th>
               {selectedCategories.map((c) => (
                 <th key={c.id} className="px-2 py-2 text-center font-medium">
                   {c.name}
@@ -124,7 +115,7 @@ export function SubmitSong() {
           onClick={autofillRemainingSongs}
           className="mb-4 w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:border-slate-400"
         >
-          Fylla út gervilög fyrir hina (til að prófa flæðið)
+          Fill in mock songs for everyone else (to test the flow)
         </button>
       )}
 
@@ -134,7 +125,7 @@ export function SubmitSong() {
         onClick={() => navigate('/guess')}
         className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
       >
-        Byrja að giska
+        Start Guessing
       </button>
     </div>
   )
