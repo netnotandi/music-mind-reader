@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { HashRouter, Route, Routes } from 'react-router-dom'
 import { MenuOverlay } from './components/MenuOverlay'
 import { CreateJoin } from './screens/01-CreateJoin'
 import { JoinGame } from './screens/01b-JoinGame'
@@ -11,7 +11,7 @@ import { Results } from './screens/06-Results'
 function App() {
   return (
     <div className="min-h-screen bg-[#010127] text-slate-100">
-      <BrowserRouter>
+      <HashRouter>
         <MenuOverlay />
         <Routes>
           <Route path="/" element={<CreateJoin />} />
@@ -22,7 +22,7 @@ function App() {
           <Route path="/guess" element={<GuessAndRate />} />
           <Route path="/results" element={<Results />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </div>
   )
 }
