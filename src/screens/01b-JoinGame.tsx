@@ -48,12 +48,6 @@ export function JoinGame() {
         <PlayerSwitcher />
       </div>
 
-      <div className="mb-8 flex justify-center">
-        <div className="grid h-52 w-52 place-items-center rounded-xl border border-dashed border-slate-600 bg-slate-800 text-sm text-slate-500">
-          Scan QR Code
-        </div>
-      </div>
-
       <div className="mb-6 flex justify-center gap-3.5">
         {digits.map((digit, i) => (
           <input
@@ -71,6 +65,13 @@ export function JoinGame() {
       </div>
 
       {error && <p className="mb-4 text-center text-sm text-rose-400">Wrong code — try again.</p>}
+
+      <button
+        type="button"
+        className="mb-3 rounded-xl border border-slate-600 bg-slate-800/50 px-5 py-3 text-sm font-semibold text-slate-400 transition hover:border-slate-500"
+      >
+        Scan QR Code
+      </button>
 
       <button
         type="button"
