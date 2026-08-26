@@ -78,9 +78,9 @@ export function MenuOverlay() {
 
             {view === 'menu' && (
               <div className="flex flex-col gap-3">
-                <MenuButton label="Rules" onClick={() => setView('rules')} />
-                <MenuButton label="Settings" onClick={() => setView('settings')} />
                 <MenuButton label="Home" onClick={goHome} />
+                <MenuButton label="Settings" onClick={() => setView('settings')} />
+                <MenuButton label="Rules" onClick={() => setView('rules')} />
               </div>
             )}
 
