@@ -16,7 +16,14 @@ export function Results() {
   const scores = computeFinalScores(round)
   const titles = computeTitles(round, players)
   const breakdowns = new Map(players.map((p) => [p.id, computeScoreBreakdown(round, p.id)]))
-  const playerById = new Map(players.map((p) => [p.id, p]))
+  const songsByPlayer = new Map(
+    players.map((p) => [
+      p.id,
+      songs
+        .filter((s) => s.playerId === p.id)
+        .map((song) => ({ song, avgRating: averageRating(song.id, ratings) })),
+    ])
+  )
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
@@ -24,28 +31,14 @@ export function Results() {
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Scoreboard</h2>
       <div className="mb-8">
-        <ScoreBoard players={players} scores={scores} titles={titles} breakdowns={breakdowns} />
+        <ScoreBoard
+          players={players}
+          scores={scores}
+          titles={titles}
+          breakdowns={breakdowns}
+          songsByPlayer={songsByPlayer}
+        />
       </div>
-
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Songs Revealed</h2>
-      <ul className="mb-8 space-y-2">
-        {songs.map((song) => (
-          <li key={song.id} className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-slate-100">{song.title}</p>
-                <p className="text-sm text-slate-400">{song.artist}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-emerald-300">{playerById.get(song.playerId)?.name}</p>
-                <p className="text-xs text-slate-500">
-                  avg rating {averageRating(song.id, ratings).toFixed(1)}
-                </p>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
 
       <button
         type="button"
