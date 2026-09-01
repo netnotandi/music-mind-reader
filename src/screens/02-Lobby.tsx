@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import { PlayerSwitcher } from '../components/PlayerSwitcher'
 import { useGameStore } from '../state/gameStore'
 import { GAME_CODE } from '../state/mockData'
 
@@ -14,12 +13,9 @@ export function Lobby() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
-      <h1 className="mb-4 text-center text-3xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
+      <h1 className="mb-8 text-center text-3xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
         Music Mind Reader
       </h1>
-      <div className="mb-6 flex justify-center">
-        <PlayerSwitcher />
-      </div>
 
       <div className="mb-4 flex justify-center gap-4">
         <div className="grid h-28 w-28 flex-shrink-0 place-items-center rounded-xl border border-dashed border-slate-600 bg-slate-800 text-xs text-slate-500">

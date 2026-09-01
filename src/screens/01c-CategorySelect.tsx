@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { CategoryPicker } from '../components/CategoryPicker'
-import { PlayerSwitcher } from '../components/PlayerSwitcher'
 import { useGameStore } from '../state/gameStore'
 
 export function CategorySelect() {
@@ -15,10 +14,7 @@ export function CategorySelect() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-8 pt-16">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-100">Choose your categories</h1>
-        <PlayerSwitcher />
-      </div>
+      <h1 className="mb-6 text-xl font-bold text-slate-100">Choose your categories</h1>
 
       <CategoryPicker />
 
