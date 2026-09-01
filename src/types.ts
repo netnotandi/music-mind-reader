@@ -25,5 +25,5 @@ export interface Guess {
 export interface Rating {
   songId: string
   raterId: string
-  value: number // 0-5
+  value: number // 0-10
 }

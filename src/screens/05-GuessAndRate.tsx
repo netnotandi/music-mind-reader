@@ -5,7 +5,7 @@ import { SongCard } from '../components/SongCard'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 import type { Player, Song } from '../types'
 
-const RATING_OPTIONS = [0, 1, 2, 3, 4, 5]
+const RATING_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 interface Answer {
   guessedPlayerId: string | null
@@ -19,8 +19,9 @@ interface AnswerFormProps {
   isOwnSong: boolean
   visiblePlayers: Player[]
   assignedElsewhere: Map<string, string>
+  unavailableRatings: Set<number>
   initialAnswer: Answer | undefined
-  onSubmit: (guessedPlayerId: string, rating: number) => void
+  onSubmit: (guessedPlayerId: string, rating: number | null) => void
 }
 
 // Keyed by `${song.id}:${currentPlayerId}` from the parent, so React remounts
@@ -34,11 +35,17 @@ function AnswerForm({
   isOwnSong,
   visiblePlayers,
   assignedElsewhere,
+  unavailableRatings,
   initialAnswer,
   onSubmit,
 }: AnswerFormProps) {
   const [guessedPlayerId, setGuessedPlayerId] = useState(initialAnswer?.guessedPlayerId ?? null)
   const [rating, setRating] = useState(initialAnswer?.rating ?? null)
+
+  // Once every rating value (0-10) has already been given to another song
+  // in this category, there's nothing left to assign here - the guess still
+  // counts, it just won't contribute a score.
+  const ratingAvailable = RATING_OPTIONS.some((v) => !unavailableRatings.has(v))
 
   return (
     <>
@@ -77,29 +84,43 @@ function AnswerForm({
           </div>
 
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
-            Rating (0-5)
+            Rating (0-10)
           </h2>
-          <div className="mb-6 flex gap-2">
-            {RATING_OPTIONS.map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setRating(value)}
-                className={`h-10 w-10 rounded-full border text-sm font-semibold transition ${
-                  rating === value
-                    ? 'border-fuchsia-400 bg-fuchsia-400/20 text-fuchsia-300'
-                    : 'border-slate-600 text-slate-300 hover:border-slate-400'
-                }`}
-              >
-                {value}
-              </button>
-            ))}
+          {!ratingAvailable && (
+            <p className="mb-2 text-xs text-slate-500">
+              You've already used every rating on other songs in this category - this one won't get a
+              score from you.
+            </p>
+          )}
+          <div className="mb-6 flex flex-wrap gap-2">
+            {RATING_OPTIONS.map((value) => {
+              const disabled = unavailableRatings.has(value)
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setRating(value)}
+                  className={`h-10 w-10 rounded-full border text-sm font-semibold transition ${
+                    rating === value
+                      ? 'border-fuchsia-400 bg-fuchsia-400/20 text-fuchsia-300'
+                      : disabled
+                        ? 'cursor-not-allowed border-slate-800 text-slate-600'
+                        : 'border-slate-600 text-slate-300 hover:border-slate-400'
+                  }`}
+                >
+                  {value}
+                </button>
+              )
+            })}
           </div>
 
           <button
             type="button"
-            disabled={!guessedPlayerId || rating === null}
-            onClick={() => guessedPlayerId !== null && rating !== null && onSubmit(guessedPlayerId, rating)}
+            disabled={!guessedPlayerId || (ratingAvailable && rating === null)}
+            onClick={() =>
+              guessedPlayerId !== null && (!ratingAvailable || rating !== null) && onSubmit(guessedPlayerId, rating)
+            }
             className="mb-6 w-full rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
           >
             {initialAnswer ? 'Update Answer' : 'Submit'}
@@ -169,7 +190,17 @@ export function GuessAndRate() {
     ? { guessedPlayerId: existingGuess.guessedPlayerId, rating: existingRating?.value ?? null }
     : undefined
 
-  function handleSubmit(guessedPlayerId: string, rating: number) {
+  // Ratings must be unique per person within a category (no two songs from
+  // the same rater can share a score), forcing a full ranking rather than
+  // ties - this song's own existing rating is excluded so re-picking it
+  // while editing isn't blocked.
+  const unavailableRatings = new Set(
+    ratings
+      .filter((r) => r.raterId === currentPlayerId && r.songId !== song.id && categorySongs.some((s) => s.id === r.songId))
+      .map((r) => r.value)
+  )
+
+  function handleSubmit(guessedPlayerId: string, rating: number | null) {
     const conflictSong = categorySongs.find(
       (s) =>
         s.id !== song.id &&
@@ -177,22 +208,29 @@ export function GuessAndRate() {
     )
     if (conflictSong) clearGuess(conflictSong.id, currentPlayerId)
     submitGuess(song.id, currentPlayerId, guessedPlayerId)
-    submitRating(song.id, currentPlayerId, rating)
+    if (rating !== null) submitRating(song.id, currentPlayerId, rating)
   }
 
   function handleAutofillRest() {
     const missing = requiredResponders.filter((p) => !answeredIds.has(p.id))
     missing.forEach((player, i) => {
-      const usedByPlayer = new Set(
+      const usedGuesses = new Set(
         guesses
           .filter((g) => g.guesserId === player.id && categorySongs.some((s) => s.id === g.songId))
           .map((g) => g.guessedPlayerId)
       )
-      const candidates = players.filter((p) => p.id !== player.id && !usedByPlayer.has(p.id))
+      const candidates = players.filter((p) => p.id !== player.id && !usedGuesses.has(p.id))
       const guessedPlayerId = (candidates[i % candidates.length] ?? players.find((p) => p.id !== player.id))?.id
       if (!guessedPlayerId) return
       submitGuess(song.id, player.id, guessedPlayerId)
-      submitRating(song.id, player.id, (i * 2) % 6)
+
+      const usedRatings = new Set(
+        ratings
+          .filter((r) => r.raterId === player.id && r.songId !== song.id && categorySongs.some((s) => s.id === r.songId))
+          .map((r) => r.value)
+      )
+      const ratingValue = RATING_OPTIONS.find((v) => !usedRatings.has(v))
+      if (ratingValue !== undefined) submitRating(song.id, player.id, ratingValue)
     })
   }
 
@@ -220,6 +258,7 @@ export function GuessAndRate() {
         isOwnSong={isOwnSong}
         visiblePlayers={visiblePlayers}
         assignedElsewhere={assignedElsewhere}
+        unavailableRatings={unavailableRatings}
         initialAnswer={initialAnswer}
         onSubmit={handleSubmit}
       />

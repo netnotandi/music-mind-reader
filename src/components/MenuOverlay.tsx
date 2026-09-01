@@ -13,7 +13,7 @@ const RULES_SECTIONS: { title: string; body: string }[] = [
   {
     title: 'Scoring',
     body:
-      'Correct guess: +3 points. Your song’s average rating (0-5) is added as points. Nobody guessed your song: +2 bonus. Highest-rated song of the game: +2 bonus. Two or more players independently pick the same song ("Great Minds"): +1 point each.',
+      'Correct guess: +2 points. Your song’s average rating (0-10) is added as points. Nobody guessed your song: +5 bonus. Highest-rated song of the game: +2 bonus. Two or more players independently pick the same song ("Great Minds"): +1 point each. Each rating value can only be used once per person per category, so you can\'t give two songs the same score.',
   },
 ]
 

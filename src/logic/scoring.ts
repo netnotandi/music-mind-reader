@@ -1,7 +1,7 @@
 import type { Guess, Player, Rating, Song } from '../types'
 
-export const CORRECT_GUESS_POINTS = 3
-export const NOBODY_GUESSED_BONUS = 2
+export const CORRECT_GUESS_POINTS = 2
+export const NOBODY_GUESSED_BONUS = 5
 export const TOP_RATED_SONG_BONUS = 2
 export const GREAT_MINDS_BONUS = 1
 
@@ -27,7 +27,7 @@ function addPoints(totals: Record<string, number>, playerId: string, amount: num
   totals[playerId] = (totals[playerId] ?? 0) + amount
 }
 
-// Regla 1: rétt ágiskun á eiganda lags gefur giskandanum +3 stig.
+// Regla 1: rétt ágiskun á eiganda lags gefur giskandanum +2 stig.
 export function computeGuessPoints({ songs, guesses }: RoundData): Record<string, number> {
   const totals: Record<string, number> = {}
   for (const song of songs) {
@@ -38,7 +38,7 @@ export function computeGuessPoints({ songs, guesses }: RoundData): Record<string
   return totals
 }
 
-// Regla 2: eigandi lags fær MEÐALTAL (ekki summu) einkunna 0-5 sem stig.
+// Regla 2: eigandi lags fær MEÐALTAL (ekki summu) einkunna 0-10 sem stig.
 export function computeRatingPoints({ songs, ratings }: RoundData): Record<string, number> {
   const totals: Record<string, number> = {}
   for (const song of songs) {
@@ -47,7 +47,7 @@ export function computeRatingPoints({ songs, ratings }: RoundData): Record<strin
   return totals
 }
 
-// Regla 3: ef enginn giskar rétt á eigandann fær eigandinn +2 bónus.
+// Regla 3: ef enginn giskar rétt á eigandann fær eigandinn +5 bónus.
 export function computeNobodyGuessedBonus({ songs, guesses }: RoundData): Record<string, number> {
   const totals: Record<string, number> = {}
   for (const song of songs) {
