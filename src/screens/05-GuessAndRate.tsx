@@ -105,7 +105,7 @@ function AnswerForm({
                     rating === value
                       ? 'border-fuchsia-400 bg-fuchsia-400/20 text-fuchsia-300'
                       : disabled
-                        ? 'cursor-not-allowed border-slate-800 text-slate-600'
+                        ? 'border-slate-800 text-slate-600'
                         : 'border-slate-600 text-slate-300 hover:border-slate-400'
                   }`}
                 >
