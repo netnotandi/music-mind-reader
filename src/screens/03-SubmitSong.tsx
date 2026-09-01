@@ -1,6 +1,58 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../state/gameStore'
+import type { Category } from '../types'
+
+interface SongFormProps {
+  category: Category
+  existingSong: { title: string; artist: string } | undefined
+  onSubmit: (title: string, artist: string) => void
+}
+
+// Keyed by `${currentPlayerId}:${category.id}` from the parent, so React
+// remounts this component (and resets/refills title+artist from
+// existingSong) whenever the selected player or their category changes.
+function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
+  const [title, setTitle] = useState(existingSong?.title ?? '')
+  const [artist, setArtist] = useState(existingSong?.artist ?? '')
+
+  return (
+    <>
+      <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
+        <p className="text-xs uppercase tracking-wide text-slate-400">Category</p>
+        <p className="text-lg font-semibold text-emerald-300">{category.name}</p>
+      </div>
+
+      <form
+        className="mb-6 flex flex-col gap-3"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!title.trim() || !artist.trim()) return
+          onSubmit(title.trim(), artist.trim())
+        }}
+      >
+        <input
+          className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
+          placeholder="Song title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <input
+          className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
+          placeholder="Artist"
+          value={artist}
+          onChange={(e) => setArtist(e.target.value)}
+        />
+        <button
+          type="submit"
+          className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400"
+        >
+          {existingSong ? 'Edit Song' : 'Submit Song'}
+        </button>
+      </form>
+    </>
+  )
+}
 
 export function SubmitSong() {
   const navigate = useNavigate()
@@ -13,21 +65,30 @@ export function SubmitSong() {
   const autofillRemainingSongs = useGameStore((s) => s.autofillRemainingSongs)
   const setCurrentPlayer = useGameStore((s) => s.setCurrentPlayer)
 
-  const [title, setTitle] = useState('')
-  const [artist, setArtist] = useState('')
+  // Nobody has submitted anything for this round yet, so there's no natural
+  // "current player" to assume - ask who's holding the device first, same
+  // prompt style as the handoff box shown to later players.
+  const [identityConfirmed, setIdentityConfirmed] = useState(songs.length > 0)
 
   const selectedCategories = categories.filter((c) => selectedCategoryIds.includes(c.id))
   const hasSong = (playerId: string, categoryId: string) =>
     songs.some((s) => s.playerId === playerId && s.categoryId === categoryId)
 
-  const nextCategoryForMe = selectedCategories.find((c) => !hasSong(currentPlayerId, c.id))
+  // Focus on the current player's first not-yet-submitted category, or fall
+  // back to their first selected category (in edit mode) once they've done
+  // them all.
+  const categoryToShow =
+    selectedCategories.find((c) => !hasSong(currentPlayerId, c.id)) ?? selectedCategories[0]
+  const existingSong = categoryToShow
+    ? songs.find((s) => s.playerId === currentPlayerId && s.categoryId === categoryToShow.id)
+    : undefined
 
   const totalRequired = players.length * selectedCategories.length
   const totalSubmitted = songs.filter((s) => selectedCategoryIds.includes(s.categoryId)).length
   const allSubmitted = selectedCategories.length > 0 && totalSubmitted === totalRequired
   const playersStillNeeded = players.filter((p) => selectedCategories.some((c) => !hasSong(p.id, c.id)))
 
-  if (selectedCategories.length === 0) {
+  if (selectedCategories.length === 0 || !categoryToShow) {
     return (
       <div className="mx-auto max-w-md px-6 py-8 text-slate-300">
         No category selected yet — go back to the Lobby.
@@ -35,46 +96,41 @@ export function SubmitSong() {
     )
   }
 
+  if (!identityConfirmed) {
+    return (
+      <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
+        <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-400/10 px-4 py-3">
+          <p className="mb-3 text-emerald-300">Who's holding the device? Pick your name:</p>
+          <div className="flex flex-wrap gap-2">
+            {players.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  setCurrentPlayer(p.id)
+                  setIdentityConfirmed(true)
+                }}
+                className="rounded-full border border-emerald-400/60 bg-emerald-400/10 px-3 py-1.5 text-sm text-emerald-200 transition hover:border-emerald-400"
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
-      {nextCategoryForMe ? (
-        <>
-          <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-slate-400">Category</p>
-            <p className="text-lg font-semibold text-emerald-300">{nextCategoryForMe.name}</p>
-          </div>
+      <SongForm
+        key={`${currentPlayerId}:${categoryToShow.id}`}
+        category={categoryToShow}
+        existingSong={existingSong}
+        onSubmit={(title, artist) => submitSong(currentPlayerId, categoryToShow.id, title, artist)}
+      />
 
-          <form
-            className="mb-6 flex flex-col gap-3"
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (!title.trim() || !artist.trim()) return
-              submitSong(currentPlayerId, nextCategoryForMe.id, title.trim(), artist.trim())
-              setTitle('')
-              setArtist('')
-            }}
-          >
-            <input
-              className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
-              placeholder="Song title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <input
-              className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
-              placeholder="Artist"
-              value={artist}
-              onChange={(e) => setArtist(e.target.value)}
-            />
-            <button
-              type="submit"
-              className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400"
-            >
-              Submit Song
-            </button>
-          </form>
-        </>
-      ) : playersStillNeeded.length > 0 ? (
+      {playersStillNeeded.length > 0 && !playersStillNeeded.some((p) => p.id === currentPlayerId) && (
         <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-400/10 px-4 py-3">
           <p className="mb-3 text-emerald-300">Thanks! Pass the device to the next player:</p>
           <div className="flex flex-wrap gap-2">
@@ -89,10 +145,6 @@ export function SubmitSong() {
               </button>
             ))}
           </div>
-        </div>
-      ) : (
-        <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-400/10 px-4 py-3 text-emerald-300">
-          You've submitted a song for every category. ✓
         </div>
       )}
 
@@ -110,8 +162,19 @@ export function SubmitSong() {
           </thead>
           <tbody>
             {players.map((p) => (
-              <tr key={p.id} className="border-b border-slate-800 last:border-0">
-                <td className="px-3 py-2 text-slate-200">{p.name}</td>
+              <tr
+                key={p.id}
+                className={`border-b border-slate-800 last:border-0 ${
+                  p.id === currentPlayerId ? 'bg-emerald-400/10' : ''
+                }`}
+              >
+                <td
+                  className={`px-3 py-2 ${
+                    p.id === currentPlayerId ? 'font-semibold text-emerald-300' : 'text-slate-200'
+                  }`}
+                >
+                  {p.name}
+                </td>
                 {selectedCategories.map((c) => (
                   <td key={c.id} className="px-2 py-2 text-center">
                     {hasSong(p.id, c.id) ? (
