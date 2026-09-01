@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
-import { PlayerSwitcher } from '../components/PlayerSwitcher'
 import { SongCard } from '../components/SongCard'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 import type { Player, Song } from '../types'
@@ -125,6 +124,7 @@ export function GuessAndRate() {
   const submitRating = useGameStore((s) => s.submitRating)
   const nextSong = useGameStore((s) => s.nextSong)
   const prevSong = useGameStore((s) => s.prevSong)
+  const setCurrentPlayer = useGameStore((s) => s.setCurrentPlayer)
 
   const song = songs[currentSongIndex]
 
@@ -143,12 +143,13 @@ export function GuessAndRate() {
   const categorySongs = songs.filter((s) => s.categoryId === song.categoryId)
 
   // The whole group has to weigh in on the song currently playing - pass the
-  // device around (via YOU ARE) until everyone but the owner has answered,
-  // then move on together.
+  // device around until everyone but the owner has answered, then move on
+  // together.
   const requiredResponders = players.filter((p) => p.id !== song.playerId)
   const answeredIds = new Set(guesses.filter((g) => g.songId === song.id).map((g) => g.guesserId))
   const answeredCount = requiredResponders.filter((p) => answeredIds.has(p.id)).length
   const allAnswered = answeredCount === requiredResponders.length
+  const stillNeeded = requiredResponders.filter((p) => !answeredIds.has(p.id))
 
   // Each player owns exactly one song per category, so a name already used
   // as this player's guess for a different song in this category is shown
@@ -205,10 +206,6 @@ export function GuessAndRate() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
-      <div className="mb-6 flex justify-end">
-        <PlayerSwitcher />
-      </div>
-
       {isFirstOfCategory && currentSongIndex > 0 && (
         <div className="mb-6 rounded-lg border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-center text-sm text-violet-300">
           Next up: {categoryName}
@@ -260,6 +257,24 @@ export function GuessAndRate() {
           {isLastSongOverall ? 'See Results →' : 'Next Song →'}
         </button>
       </div>
+
+      {stillNeeded.length > 0 && !stillNeeded.some((p) => p.id === currentPlayerId) && (
+        <div className="mt-6 rounded-xl border border-emerald-500/40 bg-emerald-400/10 px-4 py-3">
+          <p className="mb-3 text-emerald-300">Who's holding the device? Pick your name:</p>
+          <div className="flex flex-wrap gap-2">
+            {stillNeeded.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setCurrentPlayer(p.id)}
+                className="rounded-full border border-emerald-400/60 bg-emerald-400/10 px-3 py-1.5 text-sm text-emerald-200 transition hover:border-emerald-400"
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
