@@ -119,6 +119,7 @@ export function SubmitSong() {
   const songs = useGameStore((s) => s.songs)
   const submitSong = useGameStore((s) => s.submitSong)
   const autofillRemainingSongs = useGameStore((s) => s.autofillRemainingSongs)
+  const shuffleSongOrder = useGameStore((s) => s.shuffleSongOrder)
   const setCurrentPlayer = useGameStore((s) => s.setCurrentPlayer)
 
   // Nobody has submitted anything for this round yet, so there's no natural
@@ -231,7 +232,10 @@ export function SubmitSong() {
       <button
         type="button"
         disabled={!allSubmitted}
-        onClick={() => navigate('/guess')}
+        onClick={() => {
+          shuffleSongOrder()
+          navigate('/guess')
+        }}
         className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
       >
         Start Guessing

@@ -14,6 +14,7 @@ interface GameState {
   guesses: Guess[]
   ratings: Rating[]
   currentSongIndex: number
+  songOrder: string[]
 
   setCurrentPlayer: (playerId: string) => void
   setIsHost: (isHost: boolean) => void
@@ -21,6 +22,7 @@ interface GameState {
   confirmCategories: () => void
   submitSong: (playerId: string, categoryId: string, title: string, artist: string) => void
   autofillRemainingSongs: () => void
+  shuffleSongOrder: () => void
   submitGuess: (songId: string, guesserId: string, guessedPlayerId: string) => void
   clearGuess: (songId: string, guesserId: string) => void
   submitRating: (songId: string, raterId: string, value: number) => void
@@ -39,6 +41,7 @@ export const useGameStore = create<GameState>((set) => ({
   guesses: [],
   ratings: [],
   currentSongIndex: 0,
+  songOrder: [],
 
   setCurrentPlayer: (playerId) => set({ currentPlayerId: playerId }),
 
@@ -57,7 +60,8 @@ export const useGameStore = create<GameState>((set) => ({
   // Locks in the category selection and starts a fresh round - carrying
   // over songs, guesses, or ratings from a previous selection would let a
   // category look already-submitted or corrupt scoring for the new one.
-  confirmCategories: () => set({ songs: [], guesses: [], ratings: [], currentSongIndex: 0 }),
+  confirmCategories: () =>
+    set({ songs: [], guesses: [], ratings: [], currentSongIndex: 0, songOrder: [] }),
 
   submitSong: (playerId, categoryId, title, artist) =>
     set((state) => {
@@ -92,6 +96,17 @@ export const useGameStore = create<GameState>((set) => ({
       }
       return { songs: [...state.songs, ...newSongs] }
     }),
+
+  // Songs would otherwise always play back in submission order, which is
+  // just the order players happened to pick their name/category in - an
+  // easy tell for whose song is up next. Shuffled once here (not derived on
+  // every read) so the order stays stable while guessing is in progress.
+  shuffleSongOrder: () =>
+    set((state) => ({
+      songOrder: state.selectedCategoryIds.flatMap((categoryId) =>
+        shuffle(state.songs.filter((s) => s.categoryId === categoryId)).map((s) => s.id)
+      ),
+    })),
 
   submitGuess: (songId, guesserId, guessedPlayerId) =>
     set((state) => ({
@@ -131,15 +146,31 @@ export const useGameStore = create<GameState>((set) => ({
       guesses: [],
       ratings: [],
       currentSongIndex: 0,
+      songOrder: [],
     }),
 }))
 
-// Grouped by category (in selection order) rather than raw insertion order,
-// so the play queue always goes category-by-category even if a player
-// happened to submit songs for multiple categories interleaved with
-// everyone else's autofilled ones.
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items]
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[result[i], result[j]] = [result[j], result[i]]
+  }
+  return result
+}
+
+// Grouped by category (in selection order), and within each category in
+// songOrder (shuffled once via shuffleSongOrder) rather than raw submission
+// order - otherwise the play queue always went in the order players happened
+// to submit in, an easy tell for whose song was up next. Falls back to
+// submission order if songOrder hasn't been populated yet (e.g. mid-submission).
 export function getCurrentRoundSongs(state: GameState): Song[] {
   if (state.selectedCategoryIds.length === 0) return []
+  if (state.songOrder.length > 0) {
+    const byId = new Map(state.songs.map((s) => [s.id, s]))
+    const ordered = state.songOrder.map((id) => byId.get(id)).filter((s): s is Song => s !== undefined)
+    if (ordered.length === state.songs.length) return ordered
+  }
   return state.selectedCategoryIds.flatMap((categoryId) =>
     state.songs.filter((s) => s.categoryId === categoryId)
   )
