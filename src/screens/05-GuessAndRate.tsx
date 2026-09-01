@@ -275,6 +275,28 @@ export function GuessAndRate() {
           </div>
         </div>
       )}
+
+      {allAnswered && (
+        <div className="mt-6 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
+          <p className="mb-3 text-slate-300">Want to change an answer? Pick a name:</p>
+          <div className="flex flex-wrap gap-2">
+            {requiredResponders.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setCurrentPlayer(p.id)}
+                className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                  p.id === currentPlayerId
+                    ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
+                    : 'border-slate-600 text-slate-300 hover:border-slate-400'
+                }`}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
