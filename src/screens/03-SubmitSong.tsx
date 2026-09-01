@@ -54,6 +54,62 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   )
 }
 
+interface ProgressTableProps {
+  players: { id: string; name: string }[]
+  selectedCategories: Category[]
+  currentPlayerId: string | null
+  hasSong: (playerId: string, categoryId: string) => boolean
+}
+
+// Shown both on the initial "who's holding the device?" gate (so the group
+// can see submission progress before anyone's even picked their name) and
+// below the form once someone's answering.
+function ProgressTable({ players, selectedCategories, currentPlayerId, hasSong }: ProgressTableProps) {
+  return (
+    <div className="mb-6 overflow-x-auto rounded-lg border border-slate-700">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-700 text-slate-400">
+            <th className="px-3 py-2 text-left font-medium">Player</th>
+            {selectedCategories.map((c) => (
+              <th key={c.id} className="px-2 py-2 text-center font-medium">
+                {c.name}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {players.map((p) => (
+            <tr
+              key={p.id}
+              className={`border-b border-slate-800 last:border-0 ${
+                p.id === currentPlayerId ? 'bg-emerald-400/10' : ''
+              }`}
+            >
+              <td
+                className={`px-3 py-2 ${
+                  p.id === currentPlayerId ? 'font-semibold text-emerald-300' : 'text-slate-200'
+                }`}
+              >
+                {p.name}
+              </td>
+              {selectedCategories.map((c) => (
+                <td key={c.id} className="px-2 py-2 text-center">
+                  {hasSong(p.id, c.id) ? (
+                    <span className="text-emerald-400">✓</span>
+                  ) : (
+                    <span className="text-slate-600">·</span>
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export function SubmitSong() {
   const navigate = useNavigate()
   const players = useGameStore((s) => s.players)
@@ -117,6 +173,13 @@ export function SubmitSong() {
             ))}
           </div>
         </div>
+
+        <ProgressTable
+          players={players}
+          selectedCategories={selectedCategories}
+          currentPlayerId={null}
+          hasSong={hasSong}
+        />
       </div>
     )
   }
@@ -148,47 +211,12 @@ export function SubmitSong() {
         </div>
       )}
 
-      <div className="mb-6 overflow-x-auto rounded-lg border border-slate-700">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-700 text-slate-400">
-              <th className="px-3 py-2 text-left font-medium">Player</th>
-              {selectedCategories.map((c) => (
-                <th key={c.id} className="px-2 py-2 text-center font-medium">
-                  {c.name}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {players.map((p) => (
-              <tr
-                key={p.id}
-                className={`border-b border-slate-800 last:border-0 ${
-                  p.id === currentPlayerId ? 'bg-emerald-400/10' : ''
-                }`}
-              >
-                <td
-                  className={`px-3 py-2 ${
-                    p.id === currentPlayerId ? 'font-semibold text-emerald-300' : 'text-slate-200'
-                  }`}
-                >
-                  {p.name}
-                </td>
-                {selectedCategories.map((c) => (
-                  <td key={c.id} className="px-2 py-2 text-center">
-                    {hasSong(p.id, c.id) ? (
-                      <span className="text-emerald-400">✓</span>
-                    ) : (
-                      <span className="text-slate-600">·</span>
-                    )}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ProgressTable
+        players={players}
+        selectedCategories={selectedCategories}
+        currentPlayerId={currentPlayerId}
+        hasSong={hasSong}
+      />
 
       {!allSubmitted && (
         <button
