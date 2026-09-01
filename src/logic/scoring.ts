@@ -222,29 +222,42 @@ export function computeTitles(round: RoundData, players: Player[]): Title[] {
 
   const titles: Title[] = []
 
-  const mostGuesses = [...correctGuessCountByGuesser].sort((a, b) => b.count - a.count)[0]
-  if (mostGuesses && mostGuesses.count > 0) {
-    titles.push({ name: 'Music Mind Reader', playerId: mostGuesses.player.id })
+  // Every title is shared by everyone tied for the extreme value - picking
+  // a single winner via sort()[0] would arbitrarily favor whoever happens
+  // to come first in the players list.
+
+  const maxGuessCount = Math.max(...correctGuessCountByGuesser.map((x) => x.count))
+  if (maxGuessCount > 0) {
+    for (const { player, count } of correctGuessCountByGuesser) {
+      if (count === maxGuessCount) titles.push({ name: 'Music Mind Reader', playerId: player.id })
+    }
   }
 
-  const bestTaste = [...ownSongAvgByPlayer].sort((a, b) => b.avg - a.avg)[0]
-  if (bestTaste && bestTaste.avg > 0) {
-    titles.push({ name: 'Best Taste', playerId: bestTaste.player.id })
+  const maxTasteAvg = Math.max(...ownSongAvgByPlayer.map((x) => x.avg))
+  if (maxTasteAvg > 0) {
+    for (const { player, avg } of ownSongAvgByPlayer) {
+      if (avg === maxTasteAvg) titles.push({ name: 'Best Taste', playerId: player.id })
+    }
   }
 
-  const mostHidden = [...correctGuessersCountByPlayer].sort((a, b) => a.count - b.count)[0]
-  if (mostHidden) {
-    titles.push({ name: 'Master of Disguise', playerId: mostHidden.player.id })
+  const minHiddenCount = Math.min(...correctGuessersCountByPlayer.map((x) => x.count))
+  for (const { player, count } of correctGuessersCountByPlayer) {
+    if (count === minHiddenCount) titles.push({ name: 'Master of Disguise', playerId: player.id })
   }
 
-  const mostPredictable = [...correctGuessersCountByPlayer].sort((a, b) => b.count - a.count)[0]
-  if (mostPredictable && mostPredictable.count > 0) {
-    titles.push({ name: 'Most Predictable', playerId: mostPredictable.player.id })
+  const maxPredictableCount = Math.max(...correctGuessersCountByPlayer.map((x) => x.count))
+  if (maxPredictableCount > 0) {
+    for (const { player, count } of correctGuessersCountByPlayer) {
+      if (count === maxPredictableCount) titles.push({ name: 'Most Predictable', playerId: player.id })
+    }
   }
 
-  const worstRated = [...ownSongAvgByPlayer].filter((x) => x.avg > 0).sort((a, b) => a.avg - b.avg)[0]
-  if (worstRated) {
-    titles.push({ name: 'Musical Criminal', playerId: worstRated.player.id })
+  const ratedPlayers = ownSongAvgByPlayer.filter((x) => x.avg > 0)
+  if (ratedPlayers.length > 0) {
+    const minRatedAvg = Math.min(...ratedPlayers.map((x) => x.avg))
+    for (const { player, avg } of ratedPlayers) {
+      if (avg === minRatedAvg) titles.push({ name: 'Musical Criminal', playerId: player.id })
+    }
   }
 
   return titles
