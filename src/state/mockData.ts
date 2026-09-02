@@ -4,12 +4,10 @@ export const GAME_CODE = '4271'
 
 export const PLAYERS: Player[] = [
   { id: 'p1', name: 'Jón Þór' },
-  { id: 'p2', name: 'Halldór' },
-  { id: 'p3', name: 'Örn' },
-  { id: 'p4', name: 'Einar' },
-  { id: 'p5', name: 'Jonni' },
-  { id: 'p6', name: 'Jónsi' },
-  { id: 'p7', name: 'Bjarni' },
+  { id: 'p2', name: 'Eggert' },
+  { id: 'p3', name: 'Haukur' },
+  { id: 'p4', name: 'Elli' },
+  { id: 'p5', name: 'Chris' },
 ]
 
 export const CATEGORIES: Category[] = [
