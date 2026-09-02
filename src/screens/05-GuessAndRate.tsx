@@ -172,9 +172,6 @@ export function GuessAndRate() {
   const allAnswered = answeredCount === requiredResponders.length
   const stillNeeded = requiredResponders.filter((p) => !answeredIds.has(p.id))
 
-  // Also doubles as the option list for the "pick a name" boxes below - it
-  // has to include the song's owner too, or their name being the one
-  // missing from the list would itself give away who owns the song.
   const visiblePlayers = players.filter((p) => p.id !== currentPlayerId)
 
   // Each player owns exactly one song per category, so a name already used
@@ -301,16 +298,23 @@ export function GuessAndRate() {
         </button>
       </div>
 
+      {/* Both boxes below always list every player (the active one just
+          highlighted, not omitted) - leaving a name out entirely would give
+          away that they own the song currently playing. */}
       {stillNeeded.length > 0 && !stillNeeded.some((p) => p.id === currentPlayerId) && (
         <div className="mt-6 rounded-xl border border-emerald-500/40 bg-emerald-400/10 px-4 py-3">
           <p className="mb-3 text-emerald-300">Who's holding the device? Pick your name:</p>
           <div className="flex flex-wrap gap-2">
-            {visiblePlayers.map((p) => (
+            {players.map((p) => (
               <button
                 key={p.id}
                 type="button"
                 onClick={() => setCurrentPlayer(p.id)}
-                className="rounded-full border border-emerald-400/60 bg-emerald-400/10 px-3 py-1.5 text-sm text-emerald-200 transition hover:border-emerald-400"
+                className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                  p.id === currentPlayerId
+                    ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
+                    : 'border-emerald-400/60 bg-emerald-400/10 text-emerald-200 hover:border-emerald-400'
+                }`}
               >
                 {p.name}
               </button>
@@ -323,12 +327,16 @@ export function GuessAndRate() {
         <div className="mt-6 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
           <p className="mb-3 text-slate-300">Want to change an answer? Pick a name:</p>
           <div className="flex flex-wrap gap-2">
-            {visiblePlayers.map((p) => (
+            {players.map((p) => (
               <button
                 key={p.id}
                 type="button"
                 onClick={() => setCurrentPlayer(p.id)}
-                className="rounded-full border border-slate-600 px-3 py-1.5 text-sm text-slate-300 transition hover:border-slate-400"
+                className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                  p.id === currentPlayerId
+                    ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
+                    : 'border-slate-600 text-slate-300 hover:border-slate-400'
+                }`}
               >
                 {p.name}
               </button>
