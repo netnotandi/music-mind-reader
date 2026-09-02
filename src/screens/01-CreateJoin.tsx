@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
-import { PlayerSwitcher } from '../components/PlayerSwitcher'
 import { useGameStore } from '../state/gameStore'
 
 export function CreateJoin() {
@@ -33,10 +32,6 @@ export function CreateJoin() {
         >
           JOIN GAME
         </button>
-      </div>
-
-      <div className="mt-6 flex justify-center">
-        <PlayerSwitcher />
       </div>
     </div>
   )

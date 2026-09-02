@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PlayerSwitcher } from '../components/PlayerSwitcher'
 import { useGameStore } from '../state/gameStore'
 import { GAME_CODE } from '../state/mockData'
 
@@ -44,10 +43,6 @@ export function JoinGame() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-20">
-      <div className="mb-8 flex justify-center">
-        <PlayerSwitcher />
-      </div>
-
       <div className="mb-6 flex justify-center gap-3.5">
         {digits.map((digit, i) => (
           <input
