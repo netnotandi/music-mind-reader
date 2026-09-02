@@ -131,6 +131,168 @@ function AnswerForm({
   )
 }
 
+interface SongPanelProps {
+  song: Song
+  index: number
+  total: number
+  players: Player[]
+  currentPlayerId: string
+  isOwnSong: boolean
+  visiblePlayers: Player[]
+  assignedElsewhere: Map<string, string>
+  unavailableRatings: Set<number>
+  initialAnswer: Answer | undefined
+  requiredResponders: Player[]
+  answeredCount: number
+  allAnswered: boolean
+  isFirstOfCategory: boolean
+  isLastSongOverall: boolean
+  onSubmit: (guessedPlayerId: string, rating: number | null) => void
+  onAutofill: () => void
+  onPickPlayer: (playerId: string) => void
+  onPrev: () => void
+  onNext: () => void
+}
+
+// Keyed by song.id from the parent, so React remounts this (resetting
+// viewerConfirmed to false) every time a new song comes up - nobody should
+// see any guess/rating UI, let alone "this is your own song," until someone
+// explicitly claims the device for THIS song. Whoever was active on the
+// previous song carries over in the store, but that's never trusted here.
+function SongPanel({
+  song,
+  index,
+  total,
+  players,
+  currentPlayerId,
+  isOwnSong,
+  visiblePlayers,
+  assignedElsewhere,
+  unavailableRatings,
+  initialAnswer,
+  requiredResponders,
+  answeredCount,
+  allAnswered,
+  isFirstOfCategory,
+  isLastSongOverall,
+  onSubmit,
+  onAutofill,
+  onPickPlayer,
+  onPrev,
+  onNext,
+}: SongPanelProps) {
+  const [viewerConfirmed, setViewerConfirmed] = useState(false)
+
+  if (!viewerConfirmed) {
+    return (
+      <>
+        <div className="mb-6">
+          <SongCard title={song.title} artist={song.artist} index={index} total={total} />
+        </div>
+        <div className="rounded-xl border border-emerald-500/40 bg-emerald-400/10 px-4 py-3">
+          <p className="mb-3 text-emerald-300">Who's holding the device? Pick your name:</p>
+          <div className="flex flex-wrap gap-2">
+            {players.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  onPickPlayer(p.id)
+                  setViewerConfirmed(true)
+                }}
+                className="rounded-full border border-slate-600 px-3 py-1.5 text-sm text-slate-300 transition hover:border-slate-400"
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <AnswerForm
+        key={currentPlayerId}
+        song={song}
+        index={index}
+        total={total}
+        isOwnSong={isOwnSong}
+        visiblePlayers={visiblePlayers}
+        assignedElsewhere={assignedElsewhere}
+        unavailableRatings={unavailableRatings}
+        initialAnswer={initialAnswer}
+        onSubmit={onSubmit}
+      />
+
+      <p className="mb-4 text-center text-sm text-slate-400">
+        {answeredCount}/{requiredResponders.length} have answered
+      </p>
+
+      {!allAnswered && (
+        <button
+          type="button"
+          onClick={onAutofill}
+          className="mb-4 w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:border-slate-400"
+        >
+          Answer for everyone else on this song (to test the flow)
+        </button>
+      )}
+
+      <div className="flex gap-3">
+        {!isFirstOfCategory && (
+          <button
+            type="button"
+            onClick={onPrev}
+            className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
+          >
+            ← Previous Song
+          </button>
+        )}
+        <button
+          type="button"
+          disabled={!allAnswered}
+          onClick={onNext}
+          className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+        >
+          {isLastSongOverall ? 'See Results →' : 'Next Song →'}
+        </button>
+      </div>
+
+      {/* Always visible (not just once the active player finishes) so it's
+          always clear who's currently answering - and always lists every
+          player, active one highlighted rather than omitted, so a name
+          being missing never gives away who owns the song. */}
+      <div
+        className={`mt-6 rounded-xl border px-4 py-3 ${
+          allAnswered ? 'border-slate-700 bg-slate-800/50' : 'border-emerald-500/40 bg-emerald-400/10'
+        }`}
+      >
+        <p className={`mb-3 ${allAnswered ? 'text-slate-300' : 'text-emerald-300'}`}>
+          {allAnswered ? 'Want to change an answer? Pick a name:' : "Who's holding the device? Pick your name:"}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {players.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onPickPlayer(p.id)}
+              className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                p.id === currentPlayerId
+                  ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
+                  : 'border-slate-600 text-slate-300 hover:border-slate-400'
+              }`}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
 export function GuessAndRate() {
   const navigate = useNavigate()
   const songs = useGameStore(useShallow(getCurrentRoundSongs))
@@ -250,82 +412,29 @@ export function GuessAndRate() {
         </div>
       )}
 
-      <AnswerForm
-        key={`${song.id}:${currentPlayerId}`}
+      <SongPanel
+        key={song.id}
         song={song}
         index={currentSongIndex}
         total={songs.length}
+        players={players}
+        currentPlayerId={currentPlayerId}
         isOwnSong={isOwnSong}
         visiblePlayers={visiblePlayers}
         assignedElsewhere={assignedElsewhere}
         unavailableRatings={unavailableRatings}
         initialAnswer={initialAnswer}
+        requiredResponders={requiredResponders}
+        answeredCount={answeredCount}
+        allAnswered={allAnswered}
+        isFirstOfCategory={isFirstOfCategory}
+        isLastSongOverall={isLastSongOverall}
         onSubmit={handleSubmit}
+        onAutofill={handleAutofillRest}
+        onPickPlayer={setCurrentPlayer}
+        onPrev={prevSong}
+        onNext={goNext}
       />
-
-      <p className="mb-4 text-center text-sm text-slate-400">
-        {answeredCount}/{requiredResponders.length} have answered
-      </p>
-
-      {!allAnswered && (
-        <button
-          type="button"
-          onClick={handleAutofillRest}
-          className="mb-4 w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:border-slate-400"
-        >
-          Answer for everyone else on this song (to test the flow)
-        </button>
-      )}
-
-      <div className="flex gap-3">
-        {!isFirstOfCategory && (
-          <button
-            type="button"
-            onClick={prevSong}
-            className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
-          >
-            ← Previous Song
-          </button>
-        )}
-        <button
-          type="button"
-          disabled={!allAnswered}
-          onClick={goNext}
-          className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
-        >
-          {isLastSongOverall ? 'See Results →' : 'Next Song →'}
-        </button>
-      </div>
-
-      {/* Always visible (not just once the active player finishes) so it's
-          always clear who's currently answering - and always lists every
-          player, active one highlighted rather than omitted, so a name
-          being missing never gives away who owns the song. */}
-      <div
-        className={`mt-6 rounded-xl border px-4 py-3 ${
-          allAnswered ? 'border-slate-700 bg-slate-800/50' : 'border-emerald-500/40 bg-emerald-400/10'
-        }`}
-      >
-        <p className={`mb-3 ${allAnswered ? 'text-slate-300' : 'text-emerald-300'}`}>
-          {allAnswered ? 'Want to change an answer? Pick a name:' : "Who's holding the device? Pick your name:"}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {players.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setCurrentPlayer(p.id)}
-              className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                p.id === currentPlayerId
-                  ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
-                  : 'border-slate-600 text-slate-300 hover:border-slate-400'
-              }`}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
