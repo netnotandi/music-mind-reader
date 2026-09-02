@@ -142,7 +142,6 @@ interface SongPanelProps {
   assignedElsewhere: Map<string, string>
   unavailableRatings: Set<number>
   initialAnswer: Answer | undefined
-  requiredResponders: Player[]
   answeredCount: number
   allAnswered: boolean
   isFirstOfCategory: boolean
@@ -170,7 +169,6 @@ function SongPanel({
   assignedElsewhere,
   unavailableRatings,
   initialAnswer,
-  requiredResponders,
   answeredCount,
   allAnswered,
   isFirstOfCategory,
@@ -226,8 +224,13 @@ function SongPanel({
         onSubmit={onSubmit}
       />
 
+      {/* Credits the owner as already "done" from the start, so the count
+          reads out of every player rather than just required responders -
+          otherwise it would visibly fail to move while the owner holds the
+          device (they can never answer their own song), which is itself a
+          tell for who owns it. */}
       <p className="mb-4 text-center text-sm text-slate-400">
-        {answeredCount}/{requiredResponders.length} have answered
+        {answeredCount + 1}/{players.length} have answered
       </p>
 
       {!allAnswered && (
@@ -424,7 +427,6 @@ export function GuessAndRate() {
         assignedElsewhere={assignedElsewhere}
         unavailableRatings={unavailableRatings}
         initialAnswer={initialAnswer}
-        requiredResponders={requiredResponders}
         answeredCount={answeredCount}
         allAnswered={allAnswered}
         isFirstOfCategory={isFirstOfCategory}
