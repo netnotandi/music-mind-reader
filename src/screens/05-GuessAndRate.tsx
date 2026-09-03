@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { SongCard } from '../components/SongCard'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
@@ -24,10 +23,8 @@ interface AnswerFormProps {
   onSubmit: (guessedPlayerId: string, rating: number | null) => void
 }
 
-// Keyed by `${song.id}:${currentPlayerId}` from the parent, so React remounts
-// this component (and resets guessedPlayerId/rating from initialAnswer)
-// whenever the song OR the "logged in" player changes - passing the device
-// to someone else always starts from a clean (or their own prior) answer.
+// Keyed by `song.id` from the parent, so React remounts this (and resets
+// guessedPlayerId/rating from initialAnswer) whenever the song changes.
 function AnswerForm({
   song,
   index,
@@ -131,97 +128,127 @@ function AnswerForm({
   )
 }
 
-interface SongPanelProps {
-  song: Song
-  index: number
-  total: number
-  players: Player[]
-  currentPlayerId: string
-  isOwnSong: boolean
-  visiblePlayers: Player[]
-  assignedElsewhere: Map<string, string>
-  unavailableRatings: Set<number>
-  initialAnswer: Answer | undefined
-  answeredCount: number
-  allAnswered: boolean
-  isFirstOfCategory: boolean
-  isLastSongOverall: boolean
-  onSubmit: (guessedPlayerId: string, rating: number | null) => void
-  onAutofill: () => void
-  onPickPlayer: (playerId: string) => void
-  onPrev: () => void
-  onNext: () => void
-}
+export function GuessAndRate() {
+  const songs = useGameStore(useShallow(getCurrentRoundSongs))
+  const currentSongIndex = useGameStore((s) => s.currentSongIndex)
+  const localPlayerId = useGameStore((s) => s.localPlayerId)
+  const players = useGameStore((s) => s.players)
+  const categories = useGameStore((s) => s.categories)
+  const guesses = useGameStore((s) => s.guesses)
+  const ratings = useGameStore((s) => s.ratings)
+  const submitGuess = useGameStore((s) => s.submitGuess)
+  const clearGuess = useGameStore((s) => s.clearGuess)
+  const submitRating = useGameStore((s) => s.submitRating)
+  const devSubmitGuessAs = useGameStore((s) => s.devSubmitGuessAs)
+  const devSubmitRatingAs = useGameStore((s) => s.devSubmitRatingAs)
+  const nextSong = useGameStore((s) => s.nextSong)
+  const prevSong = useGameStore((s) => s.prevSong)
 
-// Keyed by song.id from the parent, so React remounts this (resetting
-// viewerConfirmed to false) every time a new song comes up - nobody should
-// see any guess/rating UI, let alone "this is your own song," until someone
-// explicitly claims the device for THIS song. Whoever was active on the
-// previous song carries over in the store, but that's never trusted here.
-function SongPanel({
-  song,
-  index,
-  total,
-  players,
-  currentPlayerId,
-  isOwnSong,
-  visiblePlayers,
-  assignedElsewhere,
-  unavailableRatings,
-  initialAnswer,
-  answeredCount,
-  allAnswered,
-  isFirstOfCategory,
-  isLastSongOverall,
-  onSubmit,
-  onAutofill,
-  onPickPlayer,
-  onPrev,
-  onNext,
-}: SongPanelProps) {
-  const [viewerConfirmed, setViewerConfirmed] = useState(false)
+  const song = songs[currentSongIndex]
 
-  if (!viewerConfirmed) {
+  if (!song || !localPlayerId) {
     return (
-      <>
-        <div className="mb-6">
-          <SongCard title={song.title} artist={song.artist} index={index} total={total} />
-        </div>
-        <div className="rounded-xl border border-emerald-500/40 bg-emerald-400/10 px-4 py-3">
-          <p className="mb-3 text-emerald-300">Who's holding the device? Pick your name:</p>
-          <div className="flex flex-wrap gap-2">
-            {players.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  onPickPlayer(p.id)
-                  setViewerConfirmed(true)
-                }}
-                className="rounded-full border border-slate-600 px-3 py-1.5 text-sm text-slate-300 transition hover:border-slate-400"
-              >
-                {p.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      </>
+      <div className="mx-auto max-w-md px-6 py-8 text-slate-300">
+        No song playing — go back to the Lobby.
+      </div>
     )
   }
 
+  const isOwnSong = song.playerId === localPlayerId
+  const isLastSongOverall = currentSongIndex >= songs.length - 1
+  const isFirstOfCategory = currentSongIndex === 0 || songs[currentSongIndex - 1]?.categoryId !== song.categoryId
+  const categoryName = categories.find((c) => c.id === song.categoryId)?.name
+  const categorySongs = songs.filter((s) => s.categoryId === song.categoryId)
+
+  // Everyone but the owner has to weigh in on the song currently playing
+  // before the group can move on.
+  const requiredResponders = players.filter((p) => p.id !== song.playerId)
+  const answeredIds = new Set(guesses.filter((g) => g.songId === song.id).map((g) => g.guesserId))
+  const answeredCount = requiredResponders.filter((p) => answeredIds.has(p.id)).length
+  const allAnswered = answeredCount === requiredResponders.length
+
+  const visiblePlayers = players.filter((p) => p.id !== localPlayerId)
+
+  // Each player owns exactly one song per category, so a name already used
+  // as this player's guess for a different song in this category is shown
+  // (not hidden) with a hint of where - picking it here "steals" it from
+  // that song instead of being blocked outright.
+  const assignedElsewhere = new Map<string, string>()
+  for (const g of guesses) {
+    if (g.guesserId !== localPlayerId || g.songId === song.id) continue
+    const assignedSong = categorySongs.find((s) => s.id === g.songId)
+    if (assignedSong) assignedElsewhere.set(g.guessedPlayerId, assignedSong.title)
+  }
+
+  const existingGuess = guesses.find((g) => g.songId === song.id && g.guesserId === localPlayerId)
+  const existingRating = ratings.find((r) => r.songId === song.id && r.raterId === localPlayerId)
+  const initialAnswer = existingGuess
+    ? { guessedPlayerId: existingGuess.guessedPlayerId, rating: existingRating?.value ?? null }
+    : undefined
+
+  // Ratings must be unique per person within a category (no two songs from
+  // the same rater can share a score), forcing a full ranking rather than
+  // ties - this song's own existing rating is excluded so re-picking it
+  // while editing isn't blocked.
+  const unavailableRatings = new Set(
+    ratings
+      .filter((r) => r.raterId === localPlayerId && r.songId !== song.id && categorySongs.some((s) => s.id === r.songId))
+      .map((r) => r.value)
+  )
+
+  function handleSubmit(guessedPlayerId: string, rating: number | null) {
+    const conflictSong = categorySongs.find(
+      (s) =>
+        s.id !== song.id &&
+        guesses.some((g) => g.songId === s.id && g.guesserId === localPlayerId && g.guessedPlayerId === guessedPlayerId)
+    )
+    if (conflictSong) clearGuess(conflictSong.id)
+    submitGuess(song.id, guessedPlayerId)
+    if (rating !== null) submitRating(song.id, rating)
+  }
+
+  function handleDevAutofillRest() {
+    const missing = requiredResponders.filter((p) => !answeredIds.has(p.id))
+    missing.forEach((player, i) => {
+      const usedGuesses = new Set(
+        guesses
+          .filter((g) => g.guesserId === player.id && categorySongs.some((s) => s.id === g.songId))
+          .map((g) => g.guessedPlayerId)
+      )
+      const candidates = players.filter((p) => p.id !== player.id && !usedGuesses.has(p.id))
+      const guessedPlayerId = (candidates[i % candidates.length] ?? players.find((p) => p.id !== player.id))?.id
+      if (!guessedPlayerId) return
+      devSubmitGuessAs(player.id, song.id, guessedPlayerId)
+
+      const usedRatings = new Set(
+        ratings
+          .filter((r) => r.raterId === player.id && r.songId !== song.id && categorySongs.some((s) => s.id === r.songId))
+          .map((r) => r.value)
+      )
+      const ratingValue = RATING_OPTIONS.find((v) => !usedRatings.has(v))
+      if (ratingValue !== undefined) devSubmitRatingAs(player.id, song.id, ratingValue)
+    })
+  }
+
   return (
-    <>
+    <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
+      {isFirstOfCategory && currentSongIndex > 0 && (
+        <div className="mb-6 rounded-lg border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-center text-sm text-violet-300">
+          Next up: {categoryName}
+        </div>
+      )}
+
       <AnswerForm
-        key={currentPlayerId}
+        key={song.id}
         song={song}
-        index={index}
-        total={total}
+        index={currentSongIndex}
+        total={songs.length}
         isOwnSong={isOwnSong}
         visiblePlayers={visiblePlayers}
         assignedElsewhere={assignedElsewhere}
         unavailableRatings={unavailableRatings}
         initialAnswer={initialAnswer}
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
       />
 
       {/* Credits the owner as already "done" from the start, so the count
@@ -233,13 +260,13 @@ function SongPanel({
         {answeredCount + 1}/{players.length} have answered
       </p>
 
-      {!allAnswered && (
+      {!allAnswered && import.meta.env.DEV && (
         <button
           type="button"
-          onClick={onAutofill}
+          onClick={handleDevAutofillRest}
           className="mb-4 w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:border-slate-400"
         >
-          Answer for everyone else on this song (to test the flow)
+          Answer for everyone else on this song (dev only, to test the flow)
         </button>
       )}
 
@@ -247,7 +274,7 @@ function SongPanel({
         {!isFirstOfCategory && (
           <button
             type="button"
-            onClick={onPrev}
+            onClick={prevSong}
             className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
           >
             ← Previous Song
@@ -256,187 +283,12 @@ function SongPanel({
         <button
           type="button"
           disabled={!allAnswered}
-          onClick={onNext}
+          onClick={nextSong}
           className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
         >
           {isLastSongOverall ? 'See Results →' : 'Next Song →'}
         </button>
       </div>
-
-      {/* Always visible (not just once the active player finishes) so it's
-          always clear who's currently answering - and always lists every
-          player, active one highlighted rather than omitted, so a name
-          being missing never gives away who owns the song. */}
-      <div
-        className={`mt-6 rounded-xl border px-4 py-3 ${
-          allAnswered ? 'border-slate-700 bg-slate-800/50' : 'border-emerald-500/40 bg-emerald-400/10'
-        }`}
-      >
-        <p className={`mb-3 ${allAnswered ? 'text-slate-300' : 'text-emerald-300'}`}>
-          {allAnswered ? 'Want to change an answer? Pick a name:' : "Who's holding the device? Pick your name:"}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {players.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => onPickPlayer(p.id)}
-              className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                p.id === currentPlayerId
-                  ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
-                  : 'border-slate-600 text-slate-300 hover:border-slate-400'
-              }`}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
-      </div>
-    </>
-  )
-}
-
-export function GuessAndRate() {
-  const navigate = useNavigate()
-  const songs = useGameStore(useShallow(getCurrentRoundSongs))
-  const currentSongIndex = useGameStore((s) => s.currentSongIndex)
-  const currentPlayerId = useGameStore((s) => s.currentPlayerId)
-  const players = useGameStore((s) => s.players)
-  const categories = useGameStore((s) => s.categories)
-  const guesses = useGameStore((s) => s.guesses)
-  const ratings = useGameStore((s) => s.ratings)
-  const submitGuess = useGameStore((s) => s.submitGuess)
-  const clearGuess = useGameStore((s) => s.clearGuess)
-  const submitRating = useGameStore((s) => s.submitRating)
-  const nextSong = useGameStore((s) => s.nextSong)
-  const prevSong = useGameStore((s) => s.prevSong)
-  const setCurrentPlayer = useGameStore((s) => s.setCurrentPlayer)
-
-  const song = songs[currentSongIndex]
-
-  if (!song) {
-    return (
-      <div className="mx-auto max-w-md px-6 py-8 text-slate-300">
-        No song playing — go back to the Lobby.
-      </div>
-    )
-  }
-
-  const isOwnSong = song.playerId === currentPlayerId
-  const isLastSongOverall = currentSongIndex >= songs.length - 1
-  const isFirstOfCategory = currentSongIndex === 0 || songs[currentSongIndex - 1]?.categoryId !== song.categoryId
-  const categoryName = categories.find((c) => c.id === song.categoryId)?.name
-  const categorySongs = songs.filter((s) => s.categoryId === song.categoryId)
-
-  // The whole group has to weigh in on the song currently playing - pass the
-  // device around until everyone but the owner has answered, then move on
-  // together.
-  const requiredResponders = players.filter((p) => p.id !== song.playerId)
-  const answeredIds = new Set(guesses.filter((g) => g.songId === song.id).map((g) => g.guesserId))
-  const answeredCount = requiredResponders.filter((p) => answeredIds.has(p.id)).length
-  const allAnswered = answeredCount === requiredResponders.length
-
-  const visiblePlayers = players.filter((p) => p.id !== currentPlayerId)
-
-  // Each player owns exactly one song per category, so a name already used
-  // as this player's guess for a different song in this category is shown
-  // (not hidden) with a hint of where - picking it here "steals" it from
-  // that song instead of being blocked outright.
-  const assignedElsewhere = new Map<string, string>()
-  for (const g of guesses) {
-    if (g.guesserId !== currentPlayerId || g.songId === song.id) continue
-    const assignedSong = categorySongs.find((s) => s.id === g.songId)
-    if (assignedSong) assignedElsewhere.set(g.guessedPlayerId, assignedSong.title)
-  }
-
-  const existingGuess = guesses.find((g) => g.songId === song.id && g.guesserId === currentPlayerId)
-  const existingRating = ratings.find((r) => r.songId === song.id && r.raterId === currentPlayerId)
-  const initialAnswer = existingGuess
-    ? { guessedPlayerId: existingGuess.guessedPlayerId, rating: existingRating?.value ?? null }
-    : undefined
-
-  // Ratings must be unique per person within a category (no two songs from
-  // the same rater can share a score), forcing a full ranking rather than
-  // ties - this song's own existing rating is excluded so re-picking it
-  // while editing isn't blocked.
-  const unavailableRatings = new Set(
-    ratings
-      .filter((r) => r.raterId === currentPlayerId && r.songId !== song.id && categorySongs.some((s) => s.id === r.songId))
-      .map((r) => r.value)
-  )
-
-  function handleSubmit(guessedPlayerId: string, rating: number | null) {
-    const conflictSong = categorySongs.find(
-      (s) =>
-        s.id !== song.id &&
-        guesses.some((g) => g.songId === s.id && g.guesserId === currentPlayerId && g.guessedPlayerId === guessedPlayerId)
-    )
-    if (conflictSong) clearGuess(conflictSong.id, currentPlayerId)
-    submitGuess(song.id, currentPlayerId, guessedPlayerId)
-    if (rating !== null) submitRating(song.id, currentPlayerId, rating)
-  }
-
-  function handleAutofillRest() {
-    const missing = requiredResponders.filter((p) => !answeredIds.has(p.id))
-    missing.forEach((player, i) => {
-      const usedGuesses = new Set(
-        guesses
-          .filter((g) => g.guesserId === player.id && categorySongs.some((s) => s.id === g.songId))
-          .map((g) => g.guessedPlayerId)
-      )
-      const candidates = players.filter((p) => p.id !== player.id && !usedGuesses.has(p.id))
-      const guessedPlayerId = (candidates[i % candidates.length] ?? players.find((p) => p.id !== player.id))?.id
-      if (!guessedPlayerId) return
-      submitGuess(song.id, player.id, guessedPlayerId)
-
-      const usedRatings = new Set(
-        ratings
-          .filter((r) => r.raterId === player.id && r.songId !== song.id && categorySongs.some((s) => s.id === r.songId))
-          .map((r) => r.value)
-      )
-      const ratingValue = RATING_OPTIONS.find((v) => !usedRatings.has(v))
-      if (ratingValue !== undefined) submitRating(song.id, player.id, ratingValue)
-    })
-  }
-
-  function goNext() {
-    if (isLastSongOverall) {
-      navigate('/results')
-    } else {
-      nextSong()
-    }
-  }
-
-  return (
-    <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
-      {isFirstOfCategory && currentSongIndex > 0 && (
-        <div className="mb-6 rounded-lg border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-center text-sm text-violet-300">
-          Next up: {categoryName}
-        </div>
-      )}
-
-      <SongPanel
-        key={song.id}
-        song={song}
-        index={currentSongIndex}
-        total={songs.length}
-        players={players}
-        currentPlayerId={currentPlayerId}
-        isOwnSong={isOwnSong}
-        visiblePlayers={visiblePlayers}
-        assignedElsewhere={assignedElsewhere}
-        unavailableRatings={unavailableRatings}
-        initialAnswer={initialAnswer}
-        answeredCount={answeredCount}
-        allAnswered={allAnswered}
-        isFirstOfCategory={isFirstOfCategory}
-        isLastSongOverall={isLastSongOverall}
-        onSubmit={handleSubmit}
-        onAutofill={handleAutofillRest}
-        onPickPlayer={setCurrentPlayer}
-        onPrev={prevSong}
-        onNext={goNext}
-      />
     </div>
   )
 }

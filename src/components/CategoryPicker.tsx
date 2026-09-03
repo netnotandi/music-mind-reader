@@ -1,11 +1,14 @@
 import { accentColorFor } from '../logic/accentColors'
-import { MAX_SELECTED_CATEGORIES, useGameStore } from '../state/gameStore'
+import { MAX_SELECTED_CATEGORIES } from '../state/gameStore'
+import type { Category } from '../types'
 
-export function CategoryPicker() {
-  const categories = useGameStore((s) => s.categories)
-  const selectedCategoryIds = useGameStore((s) => s.selectedCategoryIds)
-  const toggleCategory = useGameStore((s) => s.toggleCategory)
+interface CategoryPickerProps {
+  categories: Category[]
+  selectedCategoryIds: string[]
+  onToggle: (categoryId: string) => void
+}
 
+export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: CategoryPickerProps) {
   const atMax = selectedCategoryIds.length >= MAX_SELECTED_CATEGORIES
 
   return (
@@ -24,7 +27,7 @@ export function CategoryPicker() {
               key={c.id}
               type="button"
               disabled={disabled}
-              onClick={() => toggleCategory(c.id)}
+              onClick={() => onToggle(c.id)}
               className={`rounded-xl border-2 px-3 py-3 text-center text-sm font-medium leading-snug transition ${
                 selected
                   ? `${accent.border} ${accent.bg} ${accent.text}`

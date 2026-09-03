@@ -31,8 +31,7 @@ function MenuButton({ onClick, label }: { onClick: () => void; label: string }) 
 
 export function MenuOverlay() {
   const navigate = useNavigate()
-  const startNewRound = useGameStore((s) => s.startNewRound)
-  const setIsHost = useGameStore((s) => s.setIsHost)
+  const leaveGame = useGameStore((s) => s.leaveGame)
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState<View>('menu')
 
@@ -42,8 +41,7 @@ export function MenuOverlay() {
   }
 
   function goHome() {
-    startNewRound()
-    setIsHost(false)
+    leaveGame()
     close()
     navigate('/')
   }

@@ -1,11 +1,9 @@
-import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { ScoreBoard } from '../components/ScoreBoard'
 import { averageRating, computeFinalScores, computeScoreBreakdown, computeTitles } from '../logic/scoring'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 
 export function Results() {
-  const navigate = useNavigate()
   const players = useGameStore((s) => s.players)
   const songs = useGameStore(useShallow(getCurrentRoundSongs))
   const guesses = useGameStore((s) => s.guesses)
@@ -42,10 +40,7 @@ export function Results() {
 
       <button
         type="button"
-        onClick={() => {
-          startNewRound()
-          navigate('/lobby')
-        }}
+        onClick={startNewRound}
         className="w-full rounded-xl border border-slate-600 px-5 py-3 font-semibold text-slate-100 transition hover:border-slate-400"
       >
         New Game

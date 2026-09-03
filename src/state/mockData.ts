@@ -1,14 +1,4 @@
-import type { Category, Player } from '../types'
-
-export const GAME_CODE = '4271'
-
-export const PLAYERS: Player[] = [
-  { id: 'p1', name: 'Jón Þór' },
-  { id: 'p2', name: 'Eggert' },
-  { id: 'p3', name: 'Haukur' },
-  { id: 'p4', name: 'Elli' },
-  { id: 'p5', name: 'Chris' },
-]
+import type { Category } from '../types'
 
 export const CATEGORIES: Category[] = [
   { id: 'guilty-pleasure', name: 'My Guilty Pleasure' },

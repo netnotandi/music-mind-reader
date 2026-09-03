@@ -1,14 +1,14 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
-import { useGameStore } from '../state/gameStore'
 
 export function CreateJoin() {
   const navigate = useNavigate()
-  const setIsHost = useGameStore((s) => s.setIsHost)
+  const [name, setName] = useState('')
 
   function handleCreateGame() {
-    setIsHost(true)
-    navigate('/categories')
+    if (!name.trim()) return
+    navigate('/setup', { state: { hostName: name.trim() } })
   }
 
   return (
@@ -18,10 +18,17 @@ export function CreateJoin() {
       </div>
 
       <div className="mx-auto mt-20 flex w-72 flex-col gap-3">
+        <input
+          className="rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-center text-sm text-slate-100 placeholder:text-slate-500"
+          placeholder="Your name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
         <button
           type="button"
+          disabled={!name.trim()}
           onClick={handleCreateGame}
-          className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400"
+          className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
         >
           CREATE GAME
         </button>

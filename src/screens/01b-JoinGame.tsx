@@ -1,14 +1,18 @@
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useGameStore } from '../state/gameStore'
-import { GAME_CODE } from '../state/mockData'
+import { useParams } from 'react-router-dom'
+import { ROOM_CODE_LENGTH, useGameStore } from '../state/gameStore'
 
 export function JoinGame() {
-  const navigate = useNavigate()
-  const setIsHost = useGameStore((s) => s.setIsHost)
+  const joinGame = useGameStore((s) => s.joinGame)
+  const { roomCode: roomCodeFromUrl } = useParams<{ roomCode?: string }>()
 
-  const [digits, setDigits] = useState<string[]>(Array(GAME_CODE.length).fill(''))
-  const [error, setError] = useState(false)
+  const [name, setName] = useState('')
+  const [digits, setDigits] = useState<string[]>(() => {
+    const prefill = (roomCodeFromUrl ?? '').toUpperCase().split('')
+    return Array.from({ length: ROOM_CODE_LENGTH }, (_, i) => prefill[i] ?? '')
+  })
+  const [error, setError] = useState<string | null>(null)
+  const [joining, setJoining] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   function setDigit(index: number, value: string) {
@@ -18,8 +22,8 @@ export function JoinGame() {
       next[index] = char
       return next
     })
-    setError(false)
-    if (char && index < GAME_CODE.length - 1) {
+    setError(null)
+    if (char && index < ROOM_CODE_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus()
     }
   }
@@ -30,27 +34,39 @@ export function JoinGame() {
     }
   }
 
-  function handleSubmit() {
-    if (digits.join('') === GAME_CODE) {
-      setIsHost(false)
-      navigate('/lobby')
-    } else {
-      setError(true)
-      setDigits(Array(GAME_CODE.length).fill(''))
-      inputRefs.current[0]?.focus()
+  async function handleSubmit() {
+    const code = digits.join('')
+    if (!name.trim() || code.length < ROOM_CODE_LENGTH || joining) return
+    setJoining(true)
+    setError(null)
+    // No explicit navigate on success - the app-wide phase watcher picks up
+    // the newly-synced room state and moves this device to the Lobby.
+    const result = await joinGame(code, name.trim())
+    setJoining(false)
+    if (result === 'not-found') {
+      setError('Game not found — check the code and try again.')
+    } else if (result === 'full') {
+      setError('That game is already full.')
     }
   }
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-20">
-      <div className="mb-6 flex justify-center gap-3.5">
+      <input
+        className="mb-6 rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-center text-sm text-slate-100 placeholder:text-slate-500"
+        placeholder="Your name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+
+      <div className="mb-6 flex justify-center gap-3">
         {digits.map((digit, i) => (
           <input
             key={i}
             ref={(el) => {
               inputRefs.current[i] = el
             }}
-            className="h-20 w-20 rounded-xl border border-slate-600 bg-slate-800 text-center text-2xl font-bold text-slate-100 focus:border-emerald-400 focus:outline-none"
+            className="h-16 w-14 rounded-xl border border-slate-600 bg-slate-800 text-center text-2xl font-bold uppercase text-slate-100 focus:border-emerald-400 focus:outline-none"
             maxLength={1}
             value={digit}
             onChange={(e) => setDigit(i, e.target.value)}
@@ -59,21 +75,15 @@ export function JoinGame() {
         ))}
       </div>
 
-      {error && <p className="mb-4 text-center text-sm text-rose-400">Wrong code — try again.</p>}
+      {error && <p className="mb-4 text-center text-sm text-rose-400">{error}</p>}
 
       <button
         type="button"
-        className="mb-3 rounded-xl border border-slate-600 bg-slate-800/50 px-5 py-3 text-sm font-semibold text-slate-400 transition hover:border-slate-500"
-      >
-        Scan QR Code
-      </button>
-
-      <button
-        type="button"
+        disabled={joining}
         onClick={handleSubmit}
-        className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400"
+        className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
       >
-        Join Game
+        {joining ? 'Joining…' : 'Join Game'}
       </button>
     </div>
   )
