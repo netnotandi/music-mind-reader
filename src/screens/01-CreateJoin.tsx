@@ -34,8 +34,9 @@ export function CreateJoin() {
         </button>
         <button
           type="button"
-          onClick={() => navigate('/join')}
-          className="rounded-xl border border-slate-600 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-400"
+          disabled={!name.trim()}
+          onClick={() => navigate('/join', { state: { name: name.trim() } })}
+          className="rounded-xl border border-slate-600 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:border-slate-700 disabled:text-slate-500"
         >
           JOIN GAME
         </button>

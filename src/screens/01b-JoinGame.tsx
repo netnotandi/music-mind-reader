@@ -1,12 +1,17 @@
 import { useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { ROOM_CODE_LENGTH, useGameStore } from '../state/gameStore'
 
 export function JoinGame() {
   const joinGame = useGameStore((s) => s.joinGame)
   const { roomCode: roomCodeFromUrl } = useParams<{ roomCode?: string }>()
+  const location = useLocation()
 
-  const [name, setName] = useState('')
+  // If we arrived from Create/Join (name already typed there), don't ask
+  // again - only prompt for a name here when landing directly on this
+  // screen, e.g. via a scanned QR code or a shared link.
+  const nameFromCreateJoin = (location.state as { name?: string } | null)?.name ?? ''
+  const [name, setName] = useState(nameFromCreateJoin)
   const [digits, setDigits] = useState<string[]>(() => {
     const prefill = (roomCodeFromUrl ?? '').toUpperCase().split('')
     return Array.from({ length: ROOM_CODE_LENGTH }, (_, i) => prefill[i] ?? '')
@@ -52,12 +57,18 @@ export function JoinGame() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-20">
-      <input
-        className="mb-6 rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-center text-sm text-slate-100 placeholder:text-slate-500"
-        placeholder="Your name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
+      {nameFromCreateJoin ? (
+        <p className="mb-6 text-center text-sm text-slate-400">
+          Joining as <span className="font-semibold text-slate-100">{nameFromCreateJoin}</span>
+        </p>
+      ) : (
+        <input
+          className="mb-6 rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-center text-sm text-slate-100 placeholder:text-slate-500"
+          placeholder="Your name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      )}
 
       <div className="mb-6 flex justify-center gap-3">
         {digits.map((digit, i) => (
