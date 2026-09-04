@@ -1,6 +1,6 @@
 import jsQR from 'jsqr'
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useParams } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { extractRoomCode } from '../logic/qrCode'
 import { ROOM_CODE_LENGTH, useGameStore } from '../state/gameStore'
 
@@ -98,22 +98,26 @@ function QrScanner({ onDetect, onClose }: QrScannerProps) {
 
 export function JoinGame() {
   const joinGame = useGameStore((s) => s.joinGame)
-  const { roomCode: roomCodeFromUrl } = useParams<{ roomCode?: string }>()
   const location = useLocation()
 
-  // If we arrived from Create/Join (name already typed there), don't ask
-  // again - only prompt for a name here when landing directly on this
-  // screen, e.g. via a scanned QR code or a shared link.
-  const nameFromCreateJoin = (location.state as { name?: string } | null)?.name ?? ''
-  const [name, setName] = useState(nameFromCreateJoin)
+  // Name is only ever collected on Create/Join and carried here via router
+  // state - if it's missing (e.g. someone bookmarked/refreshed this exact
+  // URL), there's nowhere valid to pick up from except starting over there.
+  const state = location.state as { name?: string; roomCode?: string } | null
+  const name = state?.name ?? ''
+
   const [digits, setDigits] = useState<string[]>(() => {
-    const prefill = (roomCodeFromUrl ?? '').toUpperCase().split('')
+    const prefill = (state?.roomCode ?? '').toUpperCase().split('')
     return Array.from({ length: ROOM_CODE_LENGTH }, (_, i) => prefill[i] ?? '')
   })
   const [error, setError] = useState<string | null>(null)
   const [joining, setJoining] = useState(false)
   const [scanning, setScanning] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  if (!name) {
+    return <Navigate to="/" replace />
+  }
 
   function setDigit(index: number, value: string) {
     const char = value.slice(-1).toUpperCase()
@@ -142,12 +146,12 @@ export function JoinGame() {
 
   async function handleSubmit() {
     const code = digits.join('')
-    if (!name.trim() || code.length < ROOM_CODE_LENGTH || joining) return
+    if (code.length < ROOM_CODE_LENGTH || joining) return
     setJoining(true)
     setError(null)
     // No explicit navigate on success - the app-wide phase watcher picks up
     // the newly-synced room state and moves this device to the Lobby.
-    const result = await joinGame(code, name.trim())
+    const result = await joinGame(code, name)
     setJoining(false)
     if (result === 'not-found') {
       setError('Game not found — check the code and try again.')
@@ -162,18 +166,9 @@ export function JoinGame() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-20">
-      {nameFromCreateJoin ? (
-        <p className="mb-6 text-center text-sm text-slate-400">
-          Joining as <span className="font-semibold text-slate-100">{nameFromCreateJoin}</span>
-        </p>
-      ) : (
-        <input
-          className="mb-6 rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-center text-sm text-slate-100 placeholder:text-slate-500"
-          placeholder="Your name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      )}
+      <p className="mb-6 text-center text-sm text-slate-400">
+        Joining as <span className="font-semibold text-slate-100">{name}</span>
+      </p>
 
       <div className="mb-6 flex justify-center gap-3">
         {digits.map((digit, i) => (

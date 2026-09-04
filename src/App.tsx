@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { HashRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { MenuOverlay } from './components/MenuOverlay'
 import { CreateJoin } from './screens/01-CreateJoin'
 import { JoinGame } from './screens/01b-JoinGame'
@@ -35,6 +35,15 @@ function usePhaseNavigation() {
   }, [roomCode, phase, location.pathname, navigate])
 }
 
+// A QR code scanned by the phone's own camera app (rather than the in-app
+// scanner) lands here in a fresh session, with no name known yet - bounce
+// through the front page first so name entry only ever happens in one
+// place, carrying the scanned code along to prefill once they get there.
+function JoinRedirect() {
+  const { roomCode } = useParams<{ roomCode: string }>()
+  return <Navigate to="/" state={{ roomCode }} replace />
+}
+
 function AppRoutes() {
   usePhaseNavigation()
 
@@ -42,7 +51,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<CreateJoin />} />
       <Route path="/join" element={<JoinGame />} />
-      <Route path="/join/:roomCode" element={<JoinGame />} />
+      <Route path="/join/:roomCode" element={<JoinRedirect />} />
       <Route path="/setup" element={<GameSetup />} />
       <Route path="/lobby" element={<Lobby />} />
       <Route path="/submit" element={<SubmitSong />} />
