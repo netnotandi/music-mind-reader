@@ -42,7 +42,7 @@ interface GameState {
   createGame: (hostName: string, maxPlayers: number, selectedCategoryIds: string[]) => Promise<string>
   joinGame: (roomCode: string, playerName: string) => Promise<JoinResult>
   resumeSession: () => Promise<boolean>
-  leaveGame: () => void
+  leaveGame: (removeFromRoom?: boolean) => void
   startSubmitting: () => void
   submitSong: (categoryId: string, title: string, artist: string) => void
   shuffleSongOrder: () => void
@@ -230,9 +230,14 @@ export const useGameStore = create<GameState>((set, get) => {
       return true
     },
 
-    leaveGame: () => {
+    // removeFromRoom (default true) frees this player's seat, which is
+    // right for leaving mid-lobby/mid-game - but on Results, the round is
+    // already over and everyone's row (songs, scores, titles) should stay
+    // visible on everyone else's scoreboard, so that case passes false to
+    // just quietly stop syncing without deleting anything.
+    leaveGame: (removeFromRoom = true) => {
       const { roomCode, localPlayerId } = get()
-      if (roomCode && localPlayerId) {
+      if (roomCode && localPlayerId && removeFromRoom) {
         dbRemove(ref(db, `games/${roomCode}/players/${localPlayerId}`)).catch(() => {})
       }
       detachListener?.()

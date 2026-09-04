@@ -26,9 +26,12 @@ export function Results() {
   )
 
   // Per-device only - leaving never touches the shared room, so everyone
-  // else can keep discussing the results for as long as they want.
+  // else can keep discussing the results for as long as they want. Passing
+  // false keeps this player's row (songs, scores, titles) on everyone
+  // else's scoreboard - the round's already over, so there's no "seat" to
+  // free up the way there would be mid-lobby or mid-game.
   function handleLeave() {
-    leaveGame()
+    leaveGame(false)
     navigate('/')
   }
 
