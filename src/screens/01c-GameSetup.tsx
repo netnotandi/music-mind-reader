@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { CategoryPicker } from '../components/CategoryPicker'
 import { MAX_SELECTED_CATEGORIES, useGameStore } from '../state/gameStore'
 
-const PLAYER_COUNT_OPTIONS = [4, 5, 6, 7, 8, 9, 10]
+const PLAYER_COUNT_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10]
 
 // Purely local state until the host confirms - no room exists yet, so
 // there's nothing in Firebase to write to until the very end. Player count
