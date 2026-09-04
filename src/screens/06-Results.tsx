@@ -1,14 +1,16 @@
+import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { ScoreBoard } from '../components/ScoreBoard'
 import { averageRating, computeFinalScores, computeScoreBreakdown, computeTitles } from '../logic/scoring'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 
 export function Results() {
+  const navigate = useNavigate()
   const players = useGameStore((s) => s.players)
   const songs = useGameStore(useShallow(getCurrentRoundSongs))
   const guesses = useGameStore((s) => s.guesses)
   const ratings = useGameStore((s) => s.ratings)
-  const startNewRound = useGameStore((s) => s.startNewRound)
+  const leaveGame = useGameStore((s) => s.leaveGame)
 
   const round = { songs, guesses, ratings }
   const scores = computeFinalScores(round)
@@ -22,6 +24,13 @@ export function Results() {
         .map((song) => ({ song, avgRating: averageRating(song.id, ratings) })),
     ])
   )
+
+  // Per-device only - leaving never touches the shared room, so everyone
+  // else can keep discussing the results for as long as they want.
+  function handleLeave() {
+    leaveGame()
+    navigate('/')
+  }
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
@@ -40,10 +49,10 @@ export function Results() {
 
       <button
         type="button"
-        onClick={startNewRound}
+        onClick={handleLeave}
         className="w-full rounded-xl border border-slate-600 px-5 py-3 font-semibold text-slate-100 transition hover:border-slate-400"
       >
-        New Game
+        Leave Game
       </button>
     </div>
   )

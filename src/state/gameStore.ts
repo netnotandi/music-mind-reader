@@ -37,12 +37,12 @@ interface GameState {
   ratings: Rating[]
   currentSongIndex: number
   songOrder: string[]
+  confirmedPlayerIds: string[]
 
   createGame: (hostName: string, maxPlayers: number, selectedCategoryIds: string[]) => Promise<string>
   joinGame: (roomCode: string, playerName: string) => Promise<JoinResult>
   resumeSession: () => Promise<boolean>
   leaveGame: () => void
-  confirmCategories: (categoryIds: string[]) => void
   startSubmitting: () => void
   submitSong: (categoryId: string, title: string, artist: string) => void
   shuffleSongOrder: () => void
@@ -51,7 +51,10 @@ interface GameState {
   submitRating: (songId: string, value: number) => void
   nextSong: () => void
   prevSong: () => void
-  startNewRound: () => void
+  // Only these two can end the guess phase - nextSong() alone never does,
+  // so the group can never be swept into Results by one impatient click.
+  confirmFinalAnswers: () => void
+  finishRound: () => void
 
   // Dev-only: write on behalf of an arbitrary player, bypassing the normal
   // "always write as yourself" rule. Backs the "test the flow solo" buttons
@@ -116,6 +119,7 @@ interface RoomRecord {
   songs?: Record<string, { playerId: string; categoryId: string; title: string; artist: string }>
   guesses?: Record<string, Guess>
   ratings?: Record<string, Rating>
+  finalConfirmations?: Record<string, true>
 }
 
 // Firebase stores children as objects keyed by id, not arrays - converted
@@ -141,6 +145,7 @@ function parseRoom(data: RoomRecord) {
     ratings,
     currentSongIndex: data.currentSongIndex ?? 0,
     songOrder: data.songOrder ?? [],
+    confirmedPlayerIds: Object.keys(data.finalConfirmations ?? {}),
   }
 }
 
@@ -173,6 +178,7 @@ export const useGameStore = create<GameState>((set, get) => {
     ratings: [],
     currentSongIndex: 0,
     songOrder: [],
+    confirmedPlayerIds: [],
 
     createGame: async (hostName, maxPlayers, selectedCategoryIds) => {
       const playerId = crypto.randomUUID()
@@ -245,16 +251,8 @@ export const useGameStore = create<GameState>((set, get) => {
         ratings: [],
         currentSongIndex: 0,
         songOrder: [],
+        confirmedPlayerIds: [],
       })
-    },
-
-    // Used both for the very first round (rare - usually folded into
-    // createGame) and for re-picking categories ahead of a subsequent round
-    // via startNewRound.
-    confirmCategories: (categoryIds) => {
-      const { roomCode } = get()
-      if (!roomCode) return
-      dbUpdate(ref(db, `games/${roomCode}`), { selectedCategoryIds: categoryIds })
     },
 
     startSubmitting: () => {
@@ -285,17 +283,19 @@ export const useGameStore = create<GameState>((set, get) => {
       const songOrder = selectedCategoryIds.flatMap((categoryId) =>
         shuffle(songs.filter((s) => s.categoryId === categoryId)).map((s) => s.id)
       )
-      dbUpdate(ref(db, `games/${roomCode}`), { songOrder, phase: 'guess' })
+      dbUpdate(ref(db, `games/${roomCode}`), { songOrder, phase: 'guess', finalConfirmations: null })
     },
 
+    // Also clears this player's own final confirmation, if they'd already
+    // given one - "final" has to mean final, so changing an answer after
+    // confirming has to ask them to confirm again.
     submitGuess: (songId, guessedPlayerId) => {
       const { roomCode, localPlayerId } = get()
       if (!roomCode || !localPlayerId) return
       const guessId = `${songId}__${localPlayerId}`
-      dbSet(ref(db, `games/${roomCode}/guesses/${guessId}`), {
-        songId,
-        guesserId: localPlayerId,
-        guessedPlayerId,
+      dbUpdate(ref(db, `games/${roomCode}`), {
+        [`guesses/${guessId}`]: { songId, guesserId: localPlayerId, guessedPlayerId },
+        [`finalConfirmations/${localPlayerId}`]: null,
       })
     },
 
@@ -309,21 +309,19 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode, localPlayerId } = get()
       if (!roomCode || !localPlayerId) return
       const ratingId = `${songId}__${localPlayerId}`
-      dbSet(ref(db, `games/${roomCode}/ratings/${ratingId}`), {
-        songId,
-        raterId: localPlayerId,
-        value,
+      dbUpdate(ref(db, `games/${roomCode}`), {
+        [`ratings/${ratingId}`]: { songId, raterId: localPlayerId, value },
+        [`finalConfirmations/${localPlayerId}`]: null,
       })
     },
 
+    // Only ever advances to another song - never ends the round itself
+    // (see finishRound), so nobody can be swept into Results by someone
+    // else clicking through the last song.
     nextSong: () => {
       const { roomCode, currentSongIndex, songOrder } = get()
-      if (!roomCode) return
-      if (currentSongIndex >= songOrder.length - 1) {
-        dbUpdate(ref(db, `games/${roomCode}`), { phase: 'results' })
-      } else {
-        dbUpdate(ref(db, `games/${roomCode}`), { currentSongIndex: currentSongIndex + 1 })
-      }
+      if (!roomCode || currentSongIndex >= songOrder.length - 1) return
+      dbUpdate(ref(db, `games/${roomCode}`), { currentSongIndex: currentSongIndex + 1 })
     },
 
     prevSong: () => {
@@ -332,19 +330,19 @@ export const useGameStore = create<GameState>((set, get) => {
       dbUpdate(ref(db, `games/${roomCode}`), { currentSongIndex: Math.max(currentSongIndex - 1, 0) })
     },
 
-    // Keeps the room and its players, resets round-specific data, and sends
-    // everyone back to the Lobby to pick categories for another round.
-    startNewRound: () => {
+    confirmFinalAnswers: () => {
+      const { roomCode, localPlayerId } = get()
+      if (!roomCode || !localPlayerId) return
+      dbUpdate(ref(db, `games/${roomCode}`), { [`finalConfirmations/${localPlayerId}`]: true })
+    },
+
+    // The only action that ends the guess phase - only reachable once
+    // every player has confirmed (enforced in the UI, not here), so the
+    // group only ever moves to Results once everyone has explicitly agreed.
+    finishRound: () => {
       const { roomCode } = get()
       if (!roomCode) return
-      dbUpdate(ref(db, `games/${roomCode}`), {
-        phase: 'lobby',
-        songs: null,
-        guesses: null,
-        ratings: null,
-        currentSongIndex: 0,
-        songOrder: [],
-      })
+      dbUpdate(ref(db, `games/${roomCode}`), { phase: 'results' })
     },
 
     devSubmitSongAs: (playerId, categoryId, title, artist) => {

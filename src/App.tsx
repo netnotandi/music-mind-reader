@@ -18,10 +18,10 @@ const ROUTE_FOR_PHASE = {
 } as const
 
 // Every screen navigates purely by calling a store action (createGame,
-// startSubmitting, shuffleSongOrder, nextSong, startNewRound, ...) and
-// letting this watcher react to the synced `phase` changing - so every
-// device in the room moves together, including whoever triggered the
-// change, instead of only the one client that clicked a button.
+// startSubmitting, shuffleSongOrder, finishRound, ...) and letting this
+// watcher react to the synced `phase` changing - so every device in the
+// room moves together, including whoever triggered the change, instead
+// of only the one client that clicked a button.
 function usePhaseNavigation() {
   const navigate = useNavigate()
   const location = useLocation()

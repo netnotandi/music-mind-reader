@@ -155,12 +155,15 @@ export function GuessAndRate() {
   const categories = useGameStore((s) => s.categories)
   const guesses = useGameStore((s) => s.guesses)
   const ratings = useGameStore((s) => s.ratings)
+  const confirmedPlayerIds = useGameStore((s) => s.confirmedPlayerIds)
   const submitGuess = useGameStore((s) => s.submitGuess)
   const clearGuess = useGameStore((s) => s.clearGuess)
   const submitRating = useGameStore((s) => s.submitRating)
   const devSubmitGuessAs = useGameStore((s) => s.devSubmitGuessAs)
   const devSubmitRatingAs = useGameStore((s) => s.devSubmitRatingAs)
   const nextSong = useGameStore((s) => s.nextSong)
+  const confirmFinalAnswers = useGameStore((s) => s.confirmFinalAnswers)
+  const finishRound = useGameStore((s) => s.finishRound)
 
   const song = songs[viewIndex]
 
@@ -174,7 +177,14 @@ export function GuessAndRate() {
 
   const isOwnSong = song.playerId === localPlayerId
   const isViewingCurrent = viewIndex === currentSongIndex
-  const isLastSongOverall = viewIndex >= songs.length - 1
+  const isGroupOnLastSong = currentSongIndex >= songs.length - 1
+  // Once viewing the actual current/last song, "Next Song" is replaced by
+  // the confirm-final-answers flow below - reaching the end of the round
+  // is a real, shared transition, so it needs everyone's explicit sign-off
+  // rather than whoever happens to click through first.
+  const showConfirmFlow = isViewingCurrent && isGroupOnLastSong
+  const hasConfirmed = confirmedPlayerIds.includes(localPlayerId)
+  const allConfirmed = players.length > 0 && confirmedPlayerIds.length >= players.length
   const isFirstOfCategory = viewIndex === 0 || songs[viewIndex - 1]?.categoryId !== song.categoryId
   const categoryName = categories.find((c) => c.id === song.categoryId)?.name
   const categorySongs = songs.filter((s) => s.categoryId === song.categoryId)
@@ -325,15 +335,78 @@ export function GuessAndRate() {
             ← Previous Song
           </button>
         )}
+        {showConfirmFlow ? (
+          <button
+            type="button"
+            disabled={!allAnswered || hasConfirmed}
+            onClick={confirmFinalAnswers}
+            className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+          >
+            {hasConfirmed ? '✓ Confirmed — waiting for others' : 'Confirm final answers'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!allAnswered}
+            onClick={goNext}
+            className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+          >
+            Next Song →
+          </button>
+        )}
+      </div>
+
+      {/* Nobody can be swept into Results by someone else's click - the
+          shared phase only changes once every player has explicitly
+          confirmed they're done, tracked live here so it's clear who
+          everyone's still waiting on. */}
+      {showConfirmFlow && allAnswered && (
+        <div className="mt-6 overflow-x-auto rounded-lg border border-slate-700">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-700 text-slate-400">
+                <th className="px-3 py-2 text-left font-medium">Player</th>
+                <th className="px-3 py-2 text-center font-medium">Confirmed answers</th>
+              </tr>
+            </thead>
+            <tbody>
+              {players.map((p) => (
+                <tr
+                  key={p.id}
+                  className={`border-b border-slate-800 last:border-0 ${
+                    p.id === localPlayerId ? 'bg-emerald-400/10' : ''
+                  }`}
+                >
+                  <td
+                    className={`px-3 py-2 ${
+                      p.id === localPlayerId ? 'font-semibold text-emerald-300' : 'text-slate-200'
+                    }`}
+                  >
+                    {p.name}
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    {confirmedPlayerIds.includes(p.id) ? (
+                      <span className="text-emerald-400">✓</span>
+                    ) : (
+                      <span className="text-slate-600">·</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showConfirmFlow && allConfirmed && (
         <button
           type="button"
-          disabled={!allAnswered}
-          onClick={goNext}
-          className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+          onClick={finishRound}
+          className="mt-4 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
         >
-          {isLastSongOverall ? 'See Results →' : 'Next Song →'}
+          See Results →
         </button>
-      </div>
+      )}
     </div>
   )
 }
