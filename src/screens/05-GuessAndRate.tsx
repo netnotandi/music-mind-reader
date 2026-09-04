@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { SongCard } from '../components/SongCard'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
@@ -131,6 +131,25 @@ function AnswerForm({
 export function GuessAndRate() {
   const songs = useGameStore(useShallow(getCurrentRoundSongs))
   const currentSongIndex = useGameStore((s) => s.currentSongIndex)
+  // The group's shared, official position (currentSongIndex) is separate
+  // from what THIS device happens to be looking at (viewIndex). Normally
+  // it follows currentSongIndex automatically (so the group still moves
+  // through songs together, same as before), but the moment a player
+  // browses backward it detaches - the effect below only pulls viewIndex
+  // forward when it was still tracking the old shared position, so someone
+  // reviewing an earlier song is never yanked back to the live one.
+  const [viewIndex, setViewIndex] = useState(currentSongIndex)
+  const wasTrackingRef = useRef(currentSongIndex)
+  useEffect(() => {
+    // Capture the prior value as a plain variable before mutating the ref -
+    // setViewIndex's updater callback runs on React's own schedule, not
+    // necessarily before the next line, so reading wasTrackingRef.current
+    // from inside it could see the already-updated value instead of the
+    // one from before this change.
+    const previouslyTracked = wasTrackingRef.current
+    wasTrackingRef.current = currentSongIndex
+    setViewIndex((v) => (v === previouslyTracked ? currentSongIndex : v))
+  }, [currentSongIndex])
   const localPlayerId = useGameStore((s) => s.localPlayerId)
   const players = useGameStore((s) => s.players)
   const categories = useGameStore((s) => s.categories)
@@ -142,9 +161,8 @@ export function GuessAndRate() {
   const devSubmitGuessAs = useGameStore((s) => s.devSubmitGuessAs)
   const devSubmitRatingAs = useGameStore((s) => s.devSubmitRatingAs)
   const nextSong = useGameStore((s) => s.nextSong)
-  const prevSong = useGameStore((s) => s.prevSong)
 
-  const song = songs[currentSongIndex]
+  const song = songs[viewIndex]
 
   if (!song || !localPlayerId) {
     return (
@@ -155,8 +173,9 @@ export function GuessAndRate() {
   }
 
   const isOwnSong = song.playerId === localPlayerId
-  const isLastSongOverall = currentSongIndex >= songs.length - 1
-  const isFirstOfCategory = currentSongIndex === 0 || songs[currentSongIndex - 1]?.categoryId !== song.categoryId
+  const isViewingCurrent = viewIndex === currentSongIndex
+  const isLastSongOverall = viewIndex >= songs.length - 1
+  const isFirstOfCategory = viewIndex === 0 || songs[viewIndex - 1]?.categoryId !== song.categoryId
   const categoryName = categories.find((c) => c.id === song.categoryId)?.name
   const categorySongs = songs.filter((s) => s.categoryId === song.categoryId)
 
@@ -230,9 +249,35 @@ export function GuessAndRate() {
     })
   }
 
+  // Browsing backward/forward through already-covered songs is always a
+  // purely local move - only advancing PAST the group's current song is a
+  // real, shared action (handled below).
+  function goPrev() {
+    setViewIndex((i) => Math.max(i - 1, 0))
+  }
+
+  function goNext() {
+    if (isViewingCurrent) {
+      nextSong()
+      setViewIndex((i) => i + 1)
+    } else {
+      setViewIndex((i) => Math.min(i + 1, currentSongIndex))
+    }
+  }
+
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
-      {isFirstOfCategory && currentSongIndex > 0 && (
+      {!isViewingCurrent && (
+        <button
+          type="button"
+          onClick={() => setViewIndex(currentSongIndex)}
+          className="mb-6 w-full rounded-lg border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-center text-sm text-violet-300 transition hover:border-violet-400"
+        >
+          Reviewing an earlier song — tap to jump back to the current one
+        </button>
+      )}
+
+      {isFirstOfCategory && viewIndex > 0 && (
         <div className="mb-6 rounded-lg border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-center text-sm text-violet-300">
           Next up: {categoryName}
         </div>
@@ -241,7 +286,7 @@ export function GuessAndRate() {
       <AnswerForm
         key={song.id}
         song={song}
-        index={currentSongIndex}
+        index={viewIndex}
         total={songs.length}
         isOwnSong={isOwnSong}
         visiblePlayers={visiblePlayers}
@@ -274,7 +319,7 @@ export function GuessAndRate() {
         {!isFirstOfCategory && (
           <button
             type="button"
-            onClick={prevSong}
+            onClick={goPrev}
             className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
           >
             ← Previous Song
@@ -283,7 +328,7 @@ export function GuessAndRate() {
         <button
           type="button"
           disabled={!allAnswered}
-          onClick={nextSong}
+          onClick={goNext}
           className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
         >
           {isLastSongOverall ? 'See Results →' : 'Next Song →'}
