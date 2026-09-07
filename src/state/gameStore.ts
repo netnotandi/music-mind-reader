@@ -40,6 +40,7 @@ interface GameState {
   songOrder: string[]
   confirmedPlayerIds: string[]
   roundsCompleted: number
+  lobbyReadyPlayerIds: string[]
 
   createGame: (hostName: string, maxPlayers: number, selectedCategoryIds: string[]) => Promise<string>
   joinGame: (roomCode: string, playerName: string) => Promise<JoinResult>
@@ -58,12 +59,17 @@ interface GameState {
   // so the group can never be swept into Results by one impatient click.
   confirmFinalAnswers: () => void
   finishRound: () => void
-  // Folds this round's scores into each player's totalScore, wipes the
+  // Per-device, like leaveGame - marks this player ready and lets THIS
+  // device head to Lobby right away, without waiting for or disturbing
+  // anyone still reviewing Results.
+  returnToLobby: () => void
+  // Folds this round's scores into each player's totalScore and wipes the
   // round-specific fields (songs, guesses, ratings, songOrder,
-  // currentSongIndex, selectedCategoryIds, confirmations), and sends
-  // everyone back to Lobby in the SAME room - unlike leaveGame, this is
-  // a real shared transition, the same as finishRound.
-  goToLobby: () => void
+  // currentSongIndex, selectedCategoryIds, confirmations) - but only once
+  // EVERY player has called returnToLobby, so nobody's Results view can be
+  // pulled out from under them while they're still looking at it. Safe to
+  // call speculatively (e.g. from a watcher) - it's a no-op until ready.
+  finalizeRoundIfReady: () => void
 
   // Dev-only: write on behalf of an arbitrary player, bypassing the normal
   // "always write as yourself" rule. Backs the "test the flow solo" buttons
@@ -125,6 +131,7 @@ interface RoomRecord {
   currentSongIndex?: number
   songOrder?: string[]
   roundsCompleted?: number
+  lobbyReady?: Record<string, true>
   players?: Record<string, { name: string; joinedAt: number; totalScore?: number }>
   songs?: Record<string, { playerId: string; categoryId: string; title: string; artist: string }>
   guesses?: Record<string, Guess>
@@ -157,6 +164,7 @@ function parseRoom(data: RoomRecord) {
     songOrder: data.songOrder ?? [],
     confirmedPlayerIds: Object.keys(data.finalConfirmations ?? {}),
     roundsCompleted: data.roundsCompleted ?? 0,
+    lobbyReadyPlayerIds: Object.keys(data.lobbyReady ?? {}),
   }
 }
 
@@ -191,6 +199,7 @@ export const useGameStore = create<GameState>((set, get) => {
     songOrder: [],
     confirmedPlayerIds: [],
     roundsCompleted: 0,
+    lobbyReadyPlayerIds: [],
 
     createGame: async (hostName, maxPlayers, selectedCategoryIds) => {
       const playerId = crypto.randomUUID()
@@ -270,6 +279,7 @@ export const useGameStore = create<GameState>((set, get) => {
         songOrder: [],
         confirmedPlayerIds: [],
         roundsCompleted: 0,
+        lobbyReadyPlayerIds: [],
       })
     },
 
@@ -372,9 +382,22 @@ export const useGameStore = create<GameState>((set, get) => {
       dbUpdate(ref(db, `games/${roomCode}`), { phase: 'results' })
     },
 
-    goToLobby: () => {
-      const { roomCode, players, guesses, ratings, roundsCompleted } = get()
-      if (!roomCode) return
+    returnToLobby: () => {
+      const { roomCode, localPlayerId } = get()
+      if (!roomCode || !localPlayerId) return
+      dbUpdate(ref(db, `games/${roomCode}`), { [`lobbyReady/${localPlayerId}`]: true })
+    },
+
+    // Deliberately re-derives "are we ready" from state rather than trusting
+    // a caller's judgment, and writes the exact same result no matter which
+    // device's watcher happens to fire it or how many fire it at once - the
+    // computed scores/resets only ever depend on the (by now frozen) round
+    // data, not on each other, so redundant calls converge to one outcome
+    // instead of double-applying anything.
+    finalizeRoundIfReady: () => {
+      const { roomCode, phase, players, guesses, ratings, roundsCompleted, lobbyReadyPlayerIds } = get()
+      if (!roomCode || phase !== 'results' || players.length === 0) return
+      if (lobbyReadyPlayerIds.length < players.length) return
       const round = { songs: getCurrentRoundSongs(get()), guesses, ratings }
       const roundScores = computeFinalScores(round)
       const updates: Record<string, unknown> = {
@@ -386,6 +409,7 @@ export const useGameStore = create<GameState>((set, get) => {
         currentSongIndex: 0,
         selectedCategoryIds: null,
         finalConfirmations: null,
+        lobbyReady: null,
         roundsCompleted: roundsCompleted + 1,
       }
       for (const player of players) {

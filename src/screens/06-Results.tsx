@@ -10,8 +10,11 @@ export function Results() {
   const songs = useGameStore(useShallow(getCurrentRoundSongs))
   const guesses = useGameStore((s) => s.guesses)
   const ratings = useGameStore((s) => s.ratings)
+  const localPlayerId = useGameStore((s) => s.localPlayerId)
+  const lobbyReadyPlayerIds = useGameStore((s) => s.lobbyReadyPlayerIds)
   const leaveGame = useGameStore((s) => s.leaveGame)
-  const goToLobby = useGameStore((s) => s.goToLobby)
+  const returnToLobby = useGameStore((s) => s.returnToLobby)
+  const hasReturnedToLobby = localPlayerId !== null && lobbyReadyPlayerIds.includes(localPlayerId)
 
   const round = { songs, guesses, ratings }
   const scores = computeFinalScores(round)
@@ -36,12 +39,14 @@ export function Results() {
     navigate('/')
   }
 
-  // Shared - moves the whole group back to the SAME room's Lobby for
-  // another round, unlike Leave Game above. No explicit navigate here:
-  // writing phase: 'lobby' is picked up by the app-wide phase watcher for
-  // every device, including this one.
+  // Per-device, just like Leave Game - marks this player ready and moves
+  // only THIS device to Lobby, without waiting for or disturbing anyone
+  // still reviewing Results. No explicit navigate here: the app-wide phase
+  // watcher picks up this player's own readiness and moves them to Lobby
+  // itself. Once every player has done this, a separate watcher folds the
+  // round's scores into everyone's total and resets things for next round.
   function handleGoToLobby() {
-    goToLobby()
+    returnToLobby()
   }
 
   return (
@@ -61,10 +66,11 @@ export function Results() {
 
       <button
         type="button"
+        disabled={hasReturnedToLobby}
         onClick={handleGoToLobby}
-        className="mb-3 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
+        className="mb-3 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
       >
-        Go to Lobby
+        {hasReturnedToLobby ? '✓ Heading to Lobby — waiting for others' : 'Go to Lobby'}
       </button>
 
       <button

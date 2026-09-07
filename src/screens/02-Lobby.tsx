@@ -12,6 +12,8 @@ export function Lobby() {
   const categories = useGameStore((s) => s.categories)
   const selectedCategoryIds = useGameStore((s) => s.selectedCategoryIds)
   const roundsCompleted = useGameStore((s) => s.roundsCompleted)
+  const phase = useGameStore((s) => s.phase)
+  const lobbyReadyPlayerIds = useGameStore((s) => s.lobbyReadyPlayerIds)
   const chooseCategories = useGameStore((s) => s.chooseCategories)
   const startSubmitting = useGameStore((s) => s.startSubmitting)
 
@@ -28,6 +30,19 @@ export function Lobby() {
   const selectedCategories = categories.filter((c) => selectedCategoryIds.includes(c.id))
   const seatCount = maxPlayers ?? players.length
   const ranked = [...players].sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0))
+  // While a round has just ended, `phase` stays 'results' for anyone who
+  // hasn't clicked "Go to Lobby" yet - reachable here at all only means
+  // THIS device already has (see usePhaseNavigation). Reflect that same
+  // per-player readiness for everyone else, rather than showing "connected"
+  // for players who are still back on Results. Once the round is fully
+  // wrapped up (phase moves on), lobbyReadyPlayerIds resets and this just
+  // means "present in the room" again, like before.
+  const isPlayerReady = (playerId: string) => phase !== 'results' || lobbyReadyPlayerIds.includes(playerId)
+  // This device already sees the Lobby route (per-player readiness override
+  // in usePhaseNavigation), but the shared room is still mid-transition
+  // until finalizeRoundIfReady actually runs - starting a new round before
+  // then would carry over stale round data and skip scoring this one.
+  const roundStillWrappingUp = phase === 'results'
 
   function toggleCategory(categoryId: string) {
     const alreadySelected = selectedCategoryIds.includes(categoryId)
@@ -104,7 +119,7 @@ export function Lobby() {
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="font-semibold text-emerald-300">{(player.totalScore ?? 0).toFixed(1)}</span>
-                  <span className="text-xs text-emerald-400">connected</span>
+                  {isPlayerReady(player.id) && <span className="text-xs text-emerald-400">connected</span>}
                 </span>
               </li>
             ))
@@ -116,7 +131,7 @@ export function Lobby() {
                 {player ? (
                   <>
                     {player.name}
-                    <span className="text-xs text-emerald-400">connected</span>
+                    {isPlayerReady(player.id) && <span className="text-xs text-emerald-400">connected</span>}
                   </>
                 ) : (
                   <span className="flex items-center gap-2 text-sm text-violet-400/70">
@@ -140,7 +155,11 @@ export function Lobby() {
           ))}
       </ul>
 
-      {isHost ? (
+      {roundStillWrappingUp ? (
+        <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-4 text-center text-slate-300">
+          Waiting for everyone to head back to the Lobby...
+        </div>
+      ) : isHost ? (
         <button
           type="button"
           disabled={selectedCategoryIds.length === 0}

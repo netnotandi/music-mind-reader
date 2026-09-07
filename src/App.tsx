@@ -22,17 +22,43 @@ const ROUTE_FOR_PHASE = {
 // watcher react to the synced `phase` changing - so every device in the
 // room moves together, including whoever triggered the change, instead
 // of only the one client that clicked a button.
+//
+// The one exception is leaving Results: once THIS player has called
+// returnToLobby (tracked in lobbyReadyPlayerIds), this device heads to
+// Lobby immediately even though `phase` is still 'results' for everyone
+// still reviewing it - see finalizeRoundIfReady, which only actually
+// flips the shared phase once every player has done the same.
 function usePhaseNavigation() {
   const navigate = useNavigate()
   const location = useLocation()
   const roomCode = useGameStore((s) => s.roomCode)
   const phase = useGameStore((s) => s.phase)
+  const localPlayerId = useGameStore((s) => s.localPlayerId)
+  const lobbyReadyPlayerIds = useGameStore((s) => s.lobbyReadyPlayerIds)
 
   useEffect(() => {
     if (!roomCode) return
-    const target = ROUTE_FOR_PHASE[phase]
+    const readyForLobby =
+      phase === 'results' && localPlayerId !== null && lobbyReadyPlayerIds.includes(localPlayerId)
+    const target = readyForLobby ? '/lobby' : ROUTE_FOR_PHASE[phase]
     if (location.pathname !== target) navigate(target)
-  }, [roomCode, phase, location.pathname, navigate])
+  }, [roomCode, phase, localPlayerId, lobbyReadyPlayerIds, location.pathname, navigate])
+}
+
+// Always mounted (regardless of which screen is showing), since the player
+// who completes the "everyone's ready" set is often not the one still on
+// Results - they've likely already left for Lobby themselves.
+function useFinalizeRoundWatcher() {
+  const phase = useGameStore((s) => s.phase)
+  const playerCount = useGameStore((s) => s.players.length)
+  const readyCount = useGameStore((s) => s.lobbyReadyPlayerIds.length)
+  const finalizeRoundIfReady = useGameStore((s) => s.finalizeRoundIfReady)
+
+  useEffect(() => {
+    if (phase === 'results' && playerCount > 0 && readyCount >= playerCount) {
+      finalizeRoundIfReady()
+    }
+  }, [phase, playerCount, readyCount, finalizeRoundIfReady])
 }
 
 // A QR code scanned by the phone's own camera app (rather than the in-app
@@ -46,6 +72,7 @@ function JoinRedirect() {
 
 function AppRoutes() {
   usePhaseNavigation()
+  useFinalizeRoundWatcher()
 
   return (
     <Routes>
