@@ -74,32 +74,6 @@ export function Lobby() {
         </div>
       </div>
 
-      {selectedCategories.length > 0 ? (
-        <div className="mb-6 flex flex-wrap justify-center gap-1.5">
-          {selectedCategories.map((c) => (
-            <span
-              key={c.id}
-              className="rounded-full bg-emerald-400/20 px-2.5 py-1 text-xs text-emerald-300"
-            >
-              {c.name}
-            </span>
-          ))}
-        </div>
-      ) : (
-        <div className="mb-8">
-          <h2 className="mb-4 text-xl font-bold text-slate-100">
-            {isHost ? 'Choose categories for this round' : 'Waiting for the host to choose categories...'}
-          </h2>
-          {isHost && (
-            <CategoryPicker
-              categories={categories}
-              selectedCategoryIds={selectedCategoryIds}
-              onToggle={toggleCategory}
-            />
-          )}
-        </div>
-      )}
-
       <h2 className="mb-2 flex items-center justify-between text-sm font-semibold uppercase tracking-wide text-slate-400">
         <span>
           Players ({players.length}/{seatCount})
@@ -117,9 +91,9 @@ export function Lobby() {
                   <span className="mr-2 text-slate-500">#{i + 1}</span>
                   {player.name}
                 </span>
-                <span className="flex items-center gap-2">
-                  <span className="font-semibold text-emerald-300">{(player.totalScore ?? 0).toFixed(1)}</span>
+                <span className="flex items-center gap-1">
                   {isPlayerReady(player.id) && <span className="text-xs text-emerald-400">connected</span>}
+                  <span className="font-semibold text-emerald-300">{(player.totalScore ?? 0).toFixed(1)}</span>
                 </span>
               </li>
             ))
@@ -154,6 +128,32 @@ export function Lobby() {
             </li>
           ))}
       </ul>
+
+      {selectedCategories.length > 0 ? (
+        <div className="mb-6 flex flex-wrap justify-center gap-1.5">
+          {selectedCategories.map((c) => (
+            <span
+              key={c.id}
+              className="rounded-full bg-emerald-400/20 px-2.5 py-1 text-xs text-emerald-300"
+            >
+              {c.name}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="mb-8">
+          <h2 className="mb-4 text-xl font-bold text-slate-100">
+            {isHost ? 'Choose categories for this round' : 'Waiting for the host to choose categories...'}
+          </h2>
+          {isHost && (
+            <CategoryPicker
+              categories={categories}
+              selectedCategoryIds={selectedCategoryIds}
+              onToggle={toggleCategory}
+            />
+          )}
+        </div>
+      )}
 
       {roundStillWrappingUp ? (
         <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-4 text-center text-slate-300">
