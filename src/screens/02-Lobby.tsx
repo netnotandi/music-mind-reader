@@ -1,6 +1,7 @@
 import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
-import { useGameStore } from '../state/gameStore'
+import { CategoryPicker } from '../components/CategoryPicker'
+import { MAX_SELECTED_CATEGORIES, useGameStore } from '../state/gameStore'
 
 export function Lobby() {
   const roomCode = useGameStore((s) => s.roomCode)
@@ -10,6 +11,8 @@ export function Lobby() {
   const localPlayerId = useGameStore((s) => s.localPlayerId)
   const categories = useGameStore((s) => s.categories)
   const selectedCategoryIds = useGameStore((s) => s.selectedCategoryIds)
+  const roundsCompleted = useGameStore((s) => s.roundsCompleted)
+  const chooseCategories = useGameStore((s) => s.chooseCategories)
   const startSubmitting = useGameStore((s) => s.startSubmitting)
 
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
@@ -24,6 +27,17 @@ export function Lobby() {
   const isHost = localPlayerId !== null && localPlayerId === hostId
   const selectedCategories = categories.filter((c) => selectedCategoryIds.includes(c.id))
   const seatCount = maxPlayers ?? players.length
+  const ranked = [...players].sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0))
+
+  function toggleCategory(categoryId: string) {
+    const alreadySelected = selectedCategoryIds.includes(categoryId)
+    if (!alreadySelected && selectedCategoryIds.length >= MAX_SELECTED_CATEGORIES) return
+    chooseCategories(
+      alreadySelected
+        ? selectedCategoryIds.filter((id) => id !== categoryId)
+        : [...selectedCategoryIds, categoryId]
+    )
+  }
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
@@ -45,7 +59,7 @@ export function Lobby() {
         </div>
       </div>
 
-      {selectedCategories.length > 0 && (
+      {selectedCategories.length > 0 ? (
         <div className="mb-6 flex flex-wrap justify-center gap-1.5">
           {selectedCategories.map((c) => (
             <span
@@ -55,6 +69,39 @@ export function Lobby() {
               {c.name}
             </span>
           ))}
+        </div>
+      ) : (
+        <div className="mb-8">
+          <h2 className="mb-4 text-xl font-bold text-slate-100">
+            {isHost ? 'Choose categories for this round' : 'Waiting for the host to choose categories...'}
+          </h2>
+          {isHost && (
+            <CategoryPicker
+              categories={categories}
+              selectedCategoryIds={selectedCategoryIds}
+              onToggle={toggleCategory}
+            />
+          )}
+        </div>
+      )}
+
+      {roundsCompleted > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Leaderboard</h2>
+          <ul className="space-y-1">
+            {ranked.map((player, i) => (
+              <li
+                key={player.id}
+                className="flex items-center justify-between rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
+              >
+                <span>
+                  <span className="mr-2 text-slate-500">#{i + 1}</span>
+                  {player.name}
+                </span>
+                <span className="font-semibold text-emerald-300">{(player.totalScore ?? 0).toFixed(1)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -85,8 +132,9 @@ export function Lobby() {
       {isHost ? (
         <button
           type="button"
+          disabled={selectedCategoryIds.length === 0}
           onClick={startSubmitting}
-          className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
+          className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
         >
           Start Submitting Songs
         </button>

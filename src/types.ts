@@ -6,6 +6,7 @@ export interface Category {
 export interface Player {
   id: string
   name: string
+  totalScore?: number
 }
 
 export interface Song {

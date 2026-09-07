@@ -11,6 +11,7 @@ export function Results() {
   const guesses = useGameStore((s) => s.guesses)
   const ratings = useGameStore((s) => s.ratings)
   const leaveGame = useGameStore((s) => s.leaveGame)
+  const goToLobby = useGameStore((s) => s.goToLobby)
 
   const round = { songs, guesses, ratings }
   const scores = computeFinalScores(round)
@@ -35,6 +36,14 @@ export function Results() {
     navigate('/')
   }
 
+  // Shared - moves the whole group back to the SAME room's Lobby for
+  // another round, unlike Leave Game above. No explicit navigate here:
+  // writing phase: 'lobby' is picked up by the app-wide phase watcher for
+  // every device, including this one.
+  function handleGoToLobby() {
+    goToLobby()
+  }
+
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
       <h1 className="mb-6 text-center text-2xl font-bold text-slate-100">Results</h1>
@@ -49,6 +58,14 @@ export function Results() {
           songsByPlayer={songsByPlayer}
         />
       </div>
+
+      <button
+        type="button"
+        onClick={handleGoToLobby}
+        className="mb-3 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
+      >
+        Go to Lobby
+      </button>
 
       <button
         type="button"

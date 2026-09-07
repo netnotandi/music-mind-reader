@@ -9,6 +9,7 @@ import {
 } from 'firebase/database'
 import { create } from 'zustand'
 import { db } from '../firebase'
+import { computeFinalScores } from '../logic/scoring'
 import type { Category, Guess, Player, Rating, Song } from '../types'
 import { CATEGORIES } from './mockData'
 
@@ -38,11 +39,13 @@ interface GameState {
   currentSongIndex: number
   songOrder: string[]
   confirmedPlayerIds: string[]
+  roundsCompleted: number
 
   createGame: (hostName: string, maxPlayers: number, selectedCategoryIds: string[]) => Promise<string>
   joinGame: (roomCode: string, playerName: string) => Promise<JoinResult>
   resumeSession: () => Promise<boolean>
   leaveGame: (removeFromRoom?: boolean) => void
+  chooseCategories: (categoryIds: string[]) => void
   startSubmitting: () => void
   submitSong: (categoryId: string, title: string, artist: string) => void
   shuffleSongOrder: () => void
@@ -55,6 +58,12 @@ interface GameState {
   // so the group can never be swept into Results by one impatient click.
   confirmFinalAnswers: () => void
   finishRound: () => void
+  // Folds this round's scores into each player's totalScore, wipes the
+  // round-specific fields (songs, guesses, ratings, songOrder,
+  // currentSongIndex, selectedCategoryIds, confirmations), and sends
+  // everyone back to Lobby in the SAME room - unlike leaveGame, this is
+  // a real shared transition, the same as finishRound.
+  goToLobby: () => void
 
   // Dev-only: write on behalf of an arbitrary player, bypassing the normal
   // "always write as yourself" rule. Backs the "test the flow solo" buttons
@@ -115,7 +124,8 @@ interface RoomRecord {
   selectedCategoryIds?: string[]
   currentSongIndex?: number
   songOrder?: string[]
-  players?: Record<string, { name: string; joinedAt: number }>
+  roundsCompleted?: number
+  players?: Record<string, { name: string; joinedAt: number; totalScore?: number }>
   songs?: Record<string, { playerId: string; categoryId: string; title: string; artist: string }>
   guesses?: Record<string, Guess>
   ratings?: Record<string, Rating>
@@ -128,7 +138,7 @@ interface RoomRecord {
 function parseRoom(data: RoomRecord) {
   const players: Player[] = Object.entries(data.players ?? {})
     .sort(([, a], [, b]) => (a.joinedAt ?? 0) - (b.joinedAt ?? 0))
-    .map(([id, p]) => ({ id, name: p.name }))
+    .map(([id, p]) => ({ id, name: p.name, totalScore: p.totalScore ?? 0 }))
 
   const songs: Song[] = Object.entries(data.songs ?? {}).map(([id, s]) => ({ id, ...s }))
   const guesses: Guess[] = Object.values(data.guesses ?? {})
@@ -146,6 +156,7 @@ function parseRoom(data: RoomRecord) {
     currentSongIndex: data.currentSongIndex ?? 0,
     songOrder: data.songOrder ?? [],
     confirmedPlayerIds: Object.keys(data.finalConfirmations ?? {}),
+    roundsCompleted: data.roundsCompleted ?? 0,
   }
 }
 
@@ -179,6 +190,7 @@ export const useGameStore = create<GameState>((set, get) => {
     currentSongIndex: 0,
     songOrder: [],
     confirmedPlayerIds: [],
+    roundsCompleted: 0,
 
     createGame: async (hostName, maxPlayers, selectedCategoryIds) => {
       const playerId = crypto.randomUUID()
@@ -257,7 +269,17 @@ export const useGameStore = create<GameState>((set, get) => {
         currentSongIndex: 0,
         songOrder: [],
         confirmedPlayerIds: [],
+        roundsCompleted: 0,
       })
+    },
+
+    // Live-synced so the whole group watches the host pick categories for
+    // the next round in real time, the same way the player list already
+    // updates live - no separate "confirm" step needed.
+    chooseCategories: (categoryIds) => {
+      const { roomCode } = get()
+      if (!roomCode) return
+      dbUpdate(ref(db, `games/${roomCode}`), { selectedCategoryIds: categoryIds })
     },
 
     startSubmitting: () => {
@@ -348,6 +370,31 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode } = get()
       if (!roomCode) return
       dbUpdate(ref(db, `games/${roomCode}`), { phase: 'results' })
+    },
+
+    goToLobby: () => {
+      const { roomCode, players, guesses, ratings, roundsCompleted } = get()
+      if (!roomCode) return
+      const round = { songs: getCurrentRoundSongs(get()), guesses, ratings }
+      const roundScores = computeFinalScores(round)
+      const updates: Record<string, unknown> = {
+        phase: 'lobby',
+        songs: null,
+        guesses: null,
+        ratings: null,
+        songOrder: null,
+        currentSongIndex: 0,
+        selectedCategoryIds: null,
+        finalConfirmations: null,
+        roundsCompleted: roundsCompleted + 1,
+      }
+      for (const player of players) {
+        const roundScore = roundScores[player.id] ?? 0
+        if (roundScore !== 0) {
+          updates[`players/${player.id}/totalScore`] = (player.totalScore ?? 0) + roundScore
+        }
+      }
+      dbUpdate(ref(db, `games/${roomCode}`), updates)
     },
 
     devSubmitSongAs: (playerId, categoryId, title, artist) => {
