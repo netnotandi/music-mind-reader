@@ -1,11 +1,17 @@
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY as string | undefined
 
-// Best-effort match only - callers must still let the player fall back to a
-// direct link (via extractYouTubeVideoId) when this finds nothing or finds
-// the wrong thing. Returns null rather than throwing on any failure (missing
-// key, network error, no results) so a broken search never blocks a
-// submission - it just means the manual fallback is what's needed.
-export async function searchYouTubeVideoId(query: string): Promise<string | null> {
+export interface YouTubeSearchResult {
+  videoId: string
+  title: string
+  thumbnailUrl: string
+}
+
+// Best-effort match only - the player still has to confirm it (or fall back
+// to a direct link via extractYouTubeVideoId) rather than it being submitted
+// silently. Returns null rather than throwing on any failure (missing key,
+// network error, no results) so a broken search never blocks a submission -
+// it just means the manual fallback is what's needed.
+export async function searchYouTubeVideo(query: string): Promise<YouTubeSearchResult | null> {
   if (!API_KEY) return null
   const url = new URL('https://www.googleapis.com/youtube/v3/search')
   url.searchParams.set('part', 'snippet')
@@ -18,8 +24,14 @@ export async function searchYouTubeVideoId(query: string): Promise<string | null
     const res = await fetch(url.toString())
     if (!res.ok) return null
     const data = await res.json()
-    const videoId = data.items?.[0]?.id?.videoId
-    return typeof videoId === 'string' ? videoId : null
+    const item = data.items?.[0]
+    const videoId = item?.id?.videoId
+    const title = item?.snippet?.title
+    const thumbnailUrl = item?.snippet?.thumbnails?.default?.url
+    if (typeof videoId !== 'string' || typeof title !== 'string' || typeof thumbnailUrl !== 'string') {
+      return null
+    }
+    return { videoId, title, thumbnailUrl }
   } catch {
     return null
   }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { extractYouTubeVideoId, searchYouTubeVideoId } from '../logic/youtube'
+import { extractYouTubeVideoId, searchYouTubeVideo, type YouTubeSearchResult } from '../logic/youtube'
 import { useGameStore } from '../state/gameStore'
 import { MOCK_SONG_POOL } from '../state/mockData'
 import type { Category } from '../types'
@@ -16,23 +16,36 @@ interface SongFormProps {
 function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   const [title, setTitle] = useState(existingSong?.title ?? '')
   const [artist, setArtist] = useState(existingSong?.artist ?? '')
-  // 'form' -> 'searching' -> either straight through to onSubmit (match
-  // found) or 'manual-link' (nothing found, needs the fallback below).
-  const [stage, setStage] = useState<'form' | 'searching' | 'manual-link'>('form')
+  // 'form' -> 'searching' -> 'preview' (a match was found - player still has
+  // to confirm it with the + button, never submitted silently) or
+  // 'manual-link' (nothing found, or the player rejected the preview).
+  const [stage, setStage] = useState<'form' | 'searching' | 'preview' | 'manual-link'>('form')
+  const [result, setResult] = useState<YouTubeSearchResult | null>(null)
   const [manualLink, setManualLink] = useState('')
   const [linkError, setLinkError] = useState<string | null>(null)
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim() || !artist.trim()) return
     setStage('searching')
-    const videoId = await searchYouTubeVideoId(`${title.trim()} ${artist.trim()}`)
-    if (videoId) {
-      onSubmit(title.trim(), artist.trim(), videoId)
-      setStage('form')
+    const found = await searchYouTubeVideo(`${title.trim()} ${artist.trim()}`)
+    if (found) {
+      setResult(found)
+      setStage('preview')
     } else {
       setStage('manual-link')
     }
+  }
+
+  function finish(youtubeVideoId: string) {
+    onSubmit(title.trim(), artist.trim(), youtubeVideoId)
+    // Doesn't remount (same category, key unchanged) when this is the only
+    // selected category left to edit - reset by hand so a successful submit
+    // doesn't leave an earlier stage showing as if it were still stuck.
+    setStage('form')
+    setResult(null)
+    setManualLink('')
+    setLinkError(null)
   }
 
   function handleManualLinkSubmit(e: React.FormEvent) {
@@ -42,13 +55,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
       setLinkError("That doesn't look like a valid YouTube link.")
       return
     }
-    onSubmit(title.trim(), artist.trim(), videoId)
-    // Doesn't remount (same category, key unchanged) when this is the only
-    // selected category left to edit - reset by hand so a successful manual
-    // link doesn't leave the fallback form showing as if it were still stuck.
-    setStage('form')
-    setManualLink('')
-    setLinkError(null)
+    finish(videoId)
   }
 
   return (
@@ -58,10 +65,34 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
         <p className="text-lg font-semibold text-emerald-300">{category.name}</p>
       </div>
 
-      {stage === 'manual-link' ? (
+      {stage === 'preview' && result ? (
+        <div className="mb-6 flex flex-col gap-3">
+          <div className="flex items-center gap-3 rounded-lg border border-slate-600 bg-slate-800 p-3">
+            <img src={result.thumbnailUrl} alt="" className="h-14 w-14 flex-shrink-0 rounded object-cover" />
+            <p className="flex-1 text-sm text-slate-100">{result.title}</p>
+            <button
+              type="button"
+              onClick={() => finish(result.videoId)}
+              aria-label="Add this video"
+              className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-emerald-500 text-2xl font-bold leading-none text-slate-900 transition hover:bg-emerald-400"
+            >
+              +
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStage('manual-link')}
+            className="text-sm text-slate-400 hover:text-slate-200"
+          >
+            Not the right video? Paste a link instead
+          </button>
+        </div>
+      ) : stage === 'manual-link' ? (
         <form className="mb-6 flex flex-col gap-3" onSubmit={handleManualLinkSubmit}>
           <p className="text-sm text-slate-300">
-            Couldn't find a YouTube video for "{title}" by {artist}. Paste a direct YouTube link instead.
+            {result
+              ? 'Paste a direct YouTube link instead.'
+              : `Couldn't find a YouTube video for "${title}" by ${artist}. Paste a direct YouTube link instead.`}
           </p>
           <input
             className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
@@ -88,7 +119,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           </button>
         </form>
       ) : (
-        <form className="mb-6 flex flex-col gap-3" onSubmit={handleSubmit}>
+        <form className="mb-6 flex flex-col gap-3" onSubmit={handleSearch}>
           <input
             className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
             placeholder="Song title"
