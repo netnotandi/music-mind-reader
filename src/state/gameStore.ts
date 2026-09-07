@@ -48,7 +48,7 @@ interface GameState {
   leaveGame: (removeFromRoom?: boolean) => void
   chooseCategories: (categoryIds: string[]) => void
   startSubmitting: () => void
-  submitSong: (categoryId: string, title: string, artist: string) => void
+  submitSong: (categoryId: string, title: string, artist: string, youtubeVideoId: string | null) => void
   shuffleSongOrder: () => void
   submitGuess: (songId: string, guessedPlayerId: string) => void
   clearGuess: (songId: string) => void
@@ -133,7 +133,10 @@ interface RoomRecord {
   roundsCompleted?: number
   lobbyReady?: Record<string, true>
   players?: Record<string, { name: string; joinedAt: number; totalScore?: number }>
-  songs?: Record<string, { playerId: string; categoryId: string; title: string; artist: string }>
+  songs?: Record<
+    string,
+    { playerId: string; categoryId: string; title: string; artist: string; youtubeVideoId?: string }
+  >
   guesses?: Record<string, Guess>
   ratings?: Record<string, Rating>
   finalConfirmations?: Record<string, true>
@@ -298,7 +301,7 @@ export const useGameStore = create<GameState>((set, get) => {
       dbUpdate(ref(db, `games/${roomCode}`), { phase: 'submit' })
     },
 
-    submitSong: (categoryId, title, artist) => {
+    submitSong: (categoryId, title, artist, youtubeVideoId) => {
       const { roomCode, localPlayerId } = get()
       if (!roomCode || !localPlayerId) return
       const songId = `${localPlayerId}__${categoryId}`
@@ -307,6 +310,9 @@ export const useGameStore = create<GameState>((set, get) => {
         categoryId,
         title,
         artist,
+        // Firebase rejects `undefined` values outright, so the key is only
+        // included at all once there's an actual id to store.
+        ...(youtubeVideoId ? { youtubeVideoId } : {}),
       })
     },
 

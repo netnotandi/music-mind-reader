@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { extractYouTubeVideoId, searchYouTubeVideoId } from '../logic/youtube'
 import { useGameStore } from '../state/gameStore'
 import { MOCK_SONG_POOL } from '../state/mockData'
 import type { Category } from '../types'
@@ -6,15 +7,49 @@ import type { Category } from '../types'
 interface SongFormProps {
   category: Category
   existingSong: { title: string; artist: string } | undefined
-  onSubmit: (title: string, artist: string) => void
+  onSubmit: (title: string, artist: string, youtubeVideoId: string | null) => void
 }
 
 // Keyed by `${category.id}` from the parent, so React remounts this (and
-// resets/refills title+artist from existingSong) whenever the category
-// being filled in changes.
+// resets/refills title+artist, plus the search/link flow below, from
+// existingSong) whenever the category being filled in changes.
 function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   const [title, setTitle] = useState(existingSong?.title ?? '')
   const [artist, setArtist] = useState(existingSong?.artist ?? '')
+  // 'form' -> 'searching' -> either straight through to onSubmit (match
+  // found) or 'manual-link' (nothing found, needs the fallback below).
+  const [stage, setStage] = useState<'form' | 'searching' | 'manual-link'>('form')
+  const [manualLink, setManualLink] = useState('')
+  const [linkError, setLinkError] = useState<string | null>(null)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title.trim() || !artist.trim()) return
+    setStage('searching')
+    const videoId = await searchYouTubeVideoId(`${title.trim()} ${artist.trim()}`)
+    if (videoId) {
+      onSubmit(title.trim(), artist.trim(), videoId)
+      setStage('form')
+    } else {
+      setStage('manual-link')
+    }
+  }
+
+  function handleManualLinkSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const videoId = extractYouTubeVideoId(manualLink)
+    if (!videoId) {
+      setLinkError("That doesn't look like a valid YouTube link.")
+      return
+    }
+    onSubmit(title.trim(), artist.trim(), videoId)
+    // Doesn't remount (same category, key unchanged) when this is the only
+    // selected category left to edit - reset by hand so a successful manual
+    // link doesn't leave the fallback form showing as if it were still stuck.
+    setStage('form')
+    setManualLink('')
+    setLinkError(null)
+  }
 
   return (
     <>
@@ -23,33 +58,58 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
         <p className="text-lg font-semibold text-emerald-300">{category.name}</p>
       </div>
 
-      <form
-        className="mb-6 flex flex-col gap-3"
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (!title.trim() || !artist.trim()) return
-          onSubmit(title.trim(), artist.trim())
-        }}
-      >
-        <input
-          className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
-          placeholder="Song title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <input
-          className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
-          placeholder="Artist"
-          value={artist}
-          onChange={(e) => setArtist(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400"
-        >
-          {existingSong ? 'Edit Song' : 'Submit Song'}
-        </button>
-      </form>
+      {stage === 'manual-link' ? (
+        <form className="mb-6 flex flex-col gap-3" onSubmit={handleManualLinkSubmit}>
+          <p className="text-sm text-slate-300">
+            Couldn't find a YouTube video for "{title}" by {artist}. Paste a direct YouTube link instead.
+          </p>
+          <input
+            className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
+            placeholder="https://youtube.com/watch?v=..."
+            value={manualLink}
+            onChange={(e) => {
+              setManualLink(e.target.value)
+              setLinkError(null)
+            }}
+          />
+          {linkError && <p className="text-sm text-rose-400">{linkError}</p>}
+          <button
+            type="submit"
+            className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400"
+          >
+            {existingSong ? 'Edit Song' : 'Submit Song'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setStage('form')}
+            className="text-sm text-slate-400 hover:text-slate-200"
+          >
+            ← Back to title/artist
+          </button>
+        </form>
+      ) : (
+        <form className="mb-6 flex flex-col gap-3" onSubmit={handleSubmit}>
+          <input
+            className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
+            placeholder="Song title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <input
+            className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
+            placeholder="Artist"
+            value={artist}
+            onChange={(e) => setArtist(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={stage === 'searching'}
+            className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+          >
+            {stage === 'searching' ? 'Searching YouTube...' : existingSong ? 'Edit Song' : 'Submit Song'}
+          </button>
+        </form>
+      )}
     </>
   )
 }
@@ -167,7 +227,7 @@ export function SubmitSong() {
         key={categoryToShow.id}
         category={categoryToShow}
         existingSong={existingSong}
-        onSubmit={(title, artist) => submitSong(categoryToShow.id, title, artist)}
+        onSubmit={(title, artist, youtubeVideoId) => submitSong(categoryToShow.id, title, artist, youtubeVideoId)}
       />
 
       <ProgressTable

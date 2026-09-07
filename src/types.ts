@@ -15,6 +15,7 @@ export interface Song {
   categoryId: string
   title: string
   artist: string
+  youtubeVideoId?: string
 }
 
 export interface Guess {
