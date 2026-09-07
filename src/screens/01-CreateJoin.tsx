@@ -27,6 +27,9 @@ export function CreateJoin() {
       <div className="flex justify-center">
         <img src={logo} alt="Music Mind Reader" className="w-80" />
       </div>
+      <h1 className="mt-2 text-center text-2xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-transparent">
+        Music Mind Reader
+      </h1>
 
       <div className="mx-auto mt-20 flex w-72 flex-col gap-3">
         {roomCodeFromQr && (
