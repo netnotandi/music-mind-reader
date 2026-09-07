@@ -151,6 +151,7 @@ export function GuessAndRate() {
     setViewIndex((v) => (v === previouslyTracked ? currentSongIndex : v))
   }, [currentSongIndex])
   const localPlayerId = useGameStore((s) => s.localPlayerId)
+  const hostId = useGameStore((s) => s.hostId)
   const players = useGameStore((s) => s.players)
   const categories = useGameStore((s) => s.categories)
   const guesses = useGameStore((s) => s.guesses)
@@ -166,6 +167,11 @@ export function GuessAndRate() {
   const finishRound = useGameStore((s) => s.finishRound)
 
   const song = songs[viewIndex]
+  // Deliberately keyed off the group's real position, not viewIndex - this
+  // is what's actually audible right now, so it must never follow a player
+  // browsing an earlier song locally to review/edit their own answer.
+  const currentSong = songs[currentSongIndex]
+  const isHost = localPlayerId !== null && localPlayerId === hostId
 
   if (!song || !localPlayerId) {
     return (
@@ -277,6 +283,19 @@ export function GuessAndRate() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
+      {isHost && currentSong?.youtubeVideoId && (
+        <div className="mb-6 overflow-hidden rounded-xl border border-slate-700">
+          <iframe
+            key={currentSong.id}
+            className="aspect-video w-full"
+            src={`https://www.youtube.com/embed/${currentSong.youtubeVideoId}?autoplay=1`}
+            title="Now playing"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+          />
+        </div>
+      )}
+
       {!isViewingCurrent && (
         <button
           type="button"
