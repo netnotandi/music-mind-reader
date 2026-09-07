@@ -137,7 +137,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
             disabled={stage === 'searching'}
             className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
           >
-            {stage === 'searching' ? 'Searching YouTube...' : existingSong ? 'Edit Song' : 'Submit Song'}
+            {stage === 'searching' ? 'Searching YouTube...' : existingSong ? 'Find New Video' : 'Find Song'}
           </button>
         </form>
       )}
