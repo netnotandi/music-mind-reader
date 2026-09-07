@@ -85,11 +85,15 @@ export function Lobby() {
         </div>
       )}
 
-      {roundsCompleted > 0 && (
-        <div className="mb-8">
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Leaderboard</h2>
-          <ul className="space-y-1">
-            {ranked.map((player, i) => (
+      <h2 className="mb-2 flex items-center justify-between text-sm font-semibold uppercase tracking-wide text-slate-400">
+        <span>
+          Players ({players.length}/{seatCount})
+        </span>
+        {roundsCompleted > 0 && <span>Score</span>}
+      </h2>
+      <ul className="mb-8 space-y-1">
+        {roundsCompleted > 0
+          ? ranked.map((player, i) => (
               <li
                 key={player.id}
                 className="flex items-center justify-between rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
@@ -98,35 +102,42 @@ export function Lobby() {
                   <span className="mr-2 text-slate-500">#{i + 1}</span>
                   {player.name}
                 </span>
-                <span className="font-semibold text-emerald-300">{(player.totalScore ?? 0).toFixed(1)}</span>
+                <span className="flex items-center gap-2">
+                  <span className="font-semibold text-emerald-300">{(player.totalScore ?? 0).toFixed(1)}</span>
+                  <span className="text-xs text-emerald-400">connected</span>
+                </span>
+              </li>
+            ))
+          : Array.from({ length: seatCount }, (_, i) => players[i]).map((player, i) => (
+              <li
+                key={player?.id ?? `empty-${i}`}
+                className="flex items-center justify-between rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
+              >
+                {player ? (
+                  <>
+                    {player.name}
+                    <span className="text-xs text-emerald-400">connected</span>
+                  </>
+                ) : (
+                  <span className="flex items-center gap-2 text-sm text-violet-400/70">
+                    <span className="animate-pulse">〜</span>
+                    Waiting for player…
+                  </span>
+                )}
               </li>
             ))}
-          </ul>
-        </div>
-      )}
-
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
-        Players ({players.length}/{seatCount})
-      </h2>
-      <ul className="mb-8 space-y-1">
-        {Array.from({ length: seatCount }, (_, i) => players[i]).map((player, i) => (
-          <li
-            key={player?.id ?? `empty-${i}`}
-            className="flex items-center justify-between rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
-          >
-            {player ? (
-              <>
-                {player.name}
-                <span className="text-xs text-emerald-400">connected</span>
-              </>
-            ) : (
+        {roundsCompleted > 0 &&
+          Array.from({ length: Math.max(seatCount - players.length, 0) }, (_, i) => (
+            <li
+              key={`empty-${i}`}
+              className="flex items-center justify-between rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
+            >
               <span className="flex items-center gap-2 text-sm text-violet-400/70">
                 <span className="animate-pulse">〜</span>
                 Waiting for player…
               </span>
-            )}
-          </li>
-        ))}
+            </li>
+          ))}
       </ul>
 
       {isHost ? (
