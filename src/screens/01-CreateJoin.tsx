@@ -34,7 +34,7 @@ export function CreateJoin() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-16">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col overflow-hidden px-6 pt-16">
       <div className="relative flex h-72 items-center justify-center">
         <div className="absolute h-56 w-56 rounded-full bg-violet-600/30 blur-3xl" />
         <div className="sound-wave-field" key={waveKey}>
