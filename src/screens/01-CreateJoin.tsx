@@ -38,12 +38,14 @@ export function CreateJoin() {
             Scanned game code: <span className="font-semibold text-emerald-300">{roomCodeFromQr}</span>
           </p>
         )}
-        <input
-          className="rounded-full border border-slate-700 bg-slate-800/60 px-5 py-3 text-sm text-slate-100 placeholder:text-slate-500"
-          placeholder="Enter your name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+        <div className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 p-[1.5px]">
+          <input
+            className="w-full rounded-full bg-[#0a0a2e] px-5 py-3 text-center text-sm text-slate-100 placeholder:text-slate-500"
+            placeholder="Enter your name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
         <button
           type="button"
           disabled={!name.trim()}
