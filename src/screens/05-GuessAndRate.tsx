@@ -423,10 +423,11 @@ export function GuessAndRate() {
       {showConfirmFlow && allConfirmed && (
         <button
           type="button"
+          disabled={!isHost}
           onClick={finishRound}
-          className="mt-4 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
+          className="mt-4 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
         >
-          See Results →
+          {isHost ? 'See Results →' : `Waiting for ${hostPlayer?.name ?? 'the host'} to see results`}
         </button>
       )}
     </div>
