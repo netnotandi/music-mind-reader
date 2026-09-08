@@ -1,11 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
+
+const WAVE_REPLAY_INTERVAL_MS = 15000
 
 export function CreateJoin() {
   const navigate = useNavigate()
   const location = useLocation()
   const [name, setName] = useState('')
+  // The CSS animation runs once (forwards, not infinite) - remounting the
+  // field via a changing key restarts it fresh, giving a periodic burst
+  // instead of a continuous loop.
+  const [waveKey, setWaveKey] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => setWaveKey((k) => k + 1), WAVE_REPLAY_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [])
 
   // Set when a QR code was scanned by the phone's own camera app, landing
   // here (via JoinRedirect) instead of straight on Join Game - carried
@@ -26,7 +37,7 @@ export function CreateJoin() {
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-16">
       <div className="relative flex h-72 items-center justify-center">
         <div className="absolute h-56 w-56 rounded-full bg-violet-600/30 blur-3xl" />
-        <div className="sound-wave-field">
+        <div className="sound-wave-field" key={waveKey}>
           <div className="sound-wave-ring sound-wave-ring--a" />
           <div className="sound-wave-ring sound-wave-ring--b" />
           <div className="sound-wave-ring sound-wave-ring--c" />
