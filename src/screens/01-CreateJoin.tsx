@@ -35,13 +35,20 @@ export function CreateJoin() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col overflow-hidden px-6 pt-16">
+      {/* Fixed (not absolute) so it's positioned against the real browser
+          viewport rather than clipped/narrowed by this page's own max-w-md
+          column - on a wide desktop window the rings now reach the actual
+          screen edges instead of stopping at the app's own content width.
+          top-16/h-72 lines up this band with the logo box below, which stays
+          centered the normal (non-fixed) way. */}
+      <div className="sound-wave-field fixed inset-x-0 top-16 h-72" key={waveKey}>
+        <div className="sound-wave-ring sound-wave-ring--a" />
+        <div className="sound-wave-ring sound-wave-ring--b" />
+        <div className="sound-wave-ring sound-wave-ring--c" />
+      </div>
+
       <div className="relative flex h-72 items-center justify-center">
         <div className="absolute h-56 w-56 rounded-full bg-violet-600/30 blur-3xl" />
-        <div className="sound-wave-field" key={waveKey}>
-          <div className="sound-wave-ring sound-wave-ring--a" />
-          <div className="sound-wave-ring sound-wave-ring--b" />
-          <div className="sound-wave-ring sound-wave-ring--c" />
-        </div>
         <img src={logo} alt="Music Mind Reader" className="relative w-64" />
       </div>
       <h1 className="mt-2 text-center text-2xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-transparent">

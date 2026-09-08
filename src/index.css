@@ -1,15 +1,13 @@
 @import "tailwindcss";
 
 .sound-wave-field {
-  position: absolute;
-  inset: 0;
+  /* Position/inset supplied by the caller (e.g. `fixed inset-x-0 top-16
+     h-72`) - kept out of this shared class since where the field is
+     anchored is specific to each page it's used on. */
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  /* Deliberately NOT clipped - rings are meant to expand across the whole
-     screen. transform: scale() doesn't add scrollable overflow on its own,
-     so this doesn't risk an unwanted scrollbar. */
 }
 
 .sound-wave-ring {
