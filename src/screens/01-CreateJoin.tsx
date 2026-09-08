@@ -23,23 +23,24 @@ export function CreateJoin() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-20">
-      <div className="flex justify-center">
-        <img src={logo} alt="Music Mind Reader" className="w-80" />
+    <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-16">
+      <div className="relative flex justify-center">
+        <div className="absolute top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-violet-600/30 blur-3xl" />
+        <img src={logo} alt="Music Mind Reader" className="relative w-64" />
       </div>
       <h1 className="mt-2 text-center text-2xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-transparent">
         Music Mind Reader
       </h1>
 
-      <div className="mx-auto mt-20 flex w-72 flex-col gap-3">
+      <div className="mx-auto mt-12 flex w-72 flex-col gap-4">
         {roomCodeFromQr && (
           <p className="text-center text-sm text-slate-400">
             Scanned game code: <span className="font-semibold text-emerald-300">{roomCodeFromQr}</span>
           </p>
         )}
         <input
-          className="rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-center text-sm text-slate-100 placeholder:text-slate-500"
-          placeholder="Your name"
+          className="rounded-full border border-slate-700 bg-slate-800/60 px-5 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+          placeholder="Enter your name"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -47,18 +48,29 @@ export function CreateJoin() {
           type="button"
           disabled={!name.trim()}
           onClick={handleCreateGame}
-          className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+          className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 px-5 py-3 text-sm font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           CREATE GAME
         </button>
-        <button
-          type="button"
-          disabled={!name.trim()}
-          onClick={handleJoinGame}
-          className="rounded-xl border border-slate-600 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:border-slate-700 disabled:text-slate-500"
-        >
-          JOIN GAME
-        </button>
+
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-700" />
+          <span className="text-xs font-medium text-slate-500">OR</span>
+          <div className="h-px flex-1 bg-slate-700" />
+        </div>
+
+        <div className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 p-[1.5px] has-[:disabled]:opacity-40">
+          <button
+            type="button"
+            disabled={!name.trim()}
+            onClick={handleJoinGame}
+            className="w-full rounded-full bg-[#010127] px-5 py-3 disabled:cursor-not-allowed"
+          >
+            <span className="bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-sm font-bold text-transparent">
+              JOIN GAME
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   )
