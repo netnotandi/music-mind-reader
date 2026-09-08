@@ -172,6 +172,7 @@ export function GuessAndRate() {
   // browsing an earlier song locally to review/edit their own answer.
   const currentSong = songs[currentSongIndex]
   const isHost = localPlayerId !== null && localPlayerId === hostId
+  const hostPlayer = players.find((p) => p.id === hostId)
 
   if (!song || !localPlayerId) {
     return (
@@ -366,11 +367,13 @@ export function GuessAndRate() {
         ) : (
           <button
             type="button"
-            disabled={!allAnswered}
+            disabled={!allAnswered || !isHost}
             onClick={goNext}
             className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
           >
-            Next Song →
+            {allAnswered && !isHost
+              ? `Waiting for ${hostPlayer?.name ?? 'the host'} to continue`
+              : 'Next Song →'}
           </button>
         )}
       </div>
