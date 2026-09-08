@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
+import { MAX_NAME_LENGTH } from '../state/gameStore'
 
 const WAVE_REPLAY_INTERVAL_MS = 15000
 
@@ -65,6 +66,7 @@ export function CreateJoin() {
           <input
             className="w-full rounded-full bg-[#0a0a2e] px-5 py-3 text-center text-sm text-slate-100 placeholder:text-slate-500"
             placeholder="Enter your name"
+            maxLength={MAX_NAME_LENGTH}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />

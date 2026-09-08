@@ -175,7 +175,7 @@ function ProgressTable({ players, selectedCategories, localPlayerId, hasSong }: 
               }`}
             >
               <td
-                className={`px-3 py-2 ${
+                className={`max-w-[8rem] truncate px-3 py-2 ${
                   p.id === localPlayerId ? 'font-semibold text-emerald-300' : 'text-slate-200'
                 }`}
               >

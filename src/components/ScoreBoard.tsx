@@ -33,11 +33,11 @@ export function ScoreBoard({ players, scores, titles, breakdowns, songsByPlayer 
               onClick={() => setExpandedPlayerId(isExpanded ? null : player.id)}
               className="w-full px-5 py-4 text-left"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-500">#{i + 1}</span>
-                    <span className="font-medium text-slate-100">{player.name}</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex-shrink-0 text-slate-500">#{i + 1}</span>
+                    <span className="truncate font-medium text-slate-100">{player.name}</span>
                   </div>
                   {playerTitles.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -52,7 +52,7 @@ export function ScoreBoard({ players, scores, titles, breakdowns, songsByPlayer 
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-shrink-0 items-center gap-2">
                   <span className="text-lg font-semibold text-emerald-300">
                     {(scores[player.id] ?? 0).toFixed(1)}
                   </span>

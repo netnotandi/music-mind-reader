@@ -15,6 +15,11 @@ import { CATEGORIES } from './mockData'
 
 export const MAX_SELECTED_CATEGORIES = 1
 
+// Enforced via the input's own maxLength, but names are still rendered in a
+// lot of fixed-width places (player lists, guess buttons, tables) - keeping
+// this a shared constant so any future input validating a name can match it.
+export const MAX_NAME_LENGTH = 20
+
 // Single-select while MAX_SELECTED_CATEGORIES is 1 - picking a different
 // category swaps it in immediately instead of requiring the current one to
 // be deselected first (which would otherwise just look like the other

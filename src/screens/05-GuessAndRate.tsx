@@ -73,7 +73,7 @@ function AnswerForm({
                       : 'border-slate-600 text-slate-300 hover:border-slate-400'
                   }`}
                 >
-                  {p.name}
+                  <span className="inline-block max-w-[9rem] truncate align-bottom">{p.name}</span>
                   {assignedTo && <span className="ml-1 text-xs text-slate-500">· {assignedTo}</span>}
                 </button>
               )
@@ -397,7 +397,7 @@ export function GuessAndRate() {
                   }`}
                 >
                   <td
-                    className={`px-3 py-2 ${
+                    className={`max-w-[8rem] truncate px-3 py-2 ${
                       p.id === localPlayerId ? 'font-semibold text-emerald-300' : 'text-slate-200'
                     }`}
                   >

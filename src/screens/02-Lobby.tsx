@@ -79,13 +79,13 @@ export function Lobby() {
           ? ranked.map((player, i) => (
               <li
                 key={player.id}
-                className="flex items-center justify-between rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
+                className="flex items-center justify-between gap-2 rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
               >
-                <span>
-                  <span className="mr-2 text-slate-500">#{i + 1}</span>
-                  {player.name}
+                <span className="flex min-w-0 items-center">
+                  <span className="mr-2 flex-shrink-0 text-slate-500">#{i + 1}</span>
+                  <span className="truncate">{player.name}</span>
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex flex-shrink-0 items-center gap-1">
                   {isPlayerReady(player.id) && <span className="text-xs text-emerald-400">connected</span>}
                   <span className="font-semibold text-emerald-300">{(player.totalScore ?? 0).toFixed(1)}</span>
                 </span>
@@ -94,12 +94,14 @@ export function Lobby() {
           : Array.from({ length: seatCount }, (_, i) => players[i]).map((player, i) => (
               <li
                 key={player?.id ?? `empty-${i}`}
-                className="flex items-center justify-between rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
+                className="flex items-center justify-between gap-2 rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
               >
                 {player ? (
                   <>
-                    {player.name}
-                    {isPlayerReady(player.id) && <span className="text-xs text-emerald-400">connected</span>}
+                    <span className="min-w-0 truncate">{player.name}</span>
+                    {isPlayerReady(player.id) && (
+                      <span className="flex-shrink-0 text-xs text-emerald-400">connected</span>
+                    )}
                   </>
                 ) : (
                   <span className="flex items-center gap-2 text-sm text-violet-400/70">
