@@ -13,7 +13,18 @@ import { computeFinalScores } from '../logic/scoring'
 import type { Category, Guess, Player, Rating, Song } from '../types'
 import { CATEGORIES } from './mockData'
 
-export const MAX_SELECTED_CATEGORIES = 3
+export const MAX_SELECTED_CATEGORIES = 1
+
+// Single-select while MAX_SELECTED_CATEGORIES is 1 - picking a different
+// category swaps it in immediately instead of requiring the current one to
+// be deselected first (which would otherwise just look like the other
+// buttons had gone dead).
+export function toggleCategorySelection(current: string[], categoryId: string): string[] {
+  if (current.includes(categoryId)) return current.filter((id) => id !== categoryId)
+  if (MAX_SELECTED_CATEGORIES === 1) return [categoryId]
+  if (current.length >= MAX_SELECTED_CATEGORIES) return current
+  return [...current, categoryId]
+}
 
 export const ROOM_CODE_LENGTH = 5
 // No I/O/0/1 - easy to misread out loud or on a small screen.

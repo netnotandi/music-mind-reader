@@ -9,13 +9,17 @@ interface CategoryPickerProps {
 }
 
 export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: CategoryPickerProps) {
-  const atMax = selectedCategoryIds.length >= MAX_SELECTED_CATEGORIES
+  // At MAX_SELECTED_CATEGORIES === 1, other buttons stay enabled - clicking
+  // one swaps the selection (see toggleCategorySelection) instead of
+  // requiring the current pick to be deselected first.
+  const atMax = MAX_SELECTED_CATEGORIES > 1 && selectedCategoryIds.length >= MAX_SELECTED_CATEGORIES
 
   return (
     <div>
       <p className="mb-4 text-sm text-slate-400">
-        Pick up to {MAX_SELECTED_CATEGORIES} categories ({selectedCategoryIds.length}/
-        {MAX_SELECTED_CATEGORIES} selected)
+        {MAX_SELECTED_CATEGORIES === 1
+          ? 'Pick a category'
+          : `Pick up to ${MAX_SELECTED_CATEGORIES} categories (${selectedCategoryIds.length}/${MAX_SELECTED_CATEGORIES} selected)`}
       </p>
       <div className="grid grid-cols-2 gap-3">
         {categories.map((c, i) => {

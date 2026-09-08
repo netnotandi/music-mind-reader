@@ -1,7 +1,7 @@
 import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
 import { CategoryPicker } from '../components/CategoryPicker'
-import { MAX_SELECTED_CATEGORIES, useGameStore } from '../state/gameStore'
+import { toggleCategorySelection, useGameStore } from '../state/gameStore'
 
 export function Lobby() {
   const roomCode = useGameStore((s) => s.roomCode)
@@ -45,13 +45,7 @@ export function Lobby() {
   const roundStillWrappingUp = phase === 'results'
 
   function toggleCategory(categoryId: string) {
-    const alreadySelected = selectedCategoryIds.includes(categoryId)
-    if (!alreadySelected && selectedCategoryIds.length >= MAX_SELECTED_CATEGORIES) return
-    chooseCategories(
-      alreadySelected
-        ? selectedCategoryIds.filter((id) => id !== categoryId)
-        : [...selectedCategoryIds, categoryId]
-    )
+    chooseCategories(toggleCategorySelection(selectedCategoryIds, categoryId))
   }
 
   return (

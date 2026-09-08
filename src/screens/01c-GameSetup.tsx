@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { CategoryPicker } from '../components/CategoryPicker'
-import { MAX_SELECTED_CATEGORIES, useGameStore } from '../state/gameStore'
+import { toggleCategorySelection, useGameStore } from '../state/gameStore'
 
 const PLAYER_COUNT_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10]
 
@@ -29,11 +29,7 @@ export function GameSetup() {
   }
 
   function toggleCategory(categoryId: string) {
-    setSelectedCategoryIds((prev) => {
-      const alreadySelected = prev.includes(categoryId)
-      if (!alreadySelected && prev.length >= MAX_SELECTED_CATEGORIES) return prev
-      return alreadySelected ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
-    })
+    setSelectedCategoryIds((prev) => toggleCategorySelection(prev, categoryId))
   }
 
   async function handleNext() {
