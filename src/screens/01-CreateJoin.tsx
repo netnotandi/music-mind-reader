@@ -2,12 +2,19 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
 import { MAX_NAME_LENGTH } from '../state/gameStore'
+import { useThemeStore } from '../state/themeStore'
 
 const WAVE_REPLAY_INTERVAL_MS = 15000
 
 export function CreateJoin() {
   const navigate = useNavigate()
   const location = useLocation()
+  // The brand gradient's light-theme stops are bright/saturated across their
+  // whole range (unlike dark's more muted stops), so white text loses too
+  // much contrast over the cyan segment - swap to navy in light instead of
+  // tokenizing this as a flat semantic color, since it has to stay readable
+  // against every stop of a multi-hue gradient, not just one accent.
+  const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const [name, setName] = useState('')
   // The CSS animation runs once (forwards, not infinite) - remounting the
   // field via a changing key restarts it fresh, giving a periodic burst
@@ -79,7 +86,7 @@ export function CreateJoin() {
             type="button"
             disabled={!name.trim()}
             onClick={handleCreateGame}
-            className="rounded-full bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink px-5 py-3 text-sm font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            className={`rounded-full bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink px-5 py-3 text-sm font-bold transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 ${isLight ? 'text-text-on-accent' : 'text-white'}`}
           >
             CREATE GAME
           </button>
@@ -97,7 +104,13 @@ export function CreateJoin() {
               onClick={handleJoinGame}
               className="w-full rounded-full bg-bg px-5 py-3 disabled:cursor-not-allowed"
             >
-              <span className="bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink bg-clip-text text-sm font-bold text-transparent">
+              <span
+                className={`text-sm font-bold ${
+                  isLight
+                    ? 'text-text'
+                    : 'bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink bg-clip-text text-transparent'
+                }`}
+              >
                 JOIN GAME
               </span>
             </button>
