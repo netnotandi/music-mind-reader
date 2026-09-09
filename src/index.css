@@ -70,6 +70,10 @@
   --mmr-brand-blue: #60a5fa;
   --mmr-brand-violet: #8b5cf6;
   --mmr-brand-pink: #ec4899;
+  /* Dark already reads as layered via contrast against a near-black page -
+     no extra shadow needed, unlike light below. */
+  --mmr-shadow-card: none;
+  --mmr-focus-ring: none;
 }
 
 [data-theme="light"] {
@@ -101,6 +105,25 @@
   --mmr-brand-blue: #2389ff;
   --mmr-brand-violet: #8057f5;
   --mmr-brand-pink: #f83caf;
+  /* White-on-near-white has almost no contrast on its own - these are what
+     actually make a card read as "lifted" off the pale lavender canvas,
+     per LIGHT_THEME_SPEC.md section 3/4. */
+  --mmr-shadow-card: 0 6px 18px rgba(34, 45, 100, 0.08);
+  --mmr-focus-ring: 0 0 0 3px rgba(0, 169, 220, 0.25);
+}
+
+/* Applied globally rather than per-component: every card/panel in the app
+   already uses bg-surface or bg-surface-muted, so this alone gives every
+   one of them the shadow the spec calls for, in light only - dark's own
+   value above is `none`, so this is a no-op there. */
+[data-theme="light"] .bg-surface,
+[data-theme="light"] .bg-surface-muted {
+  box-shadow: var(--mmr-shadow-card);
+}
+
+[data-theme="light"] input:focus,
+[data-theme="light"] select:focus {
+  box-shadow: var(--mmr-focus-ring);
 }
 
 .sound-wave-field {

@@ -61,8 +61,8 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
                     ? 'border-primary bg-primary/10 text-primary'
                     : `${accent.border} ${accent.bg} ${accent.text}`
                   : disabled
-                    ? 'cursor-not-allowed border-disabled-border text-disabled-text'
-                    : 'border-border text-text-secondary hover:border-border-strong'
+                    ? `cursor-not-allowed border-disabled-border text-disabled-text ${isLight ? 'bg-disabled-bg' : ''}`
+                    : `border-border text-text-secondary hover:border-border-strong ${isLight ? 'bg-surface' : ''}`
               }`}
             >
               {selected && (
@@ -93,7 +93,7 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
             disabled={page === 0}
             onClick={() => goToPage(page - 1)}
             aria-label="Previous categories"
-            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-border-strong text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30"
+            className={`grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-border-strong text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30 ${isLight ? 'bg-surface' : ''}`}
           >
             <svg
               viewBox="0 0 24 24"
@@ -130,7 +130,7 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
             disabled={page === totalPages - 1}
             onClick={() => goToPage(page + 1)}
             aria-label="Next categories"
-            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-border-strong text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30"
+            className={`grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-border-strong text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30 ${isLight ? 'bg-surface' : ''}`}
           >
             <svg
               viewBox="0 0 24 24"

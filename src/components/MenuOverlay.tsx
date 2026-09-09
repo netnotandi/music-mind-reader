@@ -7,7 +7,7 @@ const RULES_SECTIONS: { title: string; body: string }[] = [
   {
     title: 'How to Play',
     body:
-      'The host creates a game and everyone else joins with the game code or QR. The host picks 1-3 categories for the round, and every player submits one song per category, anonymously. Once everyone is in, the group listens to each song (played right from the host\'s phone) and guesses who submitted it, then rates it 0-10.',
+      'The host creates a game and everyone else joins with the game code or QR. The host picks one category each round, and every player submits one song for it, anonymously. Once everyone is in, the group listens to each song (played right from the host\'s phone) and guesses who submitted it, then rates it 0-10.',
   },
   {
     title: 'Scoring',
