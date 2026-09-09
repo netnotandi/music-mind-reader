@@ -22,7 +22,7 @@ export function GameSetup() {
 
   if (!hostName) {
     return (
-      <div className="mx-auto max-w-md px-6 py-8 text-slate-300">
+      <div className="mx-auto max-w-md px-6 py-8 text-text-secondary">
         Missing your name — go back and create a game again.
       </div>
     )
@@ -45,14 +45,14 @@ export function GameSetup() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-8 pt-16">
-      <h1 className="mb-6 text-xl font-bold text-slate-100">Game Setup</h1>
+      <h1 className="mb-6 text-xl font-bold text-text">Game Setup</h1>
 
       <div className="mb-8">
-        <label className="mb-2 block text-sm font-semibold uppercase tracking-wide text-slate-400">
+        <label className="mb-2 block text-sm font-semibold uppercase tracking-wide text-text-secondary">
           How many players?
         </label>
         <select
-          className="w-full rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-slate-100"
+          className="w-full rounded-xl border border-border-strong bg-surface px-4 py-3 text-text"
           value={maxPlayers}
           onChange={(e) => setMaxPlayers(e.target.value ? Number(e.target.value) : '')}
         >
@@ -65,14 +65,14 @@ export function GameSetup() {
         </select>
       </div>
 
-      <h2 className="mb-4 text-xl font-bold text-slate-100">Choose your categories</h2>
+      <h2 className="mb-4 text-xl font-bold text-text">Choose your categories</h2>
       <CategoryPicker categories={categories} selectedCategoryIds={selectedCategoryIds} onToggle={toggleCategory} />
 
       <button
         type="button"
         disabled={!canConfirm || creating}
         onClick={handleNext}
-        className="mt-8 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+        className="mt-8 w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
       >
         {creating ? 'Creating game…' : 'NEXT'}
       </button>
@@ -80,7 +80,7 @@ export function GameSetup() {
       <button
         type="button"
         onClick={() => navigate('/')}
-        className="mt-3 w-full rounded-xl border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:border-slate-400"
+        className="mt-3 w-full rounded-xl border border-border-strong px-4 py-2 text-sm text-text-secondary hover:border-border-strong"
       >
         ← Back
       </button>

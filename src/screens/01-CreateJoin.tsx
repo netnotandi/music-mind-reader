@@ -53,22 +53,22 @@ export function CreateJoin() {
 
       <div className="relative isolate z-10 flex flex-col">
         <div className="relative flex h-52 items-center justify-center">
-          <div className="absolute h-56 w-56 rounded-full bg-violet-600/30 blur-3xl" />
+          <div className="absolute h-56 w-56 rounded-full bg-brand-violet/30 blur-3xl" />
           <img src={logo} alt="Music Mind Reader" className="relative w-64" />
         </div>
-        <h1 className="-mt-2 text-center text-2xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-transparent">
+        <h1 className="-mt-2 text-center text-2xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink bg-clip-text text-transparent">
           Music Mind Reader
         </h1>
 
         <div className="mx-auto mt-8 flex w-72 flex-col gap-4">
           {roomCodeFromQr && (
-            <p className="text-center text-sm text-slate-400">
-              Scanned game code: <span className="font-semibold text-emerald-300">{roomCodeFromQr}</span>
+            <p className="text-center text-sm text-text-secondary">
+              Scanned game code: <span className="font-semibold text-success">{roomCodeFromQr}</span>
             </p>
           )}
-          <div className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 p-[1.5px]">
+          <div className="rounded-full bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink p-[1.5px]">
             <input
-              className="w-full rounded-full bg-[#0a0a2e] px-5 py-3 text-center text-sm text-slate-100 placeholder:text-slate-500"
+              className="w-full rounded-full bg-surface px-5 py-3 text-center text-sm text-text placeholder:text-text-muted"
               placeholder="Enter your name"
               maxLength={MAX_NAME_LENGTH}
               value={name}
@@ -79,25 +79,25 @@ export function CreateJoin() {
             type="button"
             disabled={!name.trim()}
             onClick={handleCreateGame}
-            className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 px-5 py-3 text-sm font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-full bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink px-5 py-3 text-sm font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
           >
             CREATE GAME
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-slate-700" />
-            <span className="text-xs font-medium text-slate-500">OR</span>
-            <div className="h-px flex-1 bg-slate-700" />
+            <div className="h-px flex-1 bg-divider" />
+            <span className="text-xs font-medium text-text-muted">OR</span>
+            <div className="h-px flex-1 bg-divider" />
           </div>
 
-          <div className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 p-[1.5px] has-[:disabled]:opacity-40">
+          <div className="rounded-full bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink p-[1.5px] has-[:disabled]:opacity-40">
             <button
               type="button"
               disabled={!name.trim()}
               onClick={handleJoinGame}
-              className="w-full rounded-full bg-[#010127] px-5 py-3 disabled:cursor-not-allowed"
+              className="w-full rounded-full bg-bg px-5 py-3 disabled:cursor-not-allowed"
             >
-              <span className="bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-sm font-bold text-transparent">
+              <span className="bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink bg-clip-text text-sm font-bold text-transparent">
                 JOIN GAME
               </span>
             </button>

@@ -50,25 +50,25 @@ export function Lobby() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
-      <h1 className="mb-8 text-center text-3xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
+      <h1 className="mb-8 text-center text-3xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-brand-blue via-brand-violet to-brand-pink bg-clip-text text-transparent">
         Music Mind Reader
       </h1>
 
       <div className="mb-4 flex justify-center gap-4">
-        <div className="grid h-28 w-28 flex-shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-600 bg-slate-800">
+        <div className="grid h-28 w-28 flex-shrink-0 place-items-center overflow-hidden rounded-xl border border-border-strong bg-surface">
           {qrDataUrl ? (
             <img src={qrDataUrl} alt="QR code to join" className="h-full w-full" />
           ) : (
-            <span className="text-xs text-slate-500">QR Code</span>
+            <span className="text-xs text-text-muted">QR Code</span>
           )}
         </div>
-        <div className="flex flex-col justify-center rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
-          <p className="text-xs uppercase tracking-wide text-slate-400">Game Code</p>
-          <p className="text-2xl font-bold tracking-[0.2em] text-emerald-300">{roomCode}</p>
+        <div className="flex flex-col justify-center rounded-xl border border-border bg-surface-muted px-4 py-3">
+          <p className="text-xs uppercase tracking-wide text-text-secondary">Game Code</p>
+          <p className="text-2xl font-bold tracking-[0.2em] text-success">{roomCode}</p>
         </div>
       </div>
 
-      <h2 className="mb-2 flex items-center justify-between text-sm font-semibold uppercase tracking-wide text-slate-400">
+      <h2 className="mb-2 flex items-center justify-between text-sm font-semibold uppercase tracking-wide text-text-secondary">
         <span>
           Players ({players.length}/{seatCount})
         </span>
@@ -79,33 +79,33 @@ export function Lobby() {
           ? ranked.map((player, i) => (
               <li
                 key={player.id}
-                className="flex items-center justify-between gap-2 rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
+                className="flex items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-2 text-text"
               >
                 <span className="flex min-w-0 items-center">
-                  <span className="mr-2 flex-shrink-0 text-slate-500">#{i + 1}</span>
+                  <span className="mr-2 flex-shrink-0 text-text-muted">#{i + 1}</span>
                   <span className="truncate">{player.name}</span>
                 </span>
                 <span className="flex flex-shrink-0 items-center gap-1">
-                  {isPlayerReady(player.id) && <span className="text-xs text-emerald-400">connected</span>}
-                  <span className="font-semibold text-emerald-300">{(player.totalScore ?? 0).toFixed(1)}</span>
+                  {isPlayerReady(player.id) && <span className="text-xs text-success">connected</span>}
+                  <span className="font-semibold text-success">{(player.totalScore ?? 0).toFixed(1)}</span>
                 </span>
               </li>
             ))
           : Array.from({ length: seatCount }, (_, i) => players[i]).map((player, i) => (
               <li
                 key={player?.id ?? `empty-${i}`}
-                className="flex items-center justify-between gap-2 rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
+                className="flex items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-2 text-text"
               >
                 {player ? (
                   <>
                     <span className="min-w-0 truncate">{player.name}</span>
                     {isPlayerReady(player.id) && (
-                      <span className="flex-shrink-0 text-xs text-emerald-400">connected</span>
+                      <span className="flex-shrink-0 text-xs text-success">connected</span>
                     )}
                   </>
                 ) : (
-                  <span className="flex items-center gap-2 text-sm text-violet-400/70">
-                    <span className="animate-pulse">〜</span>
+                  <span className="flex items-center gap-2 text-sm text-brand-violet/70">
+                    <span className="motion-safe:animate-pulse">〜</span>
                     Waiting for player…
                   </span>
                 )}
@@ -115,10 +115,10 @@ export function Lobby() {
           Array.from({ length: Math.max(seatCount - players.length, 0) }, (_, i) => (
             <li
               key={`empty-${i}`}
-              className="flex items-center justify-between rounded-lg bg-slate-800/50 px-3 py-2 text-slate-200"
+              className="flex items-center justify-between rounded-lg bg-surface-muted px-3 py-2 text-text"
             >
-              <span className="flex items-center gap-2 text-sm text-violet-400/70">
-                <span className="animate-pulse">〜</span>
+              <span className="flex items-center gap-2 text-sm text-brand-violet/70">
+                <span className="motion-safe:animate-pulse">〜</span>
                 Waiting for player…
               </span>
             </li>
@@ -130,7 +130,7 @@ export function Lobby() {
           {selectedCategories.map((c) => (
             <span
               key={c.id}
-              className="rounded-full bg-emerald-400/20 px-2.5 py-1 text-xs text-emerald-300"
+              className="rounded-full bg-success/20 px-2.5 py-1 text-xs text-success"
             >
               {c.name}
             </span>
@@ -138,7 +138,7 @@ export function Lobby() {
         </div>
       ) : (
         <div className="mb-8">
-          <h2 className="mb-4 text-xl font-bold text-slate-100">
+          <h2 className="mb-4 text-xl font-bold text-text">
             {isHost ? 'Choose categories for this round' : 'Waiting for the host to choose categories...'}
           </h2>
           {isHost && (
@@ -152,7 +152,7 @@ export function Lobby() {
       )}
 
       {roundStillWrappingUp ? (
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-4 text-center text-slate-300">
+        <div className="rounded-xl border border-border bg-surface-muted px-4 py-4 text-center text-text-secondary">
           Waiting for everyone to head back to the Lobby...
         </div>
       ) : isHost ? (
@@ -160,12 +160,12 @@ export function Lobby() {
           type="button"
           disabled={selectedCategoryIds.length === 0}
           onClick={startSubmitting}
-          className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+          className="w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
         >
           Start Submitting Songs
         </button>
       ) : (
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-4 text-center text-slate-300">
+        <div className="rounded-xl border border-border bg-surface-muted px-4 py-4 text-center text-text-secondary">
           Waiting for the host to start the game...
         </div>
       )}

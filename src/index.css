@@ -1,5 +1,108 @@
 @import "tailwindcss";
 
+/* ===== Theme tokens =====
+   Semantic --mmr-* values, redefined per theme; --color-* aliases inside
+   @theme make Tailwind generate real utilities (bg-surface, text-text,
+   border-border-strong, ...) from them, per Tailwind v4's CSS-first config.
+   Dark values are chosen to match the app's existing look (this was the
+   only theme before this file existed); light values come from
+   docs/light-theme/LIGHT_THEME_SPEC.md. Brand gradient stops (cyan/blue/
+   violet/pink) are separate from the neutral palette Tailwind ships with,
+   so accentColors.ts's per-category rotating hues and other decorative
+   uses of e.g. `violet-400` directly are untouched by theme switching. */
+@theme {
+  --color-bg: var(--mmr-bg);
+  --color-surface: var(--mmr-surface);
+  --color-surface-muted: var(--mmr-surface-muted);
+  --color-surface-tinted: var(--mmr-surface-tinted);
+  --color-text: var(--mmr-text);
+  --color-text-secondary: var(--mmr-text-secondary);
+  --color-text-muted: var(--mmr-text-muted);
+  --color-text-on-accent: var(--mmr-text-on-accent);
+  --color-border: var(--mmr-border);
+  --color-border-strong: var(--mmr-border-strong);
+  --color-divider: var(--mmr-divider);
+  --color-primary: var(--mmr-primary);
+  --color-primary-hover: var(--mmr-primary-hover);
+  --color-success: var(--mmr-success);
+  --color-danger: var(--mmr-danger);
+  --color-disabled-bg: var(--mmr-disabled-bg);
+  --color-disabled-text: var(--mmr-disabled-text);
+  --color-disabled-border: var(--mmr-disabled-border);
+  --color-badge-bg: var(--mmr-badge-bg);
+  --color-badge-text: var(--mmr-badge-text);
+  --color-info-bg: var(--mmr-info-bg);
+  --color-info-border: var(--mmr-info-border);
+  --color-info-text: var(--mmr-info-text);
+  --color-brand-cyan: var(--mmr-brand-cyan);
+  --color-brand-blue: var(--mmr-brand-blue);
+  --color-brand-violet: var(--mmr-brand-violet);
+  --color-brand-pink: var(--mmr-brand-pink);
+}
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --mmr-bg: #010127;
+  --mmr-surface: #1e293b;
+  --mmr-surface-muted: #1e293b;
+  --mmr-surface-tinted: rgba(167, 139, 250, 0.1);
+  --mmr-text: #f1f5f9;
+  --mmr-text-secondary: #cbd5e1;
+  --mmr-text-muted: #94a3b8;
+  --mmr-text-on-accent: #0f172a;
+  --mmr-border: #334155;
+  --mmr-border-strong: #475569;
+  --mmr-divider: #334155;
+  --mmr-primary: #10b981;
+  --mmr-primary-hover: #34d399;
+  --mmr-success: #34d399;
+  --mmr-danger: #fb7185;
+  --mmr-disabled-bg: #334155;
+  --mmr-disabled-text: #64748b;
+  --mmr-disabled-border: #1e293b;
+  --mmr-badge-bg: rgba(232, 121, 249, 0.2);
+  --mmr-badge-text: #f0abfc;
+  --mmr-info-bg: rgba(167, 139, 250, 0.1);
+  --mmr-info-border: rgba(167, 139, 250, 0.3);
+  --mmr-info-text: #c4b5fd;
+  --mmr-brand-cyan: #22d3ee;
+  --mmr-brand-blue: #60a5fa;
+  --mmr-brand-violet: #8b5cf6;
+  --mmr-brand-pink: #ec4899;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --mmr-bg: #f6f6fc;
+  --mmr-surface: #ffffff;
+  --mmr-surface-muted: #f1f3fa;
+  --mmr-surface-tinted: #eef7fc;
+  --mmr-text: #09154a;
+  --mmr-text-secondary: #56638e;
+  --mmr-text-muted: #747fa3;
+  --mmr-text-on-accent: #061238;
+  --mmr-border: #d9def1;
+  --mmr-border-strong: #b8c1df;
+  --mmr-divider: #dde2f2;
+  --mmr-primary: #08c99a;
+  --mmr-primary-hover: #00b98c;
+  --mmr-success: #00ad82;
+  --mmr-danger: #d93668;
+  --mmr-disabled-bg: #e3e7f1;
+  --mmr-disabled-text: #929cb8;
+  --mmr-disabled-border: #d5dae8;
+  --mmr-badge-bg: #f6def2;
+  --mmr-badge-text: #8a1f74;
+  --mmr-info-bg: #eef7fc;
+  --mmr-info-border: #bfe3f5;
+  --mmr-info-text: #1c6f96;
+  --mmr-brand-cyan: #00d9f5;
+  --mmr-brand-blue: #2389ff;
+  --mmr-brand-violet: #8057f5;
+  --mmr-brand-pink: #f83caf;
+}
+
 .sound-wave-field {
   /* Position/inset supplied by the caller (e.g. `fixed inset-x-0 top-16
      h-72`) - kept out of this shared class since where the field is
@@ -15,7 +118,7 @@
   width: var(--wave-size, 130px);
   height: var(--wave-size, 130px);
   border-radius: 50%;
-  border: 1px solid var(--wave-color-a, rgba(124, 108, 240, 0.55));
+  border: 1px solid var(--wave-color-a, color-mix(in srgb, var(--mmr-brand-violet) 55%, transparent));
   opacity: 0;
   /* forwards, not infinite - a burst of three rings, replayed periodically
      from React (remounting the field restarts a fresh CSS animation),
@@ -25,15 +128,15 @@
 
 .sound-wave-ring--a {
   animation-delay: 0ms;
-  border-color: var(--wave-color-a, rgba(124, 108, 240, 0.55));
+  border-color: var(--wave-color-a, color-mix(in srgb, var(--mmr-brand-violet) 55%, transparent));
 }
 .sound-wave-ring--b {
   animation-delay: 800ms;
-  border-color: var(--wave-color-b, rgba(79, 215, 208, 0.5));
+  border-color: var(--wave-color-b, color-mix(in srgb, var(--mmr-brand-cyan) 50%, transparent));
 }
 .sound-wave-ring--c {
   animation-delay: 1600ms;
-  border-color: var(--wave-color-c, rgba(240, 108, 168, 0.45));
+  border-color: var(--wave-color-c, color-mix(in srgb, var(--mmr-brand-pink) 45%, transparent));
 }
 
 @keyframes sound-wave-out {

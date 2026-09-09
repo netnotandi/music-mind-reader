@@ -166,8 +166,8 @@ export function JoinGame() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-20">
-      <p className="mb-6 text-center text-sm text-slate-400">
-        Joining as <span className="font-semibold text-slate-100">{name}</span>
+      <p className="mb-6 text-center text-sm text-text-secondary">
+        Joining as <span className="font-semibold text-text">{name}</span>
       </p>
 
       <div className="mb-6 flex justify-center gap-3">
@@ -177,7 +177,7 @@ export function JoinGame() {
             ref={(el) => {
               inputRefs.current[i] = el
             }}
-            className="h-16 w-14 rounded-xl border border-slate-600 bg-slate-800 text-center text-2xl font-bold uppercase text-slate-100 focus:border-emerald-400 focus:outline-none"
+            className="h-16 w-14 rounded-xl border border-border-strong bg-surface text-center text-2xl font-bold uppercase text-text focus:border-primary focus:outline-none"
             maxLength={1}
             value={digit}
             onChange={(e) => setDigit(i, e.target.value)}
@@ -186,12 +186,12 @@ export function JoinGame() {
         ))}
       </div>
 
-      {error && <p className="mb-4 text-center text-sm text-rose-400">{error}</p>}
+      {error && <p className="mb-4 text-center text-sm text-danger">{error}</p>}
 
       <button
         type="button"
         onClick={() => setScanning(true)}
-        className="mb-3 rounded-xl border border-slate-600 bg-slate-800/50 px-5 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-500"
+        className="mb-3 rounded-xl border border-border-strong bg-surface px-5 py-3 text-sm font-semibold text-text-secondary transition hover:border-border-strong"
       >
         Scan QR Code
       </button>
@@ -200,7 +200,7 @@ export function JoinGame() {
         type="button"
         disabled={joining}
         onClick={handleSubmit}
-        className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+        className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
       >
         {joining ? 'Joining…' : 'Join Game'}
       </button>

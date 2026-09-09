@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { accentColorFor } from '../logic/accentColors'
 import { MAX_SELECTED_CATEGORIES } from '../state/gameStore'
+import { useThemeStore } from '../state/themeStore'
 import type { Category } from '../types'
 
 interface CategoryPickerProps {
@@ -16,6 +17,11 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
   // and resets naturally to page 0 each time the picker (re)mounts (e.g. the
   // next round's fresh category choice).
   const [page, setPage] = useState(0)
+  // Dark keeps its existing per-category rotating accent color on selection
+  // (accentColorFor) unchanged; light uses the design package's unified
+  // selected treatment (one brand color + tint) regardless of category, per
+  // the light mockup - a deliberate divergence, not an oversight.
+  const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const totalPages = Math.max(Math.ceil(categories.length / PAGE_SIZE), 1)
   const pageCategories = categories.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
 
@@ -30,7 +36,7 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
 
   return (
     <div>
-      <p className="mb-4 text-sm text-slate-400">
+      <p className="mb-4 text-sm text-text-secondary">
         {MAX_SELECTED_CATEGORIES === 1
           ? 'Pick a category'
           : `Pick up to ${MAX_SELECTED_CATEGORIES} categories (${selectedCategoryIds.length}/${MAX_SELECTED_CATEGORIES} selected)`}
@@ -51,14 +57,16 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
               onClick={() => onToggle(c.id)}
               className={`relative rounded-xl border-2 px-3 py-3 text-center text-sm font-medium leading-snug transition ${
                 selected
-                  ? `${accent.border} ${accent.bg} ${accent.text}`
+                  ? isLight
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : `${accent.border} ${accent.bg} ${accent.text}`
                   : disabled
-                    ? 'cursor-not-allowed border-slate-800 text-slate-600'
-                    : 'border-slate-700 text-slate-300 hover:border-slate-500'
+                    ? 'cursor-not-allowed border-disabled-border text-disabled-text'
+                    : 'border-border text-text-secondary hover:border-border-strong'
               }`}
             >
               {selected && (
-                <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-900">
+                <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet text-text-on-accent">
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -85,7 +93,7 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
             disabled={page === 0}
             onClick={() => goToPage(page - 1)}
             aria-label="Previous categories"
-            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-slate-600 text-slate-300 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-30"
+            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-border-strong text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30"
           >
             <svg
               viewBox="0 0 24 24"
@@ -101,7 +109,7 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
           </button>
 
           <div className="flex flex-col items-center gap-2">
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-text-secondary">
               {page + 1} / {totalPages}
             </span>
             <div className="flex gap-1.5">
@@ -111,7 +119,7 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
                   type="button"
                   onClick={() => goToPage(i)}
                   aria-label={`Go to page ${i + 1}`}
-                  className={`h-1.5 w-1.5 rounded-full transition ${i === page ? 'bg-cyan-400' : 'bg-slate-600'}`}
+                  className={`h-1.5 w-1.5 rounded-full transition ${i === page ? 'bg-brand-cyan' : 'bg-border-strong'}`}
                 />
               ))}
             </div>
@@ -122,7 +130,7 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
             disabled={page === totalPages - 1}
             onClick={() => goToPage(page + 1)}
             aria-label="Next categories"
-            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-slate-600 text-slate-300 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-30"
+            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-border-strong text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30"
           >
             <svg
               viewBox="0 0 24 24"

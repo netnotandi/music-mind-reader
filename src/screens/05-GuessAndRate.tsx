@@ -51,12 +51,12 @@ function AnswerForm({
       </div>
 
       {isOwnSong ? (
-        <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-4 text-center text-slate-300">
+        <div className="mb-6 rounded-xl border border-border bg-surface-muted px-4 py-4 text-center text-text-secondary">
           This is your own song — you don't guess or rate it.
         </div>
       ) : (
         <>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary">
             Whose song is it?
           </h2>
           <div className="mb-6 flex flex-wrap gap-2">
@@ -69,22 +69,22 @@ function AnswerForm({
                   onClick={() => setGuessedPlayerId(p.id)}
                   className={`rounded-full border px-3 py-1.5 text-sm transition ${
                     guessedPlayerId === p.id
-                      ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
-                      : 'border-slate-600 text-slate-300 hover:border-slate-400'
+                      ? 'border-success bg-success/20 text-success'
+                      : 'border-border-strong text-text-secondary hover:border-border-strong'
                   }`}
                 >
                   <span className="inline-block max-w-[9rem] truncate align-bottom">{p.name}</span>
-                  {assignedTo && <span className="ml-1 text-xs text-slate-500">· {assignedTo}</span>}
+                  {assignedTo && <span className="ml-1 text-xs text-text-muted">· {assignedTo}</span>}
                 </button>
               )
             })}
           </div>
 
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary">
             Rating (0-10)
           </h2>
           {!ratingAvailable && (
-            <p className="mb-2 text-xs text-slate-500">
+            <p className="mb-2 text-xs text-text-muted">
               You've already used every rating on other songs in this category - this one won't get a
               score from you.
             </p>
@@ -100,10 +100,10 @@ function AnswerForm({
                   onClick={() => setRating(value)}
                   className={`h-10 w-10 rounded-full border text-sm font-semibold transition ${
                     rating === value
-                      ? 'border-fuchsia-400 bg-fuchsia-400/20 text-fuchsia-300'
+                      ? 'border-badge-text bg-badge-bg text-badge-text'
                       : disabled
-                        ? 'border-slate-800 text-slate-600'
-                        : 'border-slate-600 text-slate-300 hover:border-slate-400'
+                        ? 'border-disabled-border text-disabled-text'
+                        : 'border-border-strong text-text-secondary hover:border-border-strong'
                   }`}
                 >
                   {value}
@@ -118,7 +118,7 @@ function AnswerForm({
             onClick={() =>
               guessedPlayerId !== null && (!ratingAvailable || rating !== null) && onSubmit(guessedPlayerId, rating)
             }
-            className="mb-6 w-full rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+            className="mb-6 w-full rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {initialAnswer ? 'Update Answer' : 'Submit'}
           </button>
@@ -176,7 +176,7 @@ export function GuessAndRate() {
 
   if (!song || !localPlayerId) {
     return (
-      <div className="mx-auto max-w-md px-6 py-8 text-slate-300">
+      <div className="mx-auto max-w-md px-6 py-8 text-text-secondary">
         No song playing — go back to the Lobby.
       </div>
     )
@@ -285,7 +285,7 @@ export function GuessAndRate() {
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
       {isHost && currentSong?.youtubeVideoId && (
-        <div className="mb-6 overflow-hidden rounded-xl border border-slate-700">
+        <div className="mb-6 overflow-hidden rounded-xl border border-border">
           <iframe
             key={currentSong.id}
             className="aspect-video w-full"
@@ -301,14 +301,14 @@ export function GuessAndRate() {
         <button
           type="button"
           onClick={() => setViewIndex(currentSongIndex)}
-          className="mb-6 w-full rounded-lg border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-center text-sm text-violet-300 transition hover:border-violet-400"
+          className="mb-6 w-full rounded-lg border border-info-border bg-info-bg px-4 py-2 text-center text-sm text-info-text transition hover:border-info-border"
         >
           Reviewing an earlier song — tap to jump back to the current one
         </button>
       )}
 
       {isFirstOfCategory && viewIndex > 0 && (
-        <div className="mb-6 rounded-lg border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-center text-sm text-violet-300">
+        <div className="mb-6 rounded-lg border border-info-border bg-info-bg px-4 py-2 text-center text-sm text-info-text">
           Next up: {categoryName}
         </div>
       )}
@@ -331,7 +331,7 @@ export function GuessAndRate() {
           otherwise it would visibly fail to move while the owner holds the
           device (they can never answer their own song), which is itself a
           tell for who owns it. */}
-      <p className="mb-4 text-center text-sm text-slate-400">
+      <p className="mb-4 text-center text-sm text-text-secondary">
         {answeredCount + 1}/{players.length} have answered
       </p>
 
@@ -339,7 +339,7 @@ export function GuessAndRate() {
         <button
           type="button"
           onClick={handleDevAutofillRest}
-          className="mb-4 w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:border-slate-400"
+          className="mb-4 w-full rounded-lg border border-border-strong px-4 py-2 text-sm text-text-secondary hover:border-border-strong"
         >
           Answer for everyone else on this song (dev only, to test the flow)
         </button>
@@ -350,7 +350,7 @@ export function GuessAndRate() {
           <button
             type="button"
             onClick={goPrev}
-            className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400"
+            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover"
           >
             ← Previous Song
           </button>
@@ -360,7 +360,7 @@ export function GuessAndRate() {
             type="button"
             disabled={!allAnswered || hasConfirmed}
             onClick={confirmFinalAnswers}
-            className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {hasConfirmed ? '✓ Confirmed — waiting for others' : 'Confirm final answers'}
           </button>
@@ -369,7 +369,7 @@ export function GuessAndRate() {
             type="button"
             disabled={!allAnswered || !isHost}
             onClick={goNext}
-            className="flex-1 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {allAnswered && !isHost
               ? `Waiting for ${hostPlayer?.name ?? 'the host'} to continue`
@@ -383,10 +383,10 @@ export function GuessAndRate() {
           confirmed they're done, tracked live here so it's clear who
           everyone's still waiting on. */}
       {showConfirmFlow && allAnswered && (
-        <div className="mt-6 overflow-x-auto rounded-lg border border-slate-700">
+        <div className="mt-6 overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-700 text-slate-400">
+              <tr className="border-b border-border text-text-secondary">
                 <th className="px-3 py-2 text-left font-medium">Player</th>
                 <th className="px-3 py-2 text-center font-medium">Confirmed answers</th>
               </tr>
@@ -395,22 +395,22 @@ export function GuessAndRate() {
               {players.map((p) => (
                 <tr
                   key={p.id}
-                  className={`border-b border-slate-800 last:border-0 ${
-                    p.id === localPlayerId ? 'bg-emerald-400/10' : ''
+                  className={`border-b border-border last:border-0 ${
+                    p.id === localPlayerId ? 'bg-success/10' : ''
                   }`}
                 >
                   <td
                     className={`max-w-[8rem] truncate px-3 py-2 ${
-                      p.id === localPlayerId ? 'font-semibold text-emerald-300' : 'text-slate-200'
+                      p.id === localPlayerId ? 'font-semibold text-success' : 'text-text'
                     }`}
                   >
                     {p.name}
                   </td>
                   <td className="px-3 py-2 text-center">
                     {confirmedPlayerIds.includes(p.id) ? (
-                      <span className="text-emerald-400">✓</span>
+                      <span className="text-success">✓</span>
                     ) : (
-                      <span className="text-slate-600">·</span>
+                      <span className="text-text-muted">·</span>
                     )}
                   </td>
                 </tr>
@@ -425,7 +425,7 @@ export function GuessAndRate() {
           type="button"
           disabled={!isHost}
           onClick={finishRound}
-          className="mt-4 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+          className="mt-4 w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
         >
           {isHost ? 'See Results →' : `Waiting for ${hostPlayer?.name ?? 'the host'} to see results`}
         </button>

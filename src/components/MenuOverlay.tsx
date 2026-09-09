@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { type ReactElement, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../state/gameStore'
+import { type ThemeMode, useThemeStore } from '../state/themeStore'
 
 const RULES_SECTIONS: { title: string; body: string }[] = [
   {
@@ -15,18 +16,71 @@ const RULES_SECTIONS: { title: string; body: string }[] = [
   },
 ]
 
-// Purely a visual placeholder for now - the app only has a dark theme, so
-// this doesn't switch anything yet. Shown as a disabled toggle (moon side
-// "on") rather than a working control, so it doesn't look broken.
-function ThemeToggleIcon() {
+function SunIcon() {
   return (
-    <span className="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full bg-slate-600">
-      <span className="ml-auto mr-0.5 grid h-5 w-5 place-items-center rounded-full bg-slate-200 text-slate-800">
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3">
-          <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 1020.354 15.354z" />
-        </svg>
-      </span>
-    </span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+    </svg>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+      <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 1020.354 15.354z" />
+    </svg>
+  )
+}
+
+function MonitorIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+    >
+      <rect x="3" y="4" width="18" height="12" rx="2" />
+      <path d="M8 20h8M12 16v4" />
+    </svg>
+  )
+}
+
+const THEME_OPTIONS: { mode: ThemeMode; label: string; icon: () => ReactElement }[] = [
+  { mode: 'light', label: 'Light', icon: SunIcon },
+  { mode: 'dark', label: 'Dark', icon: MoonIcon },
+  { mode: 'system', label: 'System', icon: MonitorIcon },
+]
+
+function ThemeModeControl() {
+  const mode = useThemeStore((s) => s.mode)
+  const setMode = useThemeStore((s) => s.setMode)
+
+  return (
+    <div className="flex w-full gap-1 rounded-xl border border-border bg-surface p-1" role="group" aria-label="Theme">
+      {THEME_OPTIONS.map(({ mode: optionMode, label, icon: Icon }) => {
+        const active = mode === optionMode
+        return (
+          <button
+            key={optionMode}
+            type="button"
+            onClick={() => setMode(optionMode)}
+            aria-pressed={active}
+            title={label}
+            className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-2 text-[10px] font-medium transition ${
+              active ? 'bg-primary text-text-on-accent' : 'text-text-secondary hover:text-text'
+            }`}
+          >
+            <Icon />
+            {label}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -51,7 +105,7 @@ export function MenuOverlay() {
         type="button"
         onClick={() => setIsOpen(true)}
         aria-label="Menu"
-        className="fixed left-4 top-4 z-40 grid h-10 w-10 place-items-center rounded-lg border border-slate-700 bg-slate-800/80 text-xl text-slate-200 backdrop-blur transition hover:border-slate-500"
+        className="fixed left-4 top-4 z-40 grid h-10 w-10 place-items-center rounded-lg border border-border bg-surface/80 text-xl text-text backdrop-blur transition hover:border-border-strong"
       >
         ☰
       </button>
@@ -62,12 +116,12 @@ export function MenuOverlay() {
               only fits once there's room for a real sidebar alongside
               readable paragraph text (confirmed by testing at 390px wide,
               where the two-column version overflowed off both edges). */}
-          <div className="relative flex max-h-full w-full max-w-2xl flex-col gap-6 overflow-y-auto rounded-2xl border border-slate-700 bg-[#0a0a2e] p-6 sm:flex-row sm:gap-8">
+          <div className="relative flex max-h-full w-full max-w-2xl flex-col gap-6 overflow-y-auto rounded-2xl border border-border bg-bg p-6 sm:flex-row sm:gap-8">
             <button
               type="button"
               onClick={close}
               aria-label="Close"
-              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg text-xl text-slate-400 transition hover:text-slate-100"
+              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg text-xl text-text-muted transition hover:text-text"
             >
               ✕
             </button>
@@ -76,28 +130,20 @@ export function MenuOverlay() {
               <button
                 type="button"
                 onClick={goHome}
-                className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-left font-medium text-slate-100 transition hover:border-slate-500"
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-left font-medium text-text transition hover:border-border-strong"
               >
                 Home
               </button>
-              <button
-                type="button"
-                disabled
-                title="Coming soon"
-                className="flex w-full cursor-not-allowed items-center justify-between rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-left font-medium text-slate-100 opacity-60"
-              >
-                Light/Dark
-                <ThemeToggleIcon />
-              </button>
+              <ThemeModeControl />
             </div>
 
             <div className="min-w-0 flex-1 space-y-5 pt-1">
               {RULES_SECTIONS.map((section) => (
                 <div key={section.title}>
-                  <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-emerald-300">
+                  <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-success">
                     {section.title}
                   </h3>
-                  <p className="text-sm text-slate-300">{section.body}</p>
+                  <p className="text-sm text-text-secondary">{section.body}</p>
                 </div>
               ))}
             </div>

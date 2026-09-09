@@ -51,9 +51,9 @@ export function Results() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
-      <h1 className="mb-6 text-center text-2xl font-bold text-slate-100">Results</h1>
+      <h1 className="mb-6 text-center text-2xl font-bold text-text">Results</h1>
 
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Scoreboard</h2>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">Scoreboard</h2>
       <div className="mb-8">
         <ScoreBoard
           players={players}
@@ -68,7 +68,7 @@ export function Results() {
         type="button"
         disabled={hasReturnedToLobby}
         onClick={handleGoToLobby}
-        className="mb-3 w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+        className="mb-3 w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
       >
         {hasReturnedToLobby ? '✓ Heading to Lobby — waiting for others' : 'Go to Lobby'}
       </button>
@@ -76,7 +76,7 @@ export function Results() {
       <button
         type="button"
         onClick={handleLeave}
-        className="w-full rounded-xl border border-slate-600 px-5 py-3 font-semibold text-slate-100 transition hover:border-slate-400"
+        className="w-full rounded-xl border border-border-strong px-5 py-3 font-semibold text-text transition hover:border-border-strong"
       >
         Leave Game
       </button>

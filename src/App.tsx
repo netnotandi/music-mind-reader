@@ -100,7 +100,7 @@ function App() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#010127] text-slate-100">
+    <div className="min-h-screen bg-bg text-text">
       <HashRouter>
         <MenuOverlay />
         {checkedSession && <AppRoutes />}

@@ -71,43 +71,43 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
 
   return (
     <>
-      <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
-        <p className="text-xs uppercase tracking-wide text-slate-400">Category</p>
-        <p className="text-lg font-semibold text-emerald-300">{category.name}</p>
+      <div className="mb-6 rounded-xl border border-border bg-surface-muted px-4 py-3">
+        <p className="text-xs uppercase tracking-wide text-text-secondary">Category</p>
+        <p className="text-lg font-semibold text-success">{category.name}</p>
       </div>
 
       {stage === 'confirmed' ? (
         <div className="mb-6 flex flex-col gap-3">
-          <div className="flex items-center gap-3 rounded-lg border border-emerald-500/40 bg-slate-800 p-3">
+          <div className="flex items-center gap-3 rounded-lg border border-success/40 bg-surface p-3">
             {result ? (
               <img src={result.thumbnailUrl} alt="" className="h-14 w-14 flex-shrink-0 rounded object-cover" />
             ) : (
-              <div className="grid h-14 w-14 flex-shrink-0 place-items-center rounded bg-slate-700 text-emerald-400">
+              <div className="grid h-14 w-14 flex-shrink-0 place-items-center rounded bg-surface-muted text-success">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-6 w-6">
                   <path d="M5 13l4 4L19 7" />
                 </svg>
               </div>
             )}
-            <p className="flex-1 text-sm text-slate-100">{result ? result.title : `${title} — ${artist}`}</p>
+            <p className="flex-1 text-sm text-text">{result ? result.title : `${title} — ${artist}`}</p>
           </div>
           <button
             type="button"
             onClick={chooseNewSong}
-            className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400"
+            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-accent hover:bg-primary-hover"
           >
             Choose new song
           </button>
         </div>
       ) : stage === 'preview' && result ? (
         <div className="mb-6 flex flex-col gap-3">
-          <div className="flex items-center gap-3 rounded-lg border border-slate-600 bg-slate-800 p-3">
+          <div className="flex items-center gap-3 rounded-lg border border-border-strong bg-surface p-3">
             <img src={result.thumbnailUrl} alt="" className="h-14 w-14 flex-shrink-0 rounded object-cover" />
-            <p className="flex-1 text-sm text-slate-100">{result.title}</p>
+            <p className="flex-1 text-sm text-text">{result.title}</p>
             <button
               type="button"
               onClick={() => finish(result.videoId)}
               aria-label="Add this video"
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500 text-slate-900 transition hover:bg-emerald-400"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-text-on-accent transition hover:bg-primary-hover"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-5 w-5">
                 <path d="M12 5v14M5 12h14" />
@@ -117,20 +117,20 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           <button
             type="button"
             onClick={() => setStage('manual-link')}
-            className="text-sm text-slate-400 hover:text-slate-200"
+            className="text-sm text-text-secondary hover:text-text"
           >
             Not the right video? Paste a link instead
           </button>
         </div>
       ) : stage === 'manual-link' ? (
         <form className="mb-6 flex flex-col gap-3" onSubmit={handleManualLinkSubmit}>
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-text-secondary">
             {result
               ? 'Paste a direct YouTube link instead.'
               : `Couldn't find a YouTube video for "${title}" by ${artist}. Paste a direct YouTube link instead.`}
           </p>
           <input
-            className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
+            className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-text-muted"
             placeholder="https://youtube.com/watch?v=..."
             value={manualLink}
             onChange={(e) => {
@@ -138,17 +138,17 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
               setLinkError(null)
             }}
           />
-          {linkError && <p className="text-sm text-rose-400">{linkError}</p>}
+          {linkError && <p className="text-sm text-danger">{linkError}</p>}
           <button
             type="submit"
-            className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400"
+            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-accent hover:bg-primary-hover"
           >
             {existingSong ? 'Edit Song' : 'Submit Song'}
           </button>
           <button
             type="button"
             onClick={() => setStage('form')}
-            className="text-sm text-slate-400 hover:text-slate-200"
+            className="text-sm text-text-secondary hover:text-text"
           >
             ← Back to title/artist
           </button>
@@ -156,13 +156,13 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
       ) : (
         <form className="mb-6 flex flex-col gap-3" onSubmit={handleSearch}>
           <input
-            className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
+            className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-text-muted"
             placeholder="Song title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
           <input
-            className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-500"
+            className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-text-muted"
             placeholder="Artist"
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
@@ -170,7 +170,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           <button
             type="submit"
             disabled={stage === 'searching'}
-            className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-accent hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {stage === 'searching' ? 'Searching YouTube...' : existingSong ? 'Find New Video' : 'Find Song'}
           </button>
@@ -189,10 +189,10 @@ interface ProgressTableProps {
 
 function ProgressTable({ players, selectedCategories, localPlayerId, hasSong }: ProgressTableProps) {
   return (
-    <div className="mb-6 overflow-x-auto rounded-lg border border-slate-700">
+    <div className="mb-6 overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-700 text-slate-400">
+          <tr className="border-b border-border text-text-secondary">
             <th className="px-3 py-2 text-left font-medium">Player</th>
             {selectedCategories.map((c) => (
               <th key={c.id} className="px-2 py-2 text-center font-medium">
@@ -205,13 +205,13 @@ function ProgressTable({ players, selectedCategories, localPlayerId, hasSong }: 
           {players.map((p) => (
             <tr
               key={p.id}
-              className={`border-b border-slate-800 last:border-0 ${
-                p.id === localPlayerId ? 'bg-emerald-400/10' : ''
+              className={`border-b border-border last:border-0 ${
+                p.id === localPlayerId ? 'bg-success/10' : ''
               }`}
             >
               <td
                 className={`max-w-[8rem] truncate px-3 py-2 ${
-                  p.id === localPlayerId ? 'font-semibold text-emerald-300' : 'text-slate-200'
+                  p.id === localPlayerId ? 'font-semibold text-success' : 'text-text'
                 }`}
               >
                 {p.name}
@@ -219,9 +219,9 @@ function ProgressTable({ players, selectedCategories, localPlayerId, hasSong }: 
               {selectedCategories.map((c) => (
                 <td key={c.id} className="px-2 py-2 text-center">
                   {hasSong(p.id, c.id) ? (
-                    <span className="text-emerald-400">✓</span>
+                    <span className="text-success">✓</span>
                   ) : (
-                    <span className="text-slate-600">·</span>
+                    <span className="text-text-muted">·</span>
                   )}
                 </td>
               ))}
@@ -249,7 +249,7 @@ export function SubmitSong() {
 
   if (!localPlayerId) {
     return (
-      <div className="mx-auto max-w-md px-6 py-8 text-slate-300">
+      <div className="mx-auto max-w-md px-6 py-8 text-text-secondary">
         Not connected to a game — go back to the start.
       </div>
     )
@@ -269,7 +269,7 @@ export function SubmitSong() {
 
   if (selectedCategories.length === 0 || !categoryToShow) {
     return (
-      <div className="mx-auto max-w-md px-6 py-8 text-slate-300">
+      <div className="mx-auto max-w-md px-6 py-8 text-text-secondary">
         No category selected yet — go back to the Lobby.
       </div>
     )
@@ -307,7 +307,7 @@ export function SubmitSong() {
         <button
           type="button"
           onClick={handleDevAutofill}
-          className="mb-4 w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:border-slate-400"
+          className="mb-4 w-full rounded-lg border border-border-strong px-4 py-2 text-sm text-text-secondary hover:border-border-strong"
         >
           Fill in mock songs for everyone else (dev only, to test the flow)
         </button>
@@ -317,7 +317,7 @@ export function SubmitSong() {
         type="button"
         disabled={!allSubmitted}
         onClick={shuffleSongOrder}
-        className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+        className="w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
       >
         Start Guessing
       </button>
