@@ -134,10 +134,10 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           </div>
           <button
             type="button"
-            onClick={() => setStage('manual-link')}
+            onClick={chooseNewSong}
             className="text-sm text-text-secondary hover:text-text"
           >
-            Not the right video? Paste a link instead
+            Not the right video? Find another song
           </button>
         </div>
       ) : stage === 'manual-link' ? (
