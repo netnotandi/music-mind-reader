@@ -5,18 +5,12 @@
       // Applies the right theme before first paint, so there's no flash of
       // the wrong theme while React/themeStore.ts spins up. Kept in sync
       // with themeStore.ts's own resolution logic - localStorage key and
-      // fallback-to-system behavior must match exactly.
+      // default-to-dark fallback must match exactly.
       (function () {
         try {
           var stored = localStorage.getItem('mmr_theme_mode');
-          var mode = stored === 'light' || stored === 'dark' ? stored : 'system';
-          var resolved =
-            mode === 'system'
-              ? window.matchMedia('(prefers-color-scheme: dark)').matches
-                ? 'dark'
-                : 'light'
-              : mode;
-          document.documentElement.setAttribute('data-theme', resolved);
+          var mode = stored === 'light' || stored === 'dark' ? stored : 'dark';
+          document.documentElement.setAttribute('data-theme', mode);
         } catch (e) {}
       })();
     </script>

@@ -33,27 +33,9 @@ function MoonIcon() {
   )
 }
 
-function MonitorIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-4 w-4"
-    >
-      <rect x="3" y="4" width="18" height="12" rx="2" />
-      <path d="M8 20h8M12 16v4" />
-    </svg>
-  )
-}
-
 const THEME_OPTIONS: { mode: ThemeMode; label: string; icon: () => ReactElement }[] = [
   { mode: 'light', label: 'Light', icon: SunIcon },
   { mode: 'dark', label: 'Dark', icon: MoonIcon },
-  { mode: 'system', label: 'System', icon: MonitorIcon },
 ]
 
 function ThemeModeControl() {
