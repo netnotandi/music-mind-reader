@@ -36,26 +36,22 @@ export function CreateJoin() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col overflow-hidden px-6 pt-16">
-      {/* position:absolute (not fixed) so this is a normal descendant of
-          the `relative` box right below it, making "behind the content"
-          a plain, well-defined local containment relationship rather than
-          a position:fixed-vs-ancestor-stacking-context comparison - that
-          version worked in Chromium and Firefox but WebKit/Safari doesn't
-          consistently scope a fixed descendant's stacking to a local
-          `relative z-*` ancestor the way it's supposed to, so the rings
-          rendered in front of the buttons there specifically (confirmed by
-          testing all three engines head to head). Trade-off: the rings no
-          longer reach past this column's width on a wide desktop browser
-          window like they briefly did - acceptable, since real users only
-          ever see this on a phone, where the column already is the
-          screen. */}
-      <div className="relative z-10 flex flex-col">
-        <div className="sound-wave-field absolute inset-x-0 top-0 -z-10 h-52" key={waveKey}>
-          <div className="sound-wave-ring sound-wave-ring--a" />
-          <div className="sound-wave-ring sound-wave-ring--b" />
-          <div className="sound-wave-ring sound-wave-ring--c" />
-        </div>
+      {/* Fixed (not absolute) so the rings reach the real browser viewport
+          edges, not just this page's own max-w-md column - matters on a
+          wide desktop window. `isolate` (isolation: isolate) on the content
+          wrapper below is what makes this reliable: plain `relative z-10`
+          alone left WebKit/Safari inconsistent about whether a position:
+          fixed sibling elsewhere in the document painted above or below a
+          local z-indexed stacking context, confirmed by testing Chromium/
+          Firefox/WebKit head to head - isolate exists specifically to
+          remove that kind of cross-engine ambiguity. */}
+      <div className="sound-wave-field fixed inset-x-0 top-16 h-52" key={waveKey}>
+        <div className="sound-wave-ring sound-wave-ring--a" />
+        <div className="sound-wave-ring sound-wave-ring--b" />
+        <div className="sound-wave-ring sound-wave-ring--c" />
+      </div>
 
+      <div className="relative isolate z-10 flex flex-col">
         <div className="relative flex h-52 items-center justify-center">
           <div className="absolute h-56 w-56 rounded-full bg-violet-600/30 blur-3xl" />
           <img src={logo} alt="Music Mind Reader" className="relative w-64" />
