@@ -5,6 +5,13 @@ import { MOCK_SONG_POOL } from '../state/mockData'
 import { useThemeStore } from '../state/themeStore'
 import type { Category } from '../types'
 
+// Title and artist are both optional individually (only one is required to
+// search), so anywhere they're shown back to the player has to degrade
+// gracefully instead of assuming both are present.
+function describeSong(title: string, artist: string) {
+  return [title, artist].filter(Boolean).join(' — ')
+}
+
 interface SongFormProps {
   category: Category
   existingSong: { title: string; artist: string } | undefined
@@ -37,9 +44,9 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim() || !artist.trim()) return
+    if (!title.trim() && !artist.trim()) return
     setStage('searching')
-    const found = await searchYouTubeVideo(`${title.trim()} ${artist.trim()}`)
+    const found = await searchYouTubeVideo([title.trim(), artist.trim()].filter(Boolean).join(' '))
     if (found) {
       setResult(found)
       setStage('preview')
@@ -99,7 +106,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
                 </svg>
               </div>
             )}
-            <p className="flex-1 text-sm text-text">{result ? result.title : `${title} — ${artist}`}</p>
+            <p className="flex-1 text-sm text-text">{result ? result.title : describeSong(title, artist)}</p>
           </div>
           <button
             type="button"
@@ -138,7 +145,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           <p className="text-sm text-text-secondary">
             {result
               ? 'Paste a direct YouTube link instead.'
-              : `Couldn't find a YouTube video for "${title}" by ${artist}. Paste a direct YouTube link instead.`}
+              : `Couldn't find a YouTube video for "${describeSong(title, artist)}". Paste a direct YouTube link instead.`}
           </p>
           <input
             className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-text-muted"
@@ -166,6 +173,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
         </form>
       ) : (
         <form className="mb-6 flex flex-col gap-3" onSubmit={handleSearch}>
+          <p className="text-xs text-text-muted">Enter the title, the artist, or both.</p>
           <input
             className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-text-muted"
             placeholder="Song title"
@@ -180,7 +188,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           />
           <button
             type="submit"
-            disabled={stage === 'searching'}
+            disabled={stage === 'searching' || (!title.trim() && !artist.trim())}
             className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-primary hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {stage === 'searching' ? 'Searching YouTube...' : existingSong ? 'Find New Video' : 'Find Song'}
