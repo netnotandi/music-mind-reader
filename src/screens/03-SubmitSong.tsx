@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { extractYouTubeVideoId, searchYouTubeVideo, type YouTubeSearchResult } from '../logic/youtube'
+import { extractYouTubeVideoId, searchYouTubeVideos, type YouTubeSearchResult } from '../logic/youtube'
 import { useGameStore } from '../state/gameStore'
 import { MOCK_SONG_POOL } from '../state/mockData'
 import { useThemeStore } from '../state/themeStore'
@@ -30,15 +30,20 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const [title, setTitle] = useState(existingSong?.title ?? '')
   const [artist, setArtist] = useState(existingSong?.artist ?? '')
-  // 'form' -> 'searching' -> 'preview' (a match was found - player still has
-  // to confirm it with the + button, never submitted silently) or
-  // 'manual-link' (nothing found, or the player rejected the preview) ->
-  // 'confirmed' (submitted - shows what was picked instead of snapping back
-  // to a blank/prefilled form, with a way to redo the search if wanted).
+  // 'form' -> 'searching' -> 'preview' (up to a few candidate matches -
+  // player still has to confirm one with its + button, never submitted
+  // silently) or 'manual-link' (nothing found, or the player rejected every
+  // candidate) -> 'confirmed' (submitted - shows what was picked instead of
+  // snapping back to a blank/prefilled form, with a way to redo the search
+  // if wanted).
   const [stage, setStage] = useState<'form' | 'searching' | 'preview' | 'manual-link' | 'confirmed'>(
     existingSong ? 'confirmed' : 'form'
   )
-  const [result, setResult] = useState<YouTubeSearchResult | null>(null)
+  const [results, setResults] = useState<YouTubeSearchResult[]>([])
+  // Separate from `results` (the candidate list) - this is specifically
+  // what the player actually picked, so the confirmed view keeps showing
+  // it even after `results` is cleared by a later search.
+  const [confirmedResult, setConfirmedResult] = useState<YouTubeSearchResult | null>(null)
   const [manualLink, setManualLink] = useState('')
   const [linkError, setLinkError] = useState<string | null>(null)
 
@@ -46,31 +51,36 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
     e.preventDefault()
     if (!title.trim() && !artist.trim()) return
     setStage('searching')
-    const found = await searchYouTubeVideo([title.trim(), artist.trim()].filter(Boolean).join(' '))
-    if (found) {
-      setResult(found)
+    // A query built from just a title or just an artist is inherently
+    // ambiguous, so a short list of candidates (rather than a single "best"
+    // match) matters most here - the player picks the right one themselves.
+    const found = await searchYouTubeVideos([title.trim(), artist.trim()].filter(Boolean).join(' '))
+    if (found.length > 0) {
+      setResults(found)
       setStage('preview')
     } else {
       setStage('manual-link')
     }
   }
 
-  function finish(youtubeVideoId: string) {
+  function finish(youtubeVideoId: string, picked: YouTubeSearchResult | null) {
     onSubmit(title.trim(), artist.trim(), youtubeVideoId)
     // Doesn't remount (same category, key unchanged) when this is the only
     // selected category left to edit - handled by hand so a successful
     // submit doesn't leave an earlier stage showing as if it were still
-    // stuck. Keeps `result` (if there is one) so the confirmed view below
-    // can still show what was actually picked, rather than reverting to a
-    // blank/prefilled form with no visible confirmation.
+    // stuck. Keeps the picked result (if there is one) so the confirmed
+    // view below can still show what was actually picked, rather than
+    // reverting to a blank/prefilled form with no visible confirmation.
+    setConfirmedResult(picked)
     setStage('confirmed')
+    setResults([])
     setManualLink('')
     setLinkError(null)
   }
 
   function chooseNewSong() {
     setStage('form')
-    setResult(null)
+    setResults([])
   }
 
   function handleManualLinkSubmit(e: React.FormEvent) {
@@ -80,7 +90,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
       setLinkError("That doesn't look like a valid YouTube link.")
       return
     }
-    finish(videoId)
+    finish(videoId, null)
   }
 
   return (
@@ -97,8 +107,8 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
               isLight ? 'border-cyan' : 'border-success/40'
             }`}
           >
-            {result ? (
-              <img src={result.thumbnailUrl} alt="" className="h-14 w-14 flex-shrink-0 rounded object-cover" />
+            {confirmedResult ? (
+              <img src={confirmedResult.thumbnailUrl} alt="" className="h-14 w-14 flex-shrink-0 rounded object-cover" />
             ) : (
               <div className="grid h-14 w-14 flex-shrink-0 place-items-center rounded bg-surface-muted text-success">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-6 w-6">
@@ -106,7 +116,9 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
                 </svg>
               </div>
             )}
-            <p className="flex-1 text-sm text-text">{result ? result.title : describeSong(title, artist)}</p>
+            <p className="flex-1 text-sm text-text">
+              {confirmedResult ? confirmedResult.title : describeSong(title, artist)}
+            </p>
           </div>
           <button
             type="button"
@@ -116,36 +128,39 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
             Choose new song
           </button>
         </div>
-      ) : stage === 'preview' && result ? (
+      ) : stage === 'preview' && results.length > 0 ? (
         <div className="mb-6 flex flex-col gap-3">
-          <div className="flex items-center gap-3 rounded-lg border border-border-strong bg-surface p-3">
-            <img src={result.thumbnailUrl} alt="" className="h-14 w-14 flex-shrink-0 rounded object-cover" />
-            <p className="flex-1 text-sm text-text">{result.title}</p>
-            <button
-              type="button"
-              onClick={() => finish(result.videoId)}
-              aria-label="Add this video"
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-primary bg-primary text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
+          {results.map((candidate) => (
+            <div
+              key={candidate.videoId}
+              className="flex items-center gap-3 rounded-lg border border-border-strong bg-surface p-3"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-5 w-5">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
-          </div>
+              <img src={candidate.thumbnailUrl} alt="" className="h-14 w-14 flex-shrink-0 rounded object-cover" />
+              <p className="flex-1 text-sm text-text">{candidate.title}</p>
+              <button
+                type="button"
+                onClick={() => finish(candidate.videoId, candidate)}
+                aria-label="Add this video"
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-primary bg-primary text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-5 w-5">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+            </div>
+          ))}
           <button
             type="button"
             onClick={chooseNewSong}
             className="text-sm text-text-secondary hover:text-text"
           >
-            Not the right video? Find another song
+            None of these? Find another song
           </button>
         </div>
       ) : stage === 'manual-link' ? (
         <form className="mb-6 flex flex-col gap-3" onSubmit={handleManualLinkSubmit}>
           <p className="text-sm text-text-secondary">
-            {result
-              ? 'Paste a direct YouTube link instead.'
-              : `Couldn't find a YouTube video for "${describeSong(title, artist)}". Paste a direct YouTube link instead.`}
+            {`Couldn't find a YouTube video for "${describeSong(title, artist)}". Paste a direct YouTube link instead.`}
           </p>
           <input
             className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"

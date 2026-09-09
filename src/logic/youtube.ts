@@ -6,34 +6,42 @@ export interface YouTubeSearchResult {
   thumbnailUrl: string
 }
 
-// Best-effort match only - the player still has to confirm it (or fall back
-// to a direct link via extractYouTubeVideoId) rather than it being submitted
-// silently. Returns null rather than throwing on any failure (missing key,
-// network error, no results) so a broken search never blocks a submission -
-// it just means the manual fallback is what's needed.
-export async function searchYouTubeVideo(query: string): Promise<YouTubeSearchResult | null> {
-  if (!API_KEY) return null
+const MAX_SEARCH_RESULTS = 3
+
+// Best-effort matches only - the player still has to confirm one (or fall
+// back to a direct link via extractYouTubeVideoId) rather than anything
+// being submitted silently. A short list rather than a single top match
+// matters most for an ambiguous query (just a title, or just an artist),
+// where the single "best" hit is often not the one they meant. Returns an
+// empty array rather than throwing on any failure (missing key, network
+// error, no results) so a broken search never blocks a submission - it
+// just means the manual fallback is what's needed.
+export async function searchYouTubeVideos(query: string): Promise<YouTubeSearchResult[]> {
+  if (!API_KEY) return []
   const url = new URL('https://www.googleapis.com/youtube/v3/search')
   url.searchParams.set('part', 'snippet')
   url.searchParams.set('type', 'video')
-  url.searchParams.set('maxResults', '1')
+  url.searchParams.set('maxResults', String(MAX_SEARCH_RESULTS))
   url.searchParams.set('q', query)
   url.searchParams.set('key', API_KEY)
 
   try {
     const res = await fetch(url.toString())
-    if (!res.ok) return null
+    if (!res.ok) return []
     const data = await res.json()
-    const item = data.items?.[0]
-    const videoId = item?.id?.videoId
-    const title = item?.snippet?.title
-    const thumbnailUrl = item?.snippet?.thumbnails?.default?.url
-    if (typeof videoId !== 'string' || typeof title !== 'string' || typeof thumbnailUrl !== 'string') {
-      return null
+    const items = Array.isArray(data.items) ? data.items : []
+    const results: YouTubeSearchResult[] = []
+    for (const item of items) {
+      const videoId = item?.id?.videoId
+      const title = item?.snippet?.title
+      const thumbnailUrl = item?.snippet?.thumbnails?.default?.url
+      if (typeof videoId === 'string' && typeof title === 'string' && typeof thumbnailUrl === 'string') {
+        results.push({ videoId, title, thumbnailUrl })
+      }
     }
-    return { videoId, title, thumbnailUrl }
+    return results
   } catch {
-    return null
+    return []
   }
 }
 
