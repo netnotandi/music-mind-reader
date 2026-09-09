@@ -41,62 +41,70 @@ export function CreateJoin() {
           column - on a wide desktop window the rings now reach the actual
           screen edges instead of stopping at the app's own content width.
           top-16/h-52 lines up this band with the logo box below, which stays
-          centered the normal (non-fixed) way. */}
+          centered the normal (non-fixed) way. A negative z-index here would
+          go too far back - the app's own background is an ordinary (non-
+          positioned) div, which still paints above negative-z-index content
+          regardless of DOM order, so the rings would end up invisible
+          behind it. Instead this stays at its default stacking level, and
+          the actual content below is wrapped with `relative z-10` so IT
+          paints above the rings instead. */}
       <div className="sound-wave-field fixed inset-x-0 top-16 h-52" key={waveKey}>
         <div className="sound-wave-ring sound-wave-ring--a" />
         <div className="sound-wave-ring sound-wave-ring--b" />
         <div className="sound-wave-ring sound-wave-ring--c" />
       </div>
 
-      <div className="relative flex h-52 items-center justify-center">
-        <div className="absolute h-56 w-56 rounded-full bg-violet-600/30 blur-3xl" />
-        <img src={logo} alt="Music Mind Reader" className="relative w-64" />
-      </div>
-      <h1 className="-mt-2 text-center text-2xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-transparent">
-        Music Mind Reader
-      </h1>
-
-      <div className="mx-auto mt-8 flex w-72 flex-col gap-4">
-        {roomCodeFromQr && (
-          <p className="text-center text-sm text-slate-400">
-            Scanned game code: <span className="font-semibold text-emerald-300">{roomCodeFromQr}</span>
-          </p>
-        )}
-        <div className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 p-[1.5px]">
-          <input
-            className="w-full rounded-full bg-[#0a0a2e] px-5 py-3 text-center text-sm text-slate-100 placeholder:text-slate-500"
-            placeholder="Enter your name"
-            maxLength={MAX_NAME_LENGTH}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+      <div className="relative z-10 flex flex-col">
+        <div className="relative flex h-52 items-center justify-center">
+          <div className="absolute h-56 w-56 rounded-full bg-violet-600/30 blur-3xl" />
+          <img src={logo} alt="Music Mind Reader" className="relative w-64" />
         </div>
-        <button
-          type="button"
-          disabled={!name.trim()}
-          onClick={handleCreateGame}
-          className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 px-5 py-3 text-sm font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          CREATE GAME
-        </button>
+        <h1 className="-mt-2 text-center text-2xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-transparent">
+          Music Mind Reader
+        </h1>
 
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-slate-700" />
-          <span className="text-xs font-medium text-slate-500">OR</span>
-          <div className="h-px flex-1 bg-slate-700" />
-        </div>
-
-        <div className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 p-[1.5px] has-[:disabled]:opacity-40">
+        <div className="mx-auto mt-8 flex w-72 flex-col gap-4">
+          {roomCodeFromQr && (
+            <p className="text-center text-sm text-slate-400">
+              Scanned game code: <span className="font-semibold text-emerald-300">{roomCodeFromQr}</span>
+            </p>
+          )}
+          <div className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 p-[1.5px]">
+            <input
+              className="w-full rounded-full bg-[#0a0a2e] px-5 py-3 text-center text-sm text-slate-100 placeholder:text-slate-500"
+              placeholder="Enter your name"
+              maxLength={MAX_NAME_LENGTH}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
           <button
             type="button"
             disabled={!name.trim()}
-            onClick={handleJoinGame}
-            className="w-full rounded-full bg-[#010127] px-5 py-3 disabled:cursor-not-allowed"
+            onClick={handleCreateGame}
+            className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 px-5 py-3 text-sm font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <span className="bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-sm font-bold text-transparent">
-              JOIN GAME
-            </span>
+            CREATE GAME
           </button>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-slate-700" />
+            <span className="text-xs font-medium text-slate-500">OR</span>
+            <div className="h-px flex-1 bg-slate-700" />
+          </div>
+
+          <div className="rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 p-[1.5px] has-[:disabled]:opacity-40">
+            <button
+              type="button"
+              disabled={!name.trim()}
+              onClick={handleJoinGame}
+              className="w-full rounded-full bg-[#010127] px-5 py-3 disabled:cursor-not-allowed"
+            >
+              <span className="bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-sm font-bold text-transparent">
+                JOIN GAME
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
