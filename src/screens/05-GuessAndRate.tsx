@@ -118,7 +118,7 @@ function AnswerForm({
             onClick={() =>
               guessedPlayerId !== null && (!ratingAvailable || rating !== null) && onSubmit(guessedPlayerId, rating)
             }
-            className="mb-6 w-full rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+            className="mb-6 w-full rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {initialAnswer ? 'Update Answer' : 'Submit'}
           </button>
@@ -350,7 +350,7 @@ export function GuessAndRate() {
           <button
             type="button"
             onClick={goPrev}
-            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover"
+            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover"
           >
             ← Previous Song
           </button>
@@ -360,7 +360,7 @@ export function GuessAndRate() {
             type="button"
             disabled={!allAnswered || hasConfirmed}
             onClick={confirmFinalAnswers}
-            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {hasConfirmed ? '✓ Confirmed — waiting for others' : 'Confirm final answers'}
           </button>
@@ -369,7 +369,7 @@ export function GuessAndRate() {
             type="button"
             disabled={!allAnswered || !isHost}
             onClick={goNext}
-            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {allAnswered && !isHost
               ? `Waiting for ${hostPlayer?.name ?? 'the host'} to continue`
@@ -425,7 +425,7 @@ export function GuessAndRate() {
           type="button"
           disabled={!isHost}
           onClick={finishRound}
-          className="mt-4 w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+          className="mt-4 w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
         >
           {isHost ? 'See Results →' : `Waiting for ${hostPlayer?.name ?? 'the host'} to see results`}
         </button>

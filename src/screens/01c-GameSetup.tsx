@@ -72,7 +72,7 @@ export function GameSetup() {
         type="button"
         disabled={!canConfirm || creating}
         onClick={handleNext}
-        className="mt-8 w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+        className="mt-8 w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
       >
         {creating ? 'Creating game…' : 'NEXT'}
       </button>

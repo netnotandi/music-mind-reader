@@ -200,7 +200,7 @@ export function JoinGame() {
         type="button"
         disabled={joining}
         onClick={handleSubmit}
-        className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+        className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
       >
         {joining ? 'Joining…' : 'Join Game'}
       </button>

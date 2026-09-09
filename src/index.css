@@ -19,6 +19,7 @@
   --color-text-secondary: var(--mmr-text-secondary);
   --color-text-muted: var(--mmr-text-muted);
   --color-text-on-accent: var(--mmr-text-on-accent);
+  --color-text-on-primary: var(--mmr-text-on-primary);
   --color-border: var(--mmr-border);
   --color-border-strong: var(--mmr-border-strong);
   --color-divider: var(--mmr-divider);
@@ -51,6 +52,7 @@
   --mmr-text-secondary: #cbd5e1;
   --mmr-text-muted: #94a3b8;
   --mmr-text-on-accent: #0f172a;
+  --mmr-text-on-primary: #0f172a;
   --mmr-border: #334155;
   --mmr-border-strong: #475569;
   --mmr-divider: #334155;
@@ -89,8 +91,14 @@
   --mmr-border: #d9def1;
   --mmr-border-strong: #b8c1df;
   --mmr-divider: #dde2f2;
-  --mmr-primary: #08c99a;
-  --mmr-primary-hover: #00b98c;
+  /* Indigo instead of the spec's original teal - green is reserved
+     exclusively for confirmation/connected/success signals in light, so
+     action buttons need their own identity that doesn't compete with that
+     meaning. White text (vs. dark's navy) because this indigo is dark
+     enough on its own that navy text would lose too much contrast. */
+  --mmr-primary: #6352e8;
+  --mmr-primary-hover: #5543d6;
+  --mmr-text-on-primary: #ffffff;
   --mmr-success: #00ad82;
   --mmr-danger: #d93668;
   --mmr-disabled-bg: #e3e7f1;

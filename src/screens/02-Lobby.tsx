@@ -2,8 +2,13 @@ import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
 import { CategoryPicker } from '../components/CategoryPicker'
 import { toggleCategorySelection, useGameStore } from '../state/gameStore'
+import { useThemeStore } from '../state/themeStore'
 
 export function Lobby() {
+  // Light-only: the chosen category is its own "assigned identity" (primary/
+  // violet), not a success/confirmation signal - dark keeps its original
+  // green pill unchanged, matching the same distinction made in SubmitSong.
+  const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const roomCode = useGameStore((s) => s.roomCode)
   const maxPlayers = useGameStore((s) => s.maxPlayers)
   const players = useGameStore((s) => s.players)
@@ -130,7 +135,9 @@ export function Lobby() {
           {selectedCategories.map((c) => (
             <span
               key={c.id}
-              className="rounded-full bg-success/20 px-2.5 py-1 text-xs text-success"
+              className={`rounded-full px-2.5 py-1 text-xs ${
+                isLight ? 'bg-primary/15 text-primary' : 'bg-success/20 text-success'
+              }`}
             >
               {c.name}
             </span>
@@ -160,7 +167,7 @@ export function Lobby() {
           type="button"
           disabled={selectedCategoryIds.length === 0}
           onClick={startSubmitting}
-          className="w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+          className="w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
         >
           Start Submitting Songs
         </button>

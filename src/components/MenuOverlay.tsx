@@ -54,7 +54,7 @@ function ThemeModeControl() {
             aria-pressed={active}
             title={label}
             className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-2 text-[10px] font-medium transition ${
-              active ? 'bg-primary text-text-on-accent' : 'text-text-secondary hover:text-text'
+              active ? 'bg-primary text-text-on-primary' : 'text-text-secondary hover:text-text'
             }`}
           >
             <Icon />

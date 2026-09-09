@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { extractYouTubeVideoId, searchYouTubeVideo, type YouTubeSearchResult } from '../logic/youtube'
 import { useGameStore } from '../state/gameStore'
 import { MOCK_SONG_POOL } from '../state/mockData'
+import { useThemeStore } from '../state/themeStore'
 import type { Category } from '../types'
 
 interface SongFormProps {
@@ -14,6 +15,12 @@ interface SongFormProps {
 // resets/refills title+artist, plus the search/link flow below, from
 // existingSong) whenever the category being filled in changes.
 function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
+  // Light-only: the category name reads as the "current assigned identity"
+  // (primary/violet) rather than a success/confirmation signal, and the
+  // confirmed-song card reads as "the selected item" (the same info/cyan
+  // border used for the reviewing-an-earlier-song banner elsewhere) rather
+  // than a completed/success state - dark keeps its original green look.
+  const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const [title, setTitle] = useState(existingSong?.title ?? '')
   const [artist, setArtist] = useState(existingSong?.artist ?? '')
   // 'form' -> 'searching' -> 'preview' (a match was found - player still has
@@ -73,12 +80,16 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
     <>
       <div className="mb-6 rounded-xl border border-border bg-surface-muted px-4 py-3">
         <p className="text-xs uppercase tracking-wide text-text-secondary">Category</p>
-        <p className="text-lg font-semibold text-success">{category.name}</p>
+        <p className={`text-lg font-semibold ${isLight ? 'text-primary' : 'text-success'}`}>{category.name}</p>
       </div>
 
       {stage === 'confirmed' ? (
         <div className="mb-6 flex flex-col gap-3">
-          <div className="flex items-center gap-3 rounded-lg border border-success/40 bg-surface p-3">
+          <div
+            className={`flex items-center gap-3 rounded-lg border bg-surface p-3 ${
+              isLight ? 'border-info-border' : 'border-success/40'
+            }`}
+          >
             {result ? (
               <img src={result.thumbnailUrl} alt="" className="h-14 w-14 flex-shrink-0 rounded object-cover" />
             ) : (
@@ -93,7 +104,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           <button
             type="button"
             onClick={chooseNewSong}
-            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-accent hover:bg-primary-hover"
+            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-primary hover:bg-primary-hover"
           >
             Choose new song
           </button>
@@ -107,7 +118,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
               type="button"
               onClick={() => finish(result.videoId)}
               aria-label="Add this video"
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-text-on-accent transition hover:bg-primary-hover"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-text-on-primary transition hover:bg-primary-hover"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-5 w-5">
                 <path d="M12 5v14M5 12h14" />
@@ -141,7 +152,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           {linkError && <p className="text-sm text-danger">{linkError}</p>}
           <button
             type="submit"
-            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-accent hover:bg-primary-hover"
+            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-primary hover:bg-primary-hover"
           >
             {existingSong ? 'Edit Song' : 'Submit Song'}
           </button>
@@ -170,7 +181,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           <button
             type="submit"
             disabled={stage === 'searching'}
-            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-accent hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-primary hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {stage === 'searching' ? 'Searching YouTube...' : existingSong ? 'Find New Video' : 'Find Song'}
           </button>
@@ -317,7 +328,7 @@ export function SubmitSong() {
         type="button"
         disabled={!allSubmitted}
         onClick={shuffleSongOrder}
-        className="w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-accent transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+        className="w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
       >
         Start Guessing
       </button>
