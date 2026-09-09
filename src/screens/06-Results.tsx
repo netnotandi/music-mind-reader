@@ -3,8 +3,12 @@ import { useShallow } from 'zustand/react/shallow'
 import { ScoreBoard } from '../components/ScoreBoard'
 import { averageRating, computeFinalScores, computeScoreBreakdown, computeTitles } from '../logic/scoring'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
+import { useThemeStore } from '../state/themeStore'
 
 export function Results() {
+  // Light-only: "Leave Game" reads as a violet-outlined secondary action
+  // instead of a plain navy-bordered one - dark keeps its current look.
+  const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const navigate = useNavigate()
   const players = useGameStore((s) => s.players)
   const songs = useGameStore(useShallow(getCurrentRoundSongs))
@@ -68,7 +72,7 @@ export function Results() {
         type="button"
         disabled={hasReturnedToLobby}
         onClick={handleGoToLobby}
-        className="mb-3 w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+        className="mb-3 w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
       >
         {hasReturnedToLobby ? '✓ Heading to Lobby — waiting for others' : 'Go to Lobby'}
       </button>
@@ -76,7 +80,11 @@ export function Results() {
       <button
         type="button"
         onClick={handleLeave}
-        className="w-full rounded-xl border border-border-strong px-5 py-3 font-semibold text-text transition hover:border-border-strong"
+        className={
+          isLight
+            ? 'w-full rounded-xl border-[1.5px] border-primary bg-surface px-5 py-3 font-semibold text-primary transition'
+            : 'w-full rounded-xl border border-border-strong px-5 py-3 font-semibold text-text transition hover:border-border-strong'
+        }
       >
         Leave Game
       </button>

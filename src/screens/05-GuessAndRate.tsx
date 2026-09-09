@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { SongCard } from '../components/SongCard'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
+import { useThemeStore } from '../state/themeStore'
 import type { Player, Song } from '../types'
 
 const RATING_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -36,6 +37,10 @@ function AnswerForm({
   initialAnswer,
   onSubmit,
 }: AnswerFormProps) {
+  // Light-only: an ordinary in-progress selection reads as pale-violet
+  // ("Selected items" pattern), not the green reserved for confirmed/
+  // connected/correct signals - dark keeps its original green-selected chip.
+  const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const [guessedPlayerId, setGuessedPlayerId] = useState(initialAnswer?.guessedPlayerId ?? null)
   const [rating, setRating] = useState(initialAnswer?.rating ?? null)
 
@@ -69,7 +74,9 @@ function AnswerForm({
                   onClick={() => setGuessedPlayerId(p.id)}
                   className={`rounded-full border px-3 py-1.5 text-sm transition ${
                     guessedPlayerId === p.id
-                      ? 'border-success bg-success/20 text-success'
+                      ? isLight
+                        ? 'border-primary bg-primary-soft text-primary'
+                        : 'border-success bg-success/20 text-success'
                       : 'border-border-strong text-text-secondary hover:border-border-strong'
                   }`}
                 >
@@ -100,7 +107,7 @@ function AnswerForm({
                   onClick={() => setRating(value)}
                   className={`h-10 w-10 rounded-full border text-sm font-semibold transition ${
                     rating === value
-                      ? 'border-badge-text bg-badge-bg text-badge-text'
+                      ? 'border-rating bg-rating-soft text-rating'
                       : disabled
                         ? 'border-disabled-border text-disabled-text'
                         : 'border-border-strong text-text-secondary hover:border-border-strong'
@@ -118,7 +125,7 @@ function AnswerForm({
             onClick={() =>
               guessedPlayerId !== null && (!ratingAvailable || rating !== null) && onSubmit(guessedPlayerId, rating)
             }
-            className="mb-6 w-full rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+            className="mb-6 w-full rounded-lg border border-primary bg-primary px-4 py-2 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {initialAnswer ? 'Update Answer' : 'Submit'}
           </button>
@@ -350,7 +357,7 @@ export function GuessAndRate() {
           <button
             type="button"
             onClick={goPrev}
-            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover"
+            className="flex-1 rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
           >
             ← Previous Song
           </button>
@@ -360,7 +367,7 @@ export function GuessAndRate() {
             type="button"
             disabled={!allAnswered || hasConfirmed}
             onClick={confirmFinalAnswers}
-            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+            className="flex-1 rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {hasConfirmed ? '✓ Confirmed — waiting for others' : 'Confirm final answers'}
           </button>
@@ -369,7 +376,7 @@ export function GuessAndRate() {
             type="button"
             disabled={!allAnswered || !isHost}
             onClick={goNext}
-            className="flex-1 rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+            className="flex-1 rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {allAnswered && !isHost
               ? `Waiting for ${hostPlayer?.name ?? 'the host'} to continue`
@@ -425,7 +432,7 @@ export function GuessAndRate() {
           type="button"
           disabled={!isHost}
           onClick={finishRound}
-          className="mt-4 w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+          className="mt-4 w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
         >
           {isHost ? 'See Results →' : `Waiting for ${hostPlayer?.name ?? 'the host'} to see results`}
         </button>

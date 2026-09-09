@@ -65,7 +65,7 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
               }`}
             >
               {selected && (
-                <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet text-text-on-accent">
+                <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-gradient-to-r from-cyan to-violet text-text-on-accent">
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -118,7 +118,7 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
                   type="button"
                   onClick={() => goToPage(i)}
                   aria-label={`Go to page ${i + 1}`}
-                  className={`h-1.5 w-1.5 rounded-full transition ${i === page ? 'bg-brand-cyan' : 'bg-border-strong'}`}
+                  className={`h-1.5 w-1.5 rounded-full transition ${i === page ? 'bg-cyan' : 'bg-border-strong'}`}
                 />
               ))}
             </div>

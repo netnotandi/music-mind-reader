@@ -15,9 +15,11 @@
   --color-surface: var(--mmr-surface);
   --color-surface-muted: var(--mmr-surface-muted);
   --color-surface-tinted: var(--mmr-surface-tinted);
+  --color-surface-info: var(--mmr-surface-info);
   --color-text: var(--mmr-text);
   --color-text-secondary: var(--mmr-text-secondary);
   --color-text-muted: var(--mmr-text-muted);
+  --color-placeholder: var(--mmr-placeholder);
   --color-text-on-accent: var(--mmr-text-on-accent);
   --color-text-on-primary: var(--mmr-text-on-primary);
   --color-border: var(--mmr-border);
@@ -25,8 +27,13 @@
   --color-divider: var(--mmr-divider);
   --color-primary: var(--mmr-primary);
   --color-primary-hover: var(--mmr-primary-hover);
+  --color-primary-active: var(--mmr-primary-active);
+  --color-primary-soft: var(--mmr-primary-soft);
   --color-success: var(--mmr-success);
+  --color-success-soft: var(--mmr-success-soft);
   --color-danger: var(--mmr-danger);
+  --color-rating: var(--mmr-rating);
+  --color-rating-soft: var(--mmr-rating-soft);
   --color-disabled-bg: var(--mmr-disabled-bg);
   --color-disabled-text: var(--mmr-disabled-text);
   --color-disabled-border: var(--mmr-disabled-border);
@@ -35,10 +42,10 @@
   --color-info-bg: var(--mmr-info-bg);
   --color-info-border: var(--mmr-info-border);
   --color-info-text: var(--mmr-info-text);
-  --color-brand-cyan: var(--mmr-brand-cyan);
-  --color-brand-blue: var(--mmr-brand-blue);
-  --color-brand-violet: var(--mmr-brand-violet);
-  --color-brand-pink: var(--mmr-brand-pink);
+  --color-cyan: var(--mmr-brand-cyan);
+  --color-blue: var(--mmr-brand-blue);
+  --color-violet: var(--mmr-brand-violet);
+  --color-pink: var(--mmr-brand-pink);
 }
 
 :root,
@@ -48,9 +55,11 @@
   --mmr-surface: #1e293b;
   --mmr-surface-muted: #1e293b;
   --mmr-surface-tinted: rgba(167, 139, 250, 0.1);
+  --mmr-surface-info: rgba(167, 139, 250, 0.1);
   --mmr-text: #f1f5f9;
   --mmr-text-secondary: #cbd5e1;
   --mmr-text-muted: #94a3b8;
+  --mmr-placeholder: #94a3b8;
   --mmr-text-on-accent: #0f172a;
   --mmr-text-on-primary: #0f172a;
   --mmr-border: #334155;
@@ -58,8 +67,19 @@
   --mmr-divider: #334155;
   --mmr-primary: #10b981;
   --mmr-primary-hover: #34d399;
+  /* Dark has never had a pressed/active state (only hover) - aliasing this
+     to the same value as hover means the new `active:` class added
+     everywhere is visually inert here, not a new interaction dark never had. */
+  --mmr-primary-active: #34d399;
+  --mmr-primary-soft: color-mix(in srgb, #10b981 15%, transparent);
   --mmr-success: #34d399;
+  --mmr-success-soft: color-mix(in srgb, #34d399 15%, transparent);
   --mmr-danger: #fb7185;
+  /* Dark's rating buttons keep reading from the fuchsia values that used to
+     live directly under badge-bg/badge-text, just renamed - badge-bg/text
+     themselves are untouched and still used by the Scoreboard title pills. */
+  --mmr-rating: #f0abfc;
+  --mmr-rating-soft: rgba(232, 121, 249, 0.2);
   --mmr-disabled-bg: #334155;
   --mmr-disabled-text: #64748b;
   --mmr-disabled-border: #1e293b;
@@ -75,22 +95,25 @@
   /* Dark already reads as layered via contrast against a near-black page -
      no extra shadow needed, unlike light below. */
   --mmr-shadow-card: none;
+  --mmr-shadow-control: none;
   --mmr-focus-ring: none;
 }
 
 [data-theme="light"] {
   color-scheme: light;
-  --mmr-bg: #f6f6fc;
+  --mmr-bg: #f3f4f8;
   --mmr-surface: #ffffff;
-  --mmr-surface-muted: #f1f3fa;
+  --mmr-surface-muted: #eef1f7;
   --mmr-surface-tinted: #eef7fc;
-  --mmr-text: #09154a;
-  --mmr-text-secondary: #56638e;
-  --mmr-text-muted: #747fa3;
+  --mmr-surface-info: #e9f6fc;
+  --mmr-text: #101a46;
+  --mmr-text-secondary: #66708f;
+  --mmr-text-muted: #7c86a2;
+  --mmr-placeholder: #66708f;
   --mmr-text-on-accent: #061238;
-  --mmr-border: #d9def1;
-  --mmr-border-strong: #b8c1df;
-  --mmr-divider: #dde2f2;
+  --mmr-border: #d5dae8;
+  --mmr-border-strong: #aeb7d0;
+  --mmr-divider: #cdd3e2;
   /* Indigo instead of the spec's original teal - green is reserved
      exclusively for confirmation/connected/success signals in light, so
      action buttons need their own identity that doesn't compete with that
@@ -98,26 +121,31 @@
      enough on its own that navy text would lose too much contrast. */
   --mmr-primary: #6352e8;
   --mmr-primary-hover: #5543d6;
+  --mmr-primary-active: #4938c2;
+  --mmr-primary-soft: #eeebff;
   --mmr-text-on-primary: #ffffff;
-  --mmr-success: #00ad82;
-  --mmr-danger: #d93668;
-  --mmr-disabled-bg: #e3e7f1;
-  --mmr-disabled-text: #929cb8;
-  --mmr-disabled-border: #d5dae8;
+  --mmr-success: #00a67d;
+  --mmr-success-soft: #e2f6f0;
+  --mmr-danger: #c93f63;
+  --mmr-rating: #d93e9d;
+  --mmr-rating-soft: #fbe7f5;
+  --mmr-disabled-bg: #dfe3ec;
+  --mmr-disabled-text: #8992aa;
+  --mmr-disabled-border: #d3d8e5;
   --mmr-badge-bg: #f6def2;
   --mmr-badge-text: #8a1f74;
-  --mmr-info-bg: #eef7fc;
+  --mmr-info-bg: #e9f6fc;
   --mmr-info-border: #bfe3f5;
   --mmr-info-text: #1c6f96;
-  --mmr-brand-cyan: #00d9f5;
-  --mmr-brand-blue: #2389ff;
-  --mmr-brand-violet: #8057f5;
-  --mmr-brand-pink: #f83caf;
+  --mmr-brand-cyan: #00cfe8;
+  --mmr-brand-blue: #2585f4;
+  --mmr-brand-violet: #7a4fe9;
+  --mmr-brand-pink: #f43eac;
   /* White-on-near-white has almost no contrast on its own - these are what
-     actually make a card read as "lifted" off the pale lavender canvas,
-     per LIGHT_THEME_SPEC.md section 3/4. */
-  --mmr-shadow-card: 0 6px 18px rgba(34, 45, 100, 0.08);
-  --mmr-focus-ring: 0 0 0 3px rgba(0, 169, 220, 0.25);
+     actually make a card read as "lifted" off the pale lavender canvas. */
+  --mmr-shadow-card: 0 6px 18px rgba(25, 36, 85, 0.08);
+  --mmr-shadow-control: 0 3px 10px rgba(25, 36, 85, 0.08);
+  --mmr-focus-ring: 0 0 0 3px rgba(0, 170, 215, 0.22);
 }
 
 /* Applied globally rather than per-component: every card/panel in the app
@@ -129,9 +157,24 @@
   box-shadow: var(--mmr-shadow-card);
 }
 
+/* Inputs/selects use the same bg-surface class as cards but need the
+   smaller "control" shadow instead - this wins over the rule above via
+   selector specificity (tag + class beats class alone) without needing a
+   separate class in every input's JSX. */
+[data-theme="light"] input.bg-surface,
+[data-theme="light"] select.bg-surface {
+  box-shadow: var(--mmr-shadow-control);
+}
+
+/* Centralized focus treatment for every input/select in the app, in light
+   only - this overrides even the one input that still hardcodes
+   `focus:border-primary` (that class is left as-is for dark, where this
+   selector never matches), so no per-component focus classes are needed. */
 [data-theme="light"] input:focus,
 [data-theme="light"] select:focus {
+  border-color: var(--mmr-brand-cyan);
   box-shadow: var(--mmr-focus-ring);
+  outline: none;
 }
 
 .sound-wave-field {

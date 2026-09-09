@@ -55,7 +55,11 @@ export function Lobby() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
-      <h1 className="mb-8 text-center text-3xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-brand-blue via-brand-violet to-brand-pink bg-clip-text text-transparent">
+      <h1
+        className={`mb-8 text-center text-3xl font-extrabold uppercase tracking-wide ${
+          isLight ? 'text-text' : 'bg-gradient-to-r from-blue via-violet to-pink bg-clip-text text-transparent'
+        }`}
+      >
         Music Mind Reader
       </h1>
 
@@ -109,7 +113,7 @@ export function Lobby() {
                     )}
                   </>
                 ) : (
-                  <span className="flex items-center gap-2 text-sm text-brand-violet/70">
+                  <span className="flex items-center gap-2 text-sm text-violet/70">
                     <span className="motion-safe:animate-pulse">〜</span>
                     Waiting for player…
                   </span>
@@ -122,7 +126,7 @@ export function Lobby() {
               key={`empty-${i}`}
               className="flex items-center justify-between rounded-lg bg-surface-muted px-3 py-2 text-text"
             >
-              <span className="flex items-center gap-2 text-sm text-brand-violet/70">
+              <span className="flex items-center gap-2 text-sm text-violet/70">
                 <span className="motion-safe:animate-pulse">〜</span>
                 Waiting for player…
               </span>
@@ -167,7 +171,7 @@ export function Lobby() {
           type="button"
           disabled={selectedCategoryIds.length === 0}
           onClick={startSubmitting}
-          className="w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+          className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
         >
           Start Submitting Songs
         </button>

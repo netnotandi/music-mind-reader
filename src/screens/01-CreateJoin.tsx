@@ -9,11 +9,10 @@ const WAVE_REPLAY_INTERVAL_MS = 15000
 export function CreateJoin() {
   const navigate = useNavigate()
   const location = useLocation()
-  // The brand gradient's light-theme stops are bright/saturated across their
-  // whole range (unlike dark's more muted stops), so white text loses too
-  // much contrast over the cyan segment - swap to navy in light instead of
-  // tokenizing this as a flat semantic color, since it has to stay readable
-  // against every stop of a multi-hue gradient, not just one accent.
+  // Light keeps the brand gradient only for the logo/wordmark treatment
+  // dark already had - ordinary interactive elements (inputs, buttons) get
+  // the same solid violet/white-card look every other screen uses, per the
+  // "gradient is rare brand emphasis only" rule. Dark is untouched below.
   const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const [name, setName] = useState('')
   // The CSS animation runs once (forwards, not infinite) - remounting the
@@ -60,10 +59,16 @@ export function CreateJoin() {
 
       <div className="relative isolate z-10 flex flex-col">
         <div className="relative flex h-52 items-center justify-center">
-          <div className="absolute h-56 w-56 rounded-full bg-brand-violet/30 blur-3xl" />
+          {!isLight && <div className="absolute h-56 w-56 rounded-full bg-violet/30 blur-3xl" />}
           <img src={logo} alt="Music Mind Reader" className="relative w-64" />
         </div>
-        <h1 className="-mt-2 text-center text-2xl font-extrabold uppercase tracking-wide bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink bg-clip-text text-transparent">
+        <h1
+          className={`-mt-2 text-center text-2xl font-extrabold uppercase tracking-wide ${
+            isLight
+              ? 'text-text'
+              : 'bg-gradient-to-r from-cyan via-violet to-pink bg-clip-text text-transparent'
+          }`}
+        >
           Music Mind Reader
         </h1>
 
@@ -73,20 +78,34 @@ export function CreateJoin() {
               Scanned game code: <span className="font-semibold text-success">{roomCodeFromQr}</span>
             </p>
           )}
-          <div className="rounded-full bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink p-[1.5px]">
+          {isLight ? (
             <input
-              className="w-full rounded-full bg-surface px-5 py-3 text-center text-sm text-text placeholder:text-text-muted"
+              className="w-full rounded-full border border-border-strong bg-surface px-5 py-3 text-center text-sm text-text placeholder:text-placeholder"
               placeholder="Enter your name"
               maxLength={MAX_NAME_LENGTH}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-          </div>
+          ) : (
+            <div className="rounded-full bg-gradient-to-r from-cyan via-violet to-pink p-[1.5px]">
+              <input
+                className="w-full rounded-full bg-surface px-5 py-3 text-center text-sm text-text placeholder:text-text-muted"
+                placeholder="Enter your name"
+                maxLength={MAX_NAME_LENGTH}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+          )}
           <button
             type="button"
             disabled={!name.trim()}
             onClick={handleCreateGame}
-            className={`rounded-full bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink px-5 py-3 text-sm font-bold transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 ${isLight ? 'text-text-on-accent' : 'text-white'}`}
+            className={
+              isLight
+                ? 'rounded-full border border-primary bg-primary px-5 py-3 text-sm font-bold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text'
+                : 'rounded-full bg-gradient-to-r from-cyan via-violet to-pink px-5 py-3 text-sm font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40'
+            }
           >
             CREATE GAME
           </button>
@@ -97,24 +116,29 @@ export function CreateJoin() {
             <div className="h-px flex-1 bg-divider" />
           </div>
 
-          <div className="rounded-full bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink p-[1.5px] has-[:disabled]:opacity-40">
+          {isLight ? (
             <button
               type="button"
               disabled={!name.trim()}
               onClick={handleJoinGame}
-              className="w-full rounded-full bg-bg px-5 py-3 disabled:cursor-not-allowed"
+              className="w-full rounded-full border-[1.5px] border-primary bg-surface px-5 py-3 text-sm font-bold text-primary transition disabled:cursor-not-allowed disabled:border-disabled-border disabled:text-disabled-text"
             >
-              <span
-                className={`text-sm font-bold ${
-                  isLight
-                    ? 'text-text'
-                    : 'bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-pink bg-clip-text text-transparent'
-                }`}
-              >
-                JOIN GAME
-              </span>
+              JOIN GAME
             </button>
-          </div>
+          ) : (
+            <div className="rounded-full bg-gradient-to-r from-cyan via-violet to-pink p-[1.5px] has-[:disabled]:opacity-40">
+              <button
+                type="button"
+                disabled={!name.trim()}
+                onClick={handleJoinGame}
+                className="w-full rounded-full bg-bg px-5 py-3 disabled:cursor-not-allowed"
+              >
+                <span className="bg-gradient-to-r from-cyan via-violet to-pink bg-clip-text text-sm font-bold text-transparent">
+                  JOIN GAME
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

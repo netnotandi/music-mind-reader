@@ -94,7 +94,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
         <div className="mb-6 flex flex-col gap-3">
           <div
             className={`flex items-center gap-3 rounded-lg border bg-surface p-3 ${
-              isLight ? 'border-info-border' : 'border-success/40'
+              isLight ? 'border-cyan' : 'border-success/40'
             }`}
           >
             {result ? (
@@ -111,7 +111,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           <button
             type="button"
             onClick={chooseNewSong}
-            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-primary hover:bg-primary-hover"
+            className="rounded-lg border border-primary bg-primary px-4 py-2 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
           >
             Choose new song
           </button>
@@ -125,7 +125,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
               type="button"
               onClick={() => finish(result.videoId)}
               aria-label="Add this video"
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-text-on-primary transition hover:bg-primary-hover"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-primary bg-primary text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-5 w-5">
                 <path d="M12 5v14M5 12h14" />
@@ -148,7 +148,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
               : `Couldn't find a YouTube video for "${describeSong(title, artist)}". Paste a direct YouTube link instead.`}
           </p>
           <input
-            className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-text-muted"
+            className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
             placeholder="https://youtube.com/watch?v=..."
             value={manualLink}
             onChange={(e) => {
@@ -159,7 +159,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           {linkError && <p className="text-sm text-danger">{linkError}</p>}
           <button
             type="submit"
-            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-primary hover:bg-primary-hover"
+            className="rounded-lg border border-primary bg-primary px-4 py-2 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
           >
             {existingSong ? 'Edit Song' : 'Submit Song'}
           </button>
@@ -175,13 +175,13 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
         <form className="mb-6 flex flex-col gap-3" onSubmit={handleSearch}>
           <p className="text-xs text-text-muted">Enter the title, the artist, or both.</p>
           <input
-            className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-text-muted"
+            className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
             placeholder="Song title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
           <input
-            className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-text-muted"
+            className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
             placeholder="Artist"
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
@@ -189,7 +189,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           <button
             type="submit"
             disabled={stage === 'searching' || (!title.trim() && !artist.trim())}
-            className="rounded-lg bg-primary px-4 py-2 font-semibold text-text-on-primary hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+            className="rounded-lg border border-primary bg-primary px-4 py-2 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             {stage === 'searching' ? 'Searching YouTube...' : existingSong ? 'Find New Video' : 'Find Song'}
           </button>
@@ -336,7 +336,7 @@ export function SubmitSong() {
         type="button"
         disabled={!allSubmitted}
         onClick={shuffleSongOrder}
-        className="w-full rounded-xl bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+        className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
       >
         Start Guessing
       </button>
