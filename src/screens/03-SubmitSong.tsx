@@ -72,12 +72,9 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
     if (!nextPageToken || loadingMore) return
     setLoadingMore(true)
     const page = await searchYouTubeVideos(searchQuery, nextPageToken)
-    // Same video can reappear across pages for a broad query - keep the
-    // list free of duplicates rather than showing the same candidate twice.
-    setResults((prev) => {
-      const seen = new Set(prev.map((r) => r.videoId))
-      return [...prev, ...page.results.filter((r) => !seen.has(r.videoId))]
-    })
+    // Replaces the current batch rather than appending - never more than
+    // one page of candidates on screen at once.
+    setResults(page.results)
     setNextPageToken(page.nextPageToken)
     setLoadingMore(false)
   }
@@ -177,7 +174,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
               onClick={handleLoadMore}
               className="rounded-lg border border-border-strong px-4 py-2 text-sm text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:text-disabled-text"
             >
-              {loadingMore ? 'Loading more…' : 'Show 3 more results'}
+              {loadingMore ? 'Loading…' : 'Show next 3 results'}
             </button>
           )}
           <button
