@@ -17,11 +17,12 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
   // and resets naturally to page 0 each time the picker (re)mounts (e.g. the
   // next round's fresh category choice).
   const [page, setPage] = useState(0)
-  // Dark keeps its existing per-category rotating accent color on selection
-  // (accentColorFor) unchanged; light uses the design package's unified
-  // selected treatment (one brand color + tint) regardless of category, per
-  // the light mockup - a deliberate divergence, not an oversight.
-  const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
+  // Both themes use the same per-category rotating accent color on
+  // selection (accentColorFor) - only the palette differs (see
+  // accentColors.ts), so picking a category still feels colorful/on-brand
+  // in light instead of collapsing every selection to one flat green tint.
+  const resolvedTheme = useThemeStore((s) => s.resolvedTheme)
+  const isLight = resolvedTheme === 'light'
   const totalPages = Math.max(Math.ceil(categories.length / PAGE_SIZE), 1)
   const pageCategories = categories.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
 
@@ -48,7 +49,7 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
           const globalIndex = page * PAGE_SIZE + i
           const selected = selectedCategoryIds.includes(c.id)
           const disabled = !selected && atMax
-          const accent = accentColorFor(globalIndex)
+          const accent = accentColorFor(globalIndex, resolvedTheme)
           return (
             <button
               key={c.id}
@@ -57,9 +58,7 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
               onClick={() => onToggle(c.id)}
               className={`relative rounded-xl border-2 px-3 py-3 text-center text-sm font-medium leading-snug transition ${
                 selected
-                  ? isLight
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : `${accent.border} ${accent.bg} ${accent.text}`
+                  ? `${accent.border} ${accent.bg} ${accent.text}`
                   : disabled
                     ? `cursor-not-allowed border-disabled-border text-disabled-text ${isLight ? 'bg-disabled-bg' : ''}`
                     : `border-border text-text-secondary hover:border-border-strong ${isLight ? 'bg-surface' : ''}`

@@ -1,4 +1,5 @@
 import { accentColorFor } from '../logic/accentColors'
+import { useThemeStore } from '../state/themeStore'
 
 interface SongCardProps {
   title: string
@@ -8,7 +9,8 @@ interface SongCardProps {
 }
 
 export function SongCard({ title, artist, index, total }: SongCardProps) {
-  const accent = accentColorFor(index)
+  const resolvedTheme = useThemeStore((s) => s.resolvedTheme)
+  const accent = accentColorFor(index, resolvedTheme)
 
   return (
     <div className={`rounded-2xl border-2 p-6 text-center ${accent.border} ${accent.bg}`}>
