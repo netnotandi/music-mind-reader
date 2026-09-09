@@ -40,6 +40,8 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
     existingSong ? 'confirmed' : 'form'
   )
   const [results, setResults] = useState<YouTubeSearchResult[]>([])
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
   // Separate from `results` (the candidate list) - this is specifically
   // what the player actually picked, so the confirmed view keeps showing
   // it even after `results` is cleared by a later search.
@@ -47,20 +49,37 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   const [manualLink, setManualLink] = useState('')
   const [linkError, setLinkError] = useState<string | null>(null)
 
+  const searchQuery = [title.trim(), artist.trim()].filter(Boolean).join(' ')
+
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim() && !artist.trim()) return
+    if (!searchQuery) return
     setStage('searching')
     // A query built from just a title or just an artist is inherently
     // ambiguous, so a short list of candidates (rather than a single "best"
     // match) matters most here - the player picks the right one themselves.
-    const found = await searchYouTubeVideos([title.trim(), artist.trim()].filter(Boolean).join(' '))
-    if (found.length > 0) {
-      setResults(found)
+    const page = await searchYouTubeVideos(searchQuery)
+    if (page.results.length > 0) {
+      setResults(page.results)
+      setNextPageToken(page.nextPageToken)
       setStage('preview')
     } else {
       setStage('manual-link')
     }
+  }
+
+  async function handleLoadMore() {
+    if (!nextPageToken || loadingMore) return
+    setLoadingMore(true)
+    const page = await searchYouTubeVideos(searchQuery, nextPageToken)
+    // Same video can reappear across pages for a broad query - keep the
+    // list free of duplicates rather than showing the same candidate twice.
+    setResults((prev) => {
+      const seen = new Set(prev.map((r) => r.videoId))
+      return [...prev, ...page.results.filter((r) => !seen.has(r.videoId))]
+    })
+    setNextPageToken(page.nextPageToken)
+    setLoadingMore(false)
   }
 
   function finish(youtubeVideoId: string, picked: YouTubeSearchResult | null) {
@@ -74,6 +93,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
     setConfirmedResult(picked)
     setStage('confirmed')
     setResults([])
+    setNextPageToken(null)
     setManualLink('')
     setLinkError(null)
   }
@@ -81,6 +101,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   function chooseNewSong() {
     setStage('form')
     setResults([])
+    setNextPageToken(null)
   }
 
   function handleManualLinkSubmit(e: React.FormEvent) {
@@ -149,6 +170,16 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
               </button>
             </div>
           ))}
+          {nextPageToken && (
+            <button
+              type="button"
+              disabled={loadingMore}
+              onClick={handleLoadMore}
+              className="rounded-lg border border-border-strong px-4 py-2 text-sm text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:text-disabled-text"
+            >
+              {loadingMore ? 'Loading more…' : 'Show 3 more results'}
+            </button>
+          )}
           <button
             type="button"
             onClick={chooseNewSong}
