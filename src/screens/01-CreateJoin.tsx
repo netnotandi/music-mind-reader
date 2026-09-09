@@ -36,25 +36,26 @@ export function CreateJoin() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col overflow-hidden px-6 pt-16">
-      {/* Fixed (not absolute) so it's positioned against the real browser
-          viewport rather than clipped/narrowed by this page's own max-w-md
-          column - on a wide desktop window the rings now reach the actual
-          screen edges instead of stopping at the app's own content width.
-          top-16/h-52 lines up this band with the logo box below, which stays
-          centered the normal (non-fixed) way. A negative z-index here would
-          go too far back - the app's own background is an ordinary (non-
-          positioned) div, which still paints above negative-z-index content
-          regardless of DOM order, so the rings would end up invisible
-          behind it. Instead this stays at its default stacking level, and
-          the actual content below is wrapped with `relative z-10` so IT
-          paints above the rings instead. */}
-      <div className="sound-wave-field fixed inset-x-0 top-16 h-52" key={waveKey}>
-        <div className="sound-wave-ring sound-wave-ring--a" />
-        <div className="sound-wave-ring sound-wave-ring--b" />
-        <div className="sound-wave-ring sound-wave-ring--c" />
-      </div>
-
+      {/* position:absolute (not fixed) so this is a normal descendant of
+          the `relative` box right below it, making "behind the content"
+          a plain, well-defined local containment relationship rather than
+          a position:fixed-vs-ancestor-stacking-context comparison - that
+          version worked in Chromium and Firefox but WebKit/Safari doesn't
+          consistently scope a fixed descendant's stacking to a local
+          `relative z-*` ancestor the way it's supposed to, so the rings
+          rendered in front of the buttons there specifically (confirmed by
+          testing all three engines head to head). Trade-off: the rings no
+          longer reach past this column's width on a wide desktop browser
+          window like they briefly did - acceptable, since real users only
+          ever see this on a phone, where the column already is the
+          screen. */}
       <div className="relative z-10 flex flex-col">
+        <div className="sound-wave-field absolute inset-x-0 top-0 -z-10 h-52" key={waveKey}>
+          <div className="sound-wave-ring sound-wave-ring--a" />
+          <div className="sound-wave-ring sound-wave-ring--b" />
+          <div className="sound-wave-ring sound-wave-ring--c" />
+        </div>
+
         <div className="relative flex h-52 items-center justify-center">
           <div className="absolute h-56 w-56 rounded-full bg-violet-600/30 blur-3xl" />
           <img src={logo} alt="Music Mind Reader" className="relative w-64" />
