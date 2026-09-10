@@ -202,15 +202,19 @@ Reiknað í byrjun hverrar umferðar — ekki hardkódað gildi í kóðanum len
 IFrame API hefur enga innbyggða leið til að láta sjálft MYNDIÐ fjara út (bara hljóðið). Ef sjónræn mýking er líka æskileg: nota létt yfirlags-element (t.d. svartur `div` með `opacity`-transition) sem hylur spilarann rétt á meðan skiptingin á sér stað, samstillt við hljóðfade-ið — gefur „fade to black og til baka" tilfinningu.
 
 ### Staða
-Útfært (`src/components/NowPlayingPlayer.tsx`): host-spilarinn notar YouTube IFrame Player API-ið í stað hrás `<iframe>` — hljóðið fjarar út (~0.9s), næsta lag hleðst inn með `loadVideoById`, svartur yfirlags-`div` hylur skiptinguna.
+Útfært (`src/components/NowPlayingPlayer.tsx`): spilarinn notar YouTube IFrame Player API-ið í stað hrás `<iframe>` — hljóðið fjarar út (~0.9s), næsta lag hleðst inn með `loadVideoById`, svartur yfirlags-`div` hylur skiptinguna.
 
-Hljóð-endurheimt: `setVolume`-köll á meðan nýtt lag er enn að buffera geta týnst, svo hljóðið er ekki hækkað fyrr en `onStateChange` → `PLAYING` fyrir nýja lagið (`restoreAudio`): `unMute()` + fade upp í valinn hljóðstyrk. 700ms síðar er athugað `isMuted()` — ef vafrinn neitar að af-þagga (ekkert nýtt user-gesture, á sérstaklega við um sjálfvirka framvindu) birtist „tap to unmute" hnappur yfir spilaranum (smellur = gesture → virkar).
+**Allir fá spilarann + myndbandið** (ekki bara host) svo fólk sem spilar fjarri (erlendis, annarsstaðar á landinu, kemst ekki í partýið) getur fylgst með. Bara spilari host-tækisins:
+- keyrir hópframvindu (`onCap`/`onFloor`/`onEnded` → `doAdvance`) — í `05-GuessAndRate.tsx` eru þessi callback + `capSeconds`/`floorSeconds` gefin `null`/no-op nema `isHost`, svo einn ritari helst.
+- spilar með hljóði sjálfgefið. Aðrir (`follower` prop = `!isHost`) byrja á **mute** (`playerVars.mute: 1`, því fjar-tæki lendir oft á skjánum án nokkurs user-gesture — phase-breyting kemur frá Firebase) og fá „🔇 Unmute to hear the music" hnapp. Valið geymt per tæki (`localStorage` `mmr-player-sound-on`).
 
-Hljóðstyrkur: host er með eigin volume-slaufu undir spilaranum (`setVolume`, geymt í `localStorage` `mmr-player-volume`) — YouTube-spilarans eigin stýring er óþægileg, sérstaklega í tölvu.
+Hljóð-endurheimt: `setVolume`-köll á meðan nýtt lag er enn að buffera geta týnst, svo hljóðstaðan er ekki sett fyrr en `onStateChange` → `PLAYING` (`applyAudioOnPlaying`): sound-on → `unMute()` + fade upp; sound-off → `mute()` + forstilltur `setVolume`. 700ms síðar (sound-on) er athugað `isMuted()` — ef vafrinn neitar að af-þagga birtist „tap to unmute" hnappur yfir spilaranum (smellur = gesture → virkar).
+
+Hljóðstyrkur: eigin volume-slaufa + 🔊/🔇 toggle undir spilaranum (`setVolume`, geymt í `localStorage` `mmr-player-volume`) — YouTube-spilarans eigin stýring er óþægileg, sérstaklega í tölvu.
 
 Í DEV er `window.__mmrPlayer` látið vísa á `YT.Player` til að auðvelda prófun.
 
-Restin af „Lagaspilun í appinu" áfanganum er komin (sjálfvirk framvinda: sjá Long/Short kaflann).
+Þekkt: fjar-spilarar eru ekki sekúndu-samstilltir við host (hvert tæki spilar sitt eintak frá 0 þegar lag hleðst) — nóg fyrir „fylgjast með", ekki fyrir nákvæma samspilun.
 
 
 ## Lobby og Game Setup aðskilin (viðbót við CLAUDE.md)

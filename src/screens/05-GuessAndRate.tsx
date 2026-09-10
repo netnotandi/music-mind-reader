@@ -349,19 +349,27 @@ export function GuessAndRate() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
-      {isHost && (
-        <NowPlayingPlayer
-          videoId={roundPlaythroughDone ? null : (currentSong?.youtubeVideoId ?? null)}
-          capSeconds={roundMode === 'short' && !roundPlaythroughDone ? SHORT_MODE_CAP_SECONDS : null}
-          onCap={() => {
-            if (roundMode === 'short') doAdvance()
-          }}
-          floorSeconds={roundMode === 'short' && !roundPlaythroughDone ? SHORT_MODE_MIN_SECONDS : null}
-          onFloor={() => setMinPlaybackReached(true)}
-          onEnded={() => doAdvance()}
-          wrapUp={roundPlaythroughDone}
-        />
-      )}
+      {/* Everyone gets the video so people playing remotely can follow
+          along. Only the host's player drives progression (cap/floor/ended)
+          and plays with sound by default; a follower starts muted. */}
+      <NowPlayingPlayer
+        videoId={roundPlaythroughDone ? null : (currentSong?.youtubeVideoId ?? null)}
+        capSeconds={isHost && roundMode === 'short' && !roundPlaythroughDone ? SHORT_MODE_CAP_SECONDS : null}
+        onCap={() => {
+          if (isHost && roundMode === 'short') doAdvance()
+        }}
+        floorSeconds={
+          isHost && roundMode === 'short' && !roundPlaythroughDone ? SHORT_MODE_MIN_SECONDS : null
+        }
+        onFloor={() => {
+          if (isHost) setMinPlaybackReached(true)
+        }}
+        onEnded={() => {
+          if (isHost) doAdvance()
+        }}
+        wrapUp={roundPlaythroughDone}
+        follower={!isHost}
+      />
 
       {roundPlaythroughDone ? (
         <div className="mb-6 rounded-lg border border-info-border bg-info-bg px-4 py-2 text-center text-sm text-info-text">

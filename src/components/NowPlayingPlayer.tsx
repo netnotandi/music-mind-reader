@@ -7,13 +7,13 @@ interface NowPlayingPlayerProps {
   // or the round has played through every song (wrapUp).
   videoId: string | null
   // Short mode: fire onCap once this many seconds of the current video have
-  // played. null in long mode / wrap-up.
+  // played. null in long mode / wrap-up / on a follower device.
   capSeconds: number | null
   // The current video reached capSeconds of playback (short-mode time cap).
   onCap: () => void
   // Short mode: fire onFloor once this many seconds of the current video
   // have played - the earliest point "everyone answered" may advance it.
-  // null in long mode / wrap-up.
+  // null in long mode / wrap-up / on a follower device.
   floorSeconds: number | null
   // The current video reached floorSeconds of playback.
   onFloor: () => void
@@ -21,11 +21,17 @@ interface NowPlayingPlayerProps {
   onEnded: () => void
   // The round's music has finished - show "all songs played", not a player.
   wrapUp: boolean
+  // This device isn't the host. Everyone sees the video (so people playing
+  // remotely can follow along), but a follower starts MUTED - a room full
+  // of phones shouldn't all blast overlapping audio - and can unmute to
+  // hear it themselves.
+  follower: boolean
 }
 
 const FADE_MS = 900
 const FADE_STEPS = 18
 const VOLUME_STORAGE_KEY = 'mmr-player-volume'
+const SOUND_ON_STORAGE_KEY = 'mmr-player-sound-on'
 
 function readStoredVolume(): number {
   try {
@@ -40,10 +46,12 @@ function readStoredVolume(): number {
   return 100
 }
 
-// The host's Now Playing player. Uses the YouTube IFrame Player API (not a
-// plain embed) so switching songs can crossfade the audio, and so playback
-// time / the ENDED event can drive automatic song progression. A black
+// The Now Playing player. Uses the YouTube IFrame Player API (not a plain
+// embed) so switching songs can crossfade the audio, and so playback time /
+// the ENDED event can drive automatic song progression (host only). A black
 // overlay fades in step with the audio so the swap reads as intentional.
+// Every device renders one; only the host's drives progression and plays
+// with sound by default.
 export function NowPlayingPlayer({
   videoId,
   capSeconds,
@@ -52,6 +60,7 @@ export function NowPlayingPlayer({
   onFloor,
   onEnded,
   wrapUp,
+  follower,
 }: NowPlayingPlayerProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<YT.Player | null>(null)
@@ -65,8 +74,8 @@ export function NowPlayingPlayer({
   const floorFiredRef = useRef(false)
   const endedFiredRef = useRef(false)
   // Set right before a new video loads; consumed on the next PLAYING event
-  // to force the freshly-started video audible (see restoreAudio).
-  const wantAudioRef = useRef(false)
+  // to apply the wanted audio state to the freshly-started video.
+  const pendingAudioRef = useRef(false)
   // Kept in refs so the persistent player callbacks always see the latest.
   const capSecondsRef = useRef(capSeconds)
   const onCapRef = useRef(onCap)
@@ -81,12 +90,24 @@ export function NowPlayingPlayer({
 
   const [covered, setCovered] = useState(true)
   const [volume, setVolumeState] = useState(readStoredVolume)
+  // Does this device want to hear the music? The host does by default; a
+  // follower doesn't until they turn it on (remembered per device).
+  const [soundOn, setSoundOn] = useState(() => {
+    if (!follower) return true
+    try {
+      return localStorage.getItem(SOUND_ON_STORAGE_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
   // A browser can refuse to unmute media that started without a fresh user
   // gesture (every song after the first auto-advances with no click). When
   // we detect that, this shows a one-tap unmute button over the player.
   const [audioBlocked, setAudioBlocked] = useState(false)
   const volumeRef = useRef(volume)
+  const soundOnRef = useRef(soundOn)
   volumeRef.current = volume
+  soundOnRef.current = soundOn
 
   function clearFade() {
     if (fadeTimerRef.current !== null) {
@@ -130,36 +151,48 @@ export function NowPlayingPlayer({
     }, FADE_MS / FADE_STEPS)
   }
 
-  // Bring the freshly-started video up to the host's volume (a short
-  // fade-in), then double-check a moment later: if the browser kept it
-  // muted because there was no user gesture, surface the tap-to-unmute
-  // button.
-  function restoreAudio(player: YT.Player) {
-    try {
-      player.unMute()
-      player.setVolume(0)
-    } catch {
-      // ignore
-    }
-    fadeVolume(player, volumeRef.current)
-    setAudioBlocked(false)
-    window.setTimeout(() => {
+  // Apply this device's wanted audio state to a video that just started.
+  // Sound wanted -> unmute + fade up, then double-check the browser didn't
+  // silently keep it muted (no user gesture) and surface tap-to-unmute if
+  // so. Sound not wanted -> keep it muted, but pre-set the volume so it's
+  // audible the instant they do unmute.
+  function applyAudioOnPlaying(player: YT.Player) {
+    if (soundOnRef.current) {
       try {
-        if (player.isMuted()) {
-          player.unMute()
-          player.setVolume(volumeRef.current)
-          if (player.isMuted()) setAudioBlocked(true)
-        }
+        player.unMute()
+        player.setVolume(0)
       } catch {
-        // player gone - nothing to do
+        // ignore
       }
-    }, 700)
+      fadeVolume(player, volumeRef.current)
+      setAudioBlocked(false)
+      window.setTimeout(() => {
+        try {
+          if (player.isMuted()) {
+            player.unMute()
+            player.setVolume(volumeRef.current)
+            if (player.isMuted()) setAudioBlocked(true)
+          }
+        } catch {
+          // player gone - nothing to do
+        }
+      }, 700)
+    } else {
+      try {
+        player.mute()
+        player.setVolume(volumeRef.current)
+      } catch {
+        // ignore
+      }
+    }
   }
 
   // Poll playback position while a video is playing; fire the short-mode
-  // time floor / cap once they're crossed.
+  // time floor / cap once they're crossed (host only - a follower gets
+  // null seconds and this no-ops).
   function startPoll(player: YT.Player) {
     clearPoll()
+    if (capSecondsRef.current === null && floorSecondsRef.current === null) return
     pollTimerRef.current = setInterval(() => {
       let t = 0
       try {
@@ -198,28 +231,49 @@ export function NowPlayingPlayer({
       if (cancelled) return
       player = new YTns.Player(host, {
         videoId: videoId ?? undefined,
-        playerVars: { autoplay: 1, playsinline: 1, rel: 0, modestbranding: 1 },
+        playerVars: {
+          autoplay: 1,
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+          // A follower device often reaches this screen with no user
+          // gesture at all (the phase change is pushed from Firebase), so
+          // start muted - muted autoplay is always allowed - and let them
+          // unmute.
+          ...(follower ? { mute: 1 } : {}),
+        },
         events: {
           onReady: () => {
             if (cancelled || !player) return
             playerRef.current = player
             playingRef.current = videoId
+            try {
+              if (soundOnRef.current) {
+                player.unMute()
+              } else {
+                player.mute()
+                // a gesture-less muted load can land paused - nudge it
+                player.playVideo()
+              }
+            } catch {
+              // ignore
+            }
             if (import.meta.env.DEV) {
               ;(window as unknown as { __mmrPlayer?: YT.Player }).__mmrPlayer = player
             }
             if (videoId) {
-              wantAudioRef.current = true
+              pendingAudioRef.current = true
               startPoll(player)
               setCovered(false)
             }
           },
           onStateChange: (e) => {
             if (e.data === YTns.PlayerState.PLAYING) {
-              if (wantAudioRef.current) {
-                wantAudioRef.current = false
-                restoreAudio(e.target)
-              } else {
-                // resumed after a pause - just make sure it isn't muted
+              if (pendingAudioRef.current) {
+                pendingAudioRef.current = false
+                applyAudioOnPlaying(e.target)
+              } else if (soundOnRef.current) {
+                // resumed after a pause - keep it audible
                 try {
                   e.target.unMute()
                 } catch {
@@ -266,7 +320,7 @@ export function NowPlayingPlayer({
     setCovered(true)
     fadeVolume(player, 0, () => {
       if (videoId) {
-        wantAudioRef.current = true
+        pendingAudioRef.current = true
         try {
           player.setVolume(0)
           player.loadVideoById(videoId)
@@ -275,6 +329,15 @@ export function NowPlayingPlayer({
         }
         startPoll(player)
         setCovered(false)
+        // A gesture-less load can land paused on some browsers - nudge it.
+        window.setTimeout(() => {
+          try {
+            const state = player.getPlayerState()
+            if (state !== 1 && state !== 3) player.playVideo()
+          } catch {
+            // player gone
+          }
+        }, 1200)
       } else {
         clearPoll()
         try {
@@ -287,37 +350,54 @@ export function NowPlayingPlayer({
     })
   }, [videoId])
 
-  // Host dragged the volume slider - a user gesture, so this is also the
-  // moment a blocked unmute becomes allowed.
-  function handleVolumeChange(next: number) {
-    setVolumeState(next)
+  function persistSoundOn(on: boolean) {
     try {
-      localStorage.setItem(VOLUME_STORAGE_KEY, String(next))
+      localStorage.setItem(SOUND_ON_STORAGE_KEY, on ? '1' : '0')
     } catch {
-      // no storage - the value still applies for this session
+      // no storage - still applies for this session
     }
+  }
+
+  // Toggling / dragging volume is a user gesture, so it's also the moment a
+  // browser-blocked unmute becomes allowed.
+  function setSound(on: boolean) {
+    setSoundOn(on)
+    soundOnRef.current = on
+    persistSoundOn(on)
     const player = playerRef.current
     if (!player) return
     try {
-      player.unMute()
-      player.setVolume(next)
+      if (on) {
+        player.unMute()
+        player.setVolume(volumeRef.current || 100)
+      } else {
+        player.mute()
+      }
     } catch {
       // ignore
     }
     setAudioBlocked(false)
   }
 
-  function forceUnmute() {
+  function handleVolumeChange(next: number) {
+    setVolumeState(next)
+    volumeRef.current = next
+    try {
+      localStorage.setItem(VOLUME_STORAGE_KEY, String(next))
+    } catch {
+      // no storage - still applies for this session
+    }
     const player = playerRef.current
     if (!player) return
     try {
-      player.unMute()
-      player.setVolume(volumeRef.current || 100)
+      player.setVolume(next)
+      if (soundOnRef.current) player.unMute()
     } catch {
       // ignore
     }
-    setAudioBlocked(false)
   }
+
+  const showControls = videoId !== null && !wrapUp
 
   return (
     <div className="mb-6">
@@ -333,10 +413,10 @@ export function NowPlayingPlayer({
             <span className="text-xs text-slate-300">No video for this song</span>
           ) : null}
         </div>
-        {audioBlocked && !covered && videoId !== null && !wrapUp && (
+        {showControls && soundOn && audioBlocked && !covered && (
           <button
             type="button"
-            onClick={forceUnmute}
+            onClick={() => setSound(true)}
             className="absolute inset-x-0 bottom-0 bg-black/75 px-3 py-2 text-center text-xs font-semibold text-white"
           >
             🔇 Sound is muted — tap to unmute
@@ -344,21 +424,37 @@ export function NowPlayingPlayer({
         )}
       </div>
 
-      {videoId !== null && !wrapUp && (
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-xs text-text-muted">Vol</span>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={volume}
-            onChange={(e) => handleVolumeChange(Number(e.target.value))}
-            aria-label="Player volume"
-            className="h-1 flex-1 accent-primary"
-          />
-          <span className="w-8 text-right text-xs tabular-nums text-text-muted">{volume}</span>
-        </div>
-      )}
+      {showControls &&
+        (soundOn ? (
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSound(false)}
+              aria-label="Mute"
+              className="text-sm text-text-muted transition hover:text-text"
+            >
+              🔊
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={volume}
+              onChange={(e) => handleVolumeChange(Number(e.target.value))}
+              aria-label="Player volume"
+              className="h-1 flex-1 accent-primary"
+            />
+            <span className="w-8 text-right text-xs tabular-nums text-text-muted">{volume}</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setSound(true)}
+            className="mt-2 w-full rounded-lg border border-primary bg-primary-soft px-4 py-2 text-sm font-semibold text-primary transition hover:border-primary"
+          >
+            🔇 Unmute to hear the music
+          </button>
+        ))}
     </div>
   )
 }
