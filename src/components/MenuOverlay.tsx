@@ -108,7 +108,7 @@ export function MenuOverlay() {
               ✕
             </button>
 
-            <div className="flex flex-shrink-0 flex-col gap-3 pr-8 pt-1 sm:w-36 sm:pr-0">
+            <div className="flex flex-shrink-0 flex-col gap-3 pr-8 pt-1 sm:w-40 sm:pr-0">
               <button
                 type="button"
                 onClick={goHome}
@@ -117,6 +117,18 @@ export function MenuOverlay() {
                 Home
               </button>
               <ThemeModeControl />
+
+              <div className="mt-2 sm:mt-auto">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-success">
+                  Contact
+                </p>
+                <a
+                  href="mailto:hello@musicmindreader.com"
+                  className="text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
+                >
+                  hello@musicmindreader.com
+                </a>
+              </div>
             </div>
 
             <div className="min-w-0 flex-1 space-y-5 pt-1">
