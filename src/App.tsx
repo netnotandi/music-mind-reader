@@ -3,7 +3,6 @@ import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useParam
 import { MenuOverlay } from './components/MenuOverlay'
 import { CreateJoin } from './screens/01-CreateJoin'
 import { JoinGame } from './screens/01b-JoinGame'
-import { GameSetup } from './screens/01c-GameSetup'
 import { Lobby } from './screens/02-Lobby'
 import { SubmitSong } from './screens/03-SubmitSong'
 import { GuessAndRate } from './screens/05-GuessAndRate'
@@ -79,7 +78,6 @@ function AppRoutes() {
       <Route path="/" element={<CreateJoin />} />
       <Route path="/join" element={<JoinGame />} />
       <Route path="/join/:roomCode" element={<JoinRedirect />} />
-      <Route path="/setup" element={<GameSetup />} />
       <Route path="/lobby" element={<Lobby />} />
       <Route path="/submit" element={<SubmitSong />} />
       <Route path="/guess" element={<GuessAndRate />} />

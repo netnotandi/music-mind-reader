@@ -5,8 +5,6 @@ import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 import type { Player, Song } from '../types'
 
-const RATING_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-
 interface Answer {
   guessedPlayerId: string | null
   rating: number | null
@@ -19,6 +17,10 @@ interface AnswerFormProps {
   isOwnSong: boolean
   visiblePlayers: Player[]
   assignedElsewhere: Map<string, string>
+  // The valid rating values for this round's category: 0..(N-2) where N is
+  // the number of songs in play, so each rater has exactly one distinct
+  // value per other song. Computed by the parent from the actual song count.
+  ratingScale: number[]
   unavailableRatings: Set<number>
   initialAnswer: Answer | undefined
   onSubmit: (guessedPlayerId: string, rating: number | null) => void
@@ -33,6 +35,7 @@ function AnswerForm({
   isOwnSong,
   visiblePlayers,
   assignedElsewhere,
+  ratingScale,
   unavailableRatings,
   initialAnswer,
   onSubmit,
@@ -44,10 +47,11 @@ function AnswerForm({
   const [guessedPlayerId, setGuessedPlayerId] = useState(initialAnswer?.guessedPlayerId ?? null)
   const [rating, setRating] = useState(initialAnswer?.rating ?? null)
 
-  // Once every rating value (0-10) has already been given to another song
-  // in this category, there's nothing left to assign here - the guess still
-  // counts, it just won't contribute a score.
-  const ratingAvailable = RATING_OPTIONS.some((v) => !unavailableRatings.has(v))
+  const maxRating = ratingScale.length > 0 ? ratingScale[ratingScale.length - 1] : 0
+  // Once every rating value has already been given to another song in this
+  // category, there's nothing left to assign here - the guess still counts,
+  // it just won't contribute a score.
+  const ratingAvailable = ratingScale.some((v) => !unavailableRatings.has(v))
 
   return (
     <>
@@ -88,7 +92,7 @@ function AnswerForm({
           </div>
 
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary">
-            Rating (0-10)
+            {maxRating >= 1 ? `Rating (0–${maxRating})` : 'Rating'}
           </h2>
           {!ratingAvailable && (
             <p className="mb-2 text-xs text-text-muted">
@@ -97,7 +101,7 @@ function AnswerForm({
             </p>
           )}
           <div className="mb-6 flex flex-wrap gap-2">
-            {RATING_OPTIONS.map((value) => {
+            {ratingScale.map((value) => {
               const disabled = unavailableRatings.has(value)
               return (
                 <button
@@ -202,6 +206,10 @@ export function GuessAndRate() {
   const isFirstOfCategory = viewIndex === 0 || songs[viewIndex - 1]?.categoryId !== song.categoryId
   const categoryName = categories.find((c) => c.id === song.categoryId)?.name
   const categorySongs = songs.filter((s) => s.categoryId === song.categoryId)
+  // Ratings are a distinct-value ranking of the OTHER songs in the category
+  // (own song excluded), so N songs need N-1 values: 0..(N-2). Was a fixed
+  // 0-10; now follows the actual round size so it works past 12 players.
+  const ratingScale = Array.from({ length: Math.max(categorySongs.length - 1, 0) }, (_, i) => i)
 
   // Everyone but the owner has to weigh in on the song currently playing
   // before the group can move on.
@@ -268,7 +276,7 @@ export function GuessAndRate() {
           .filter((r) => r.raterId === player.id && r.songId !== song.id && categorySongs.some((s) => s.id === r.songId))
           .map((r) => r.value)
       )
-      const ratingValue = RATING_OPTIONS.find((v) => !usedRatings.has(v))
+      const ratingValue = ratingScale.find((v) => !usedRatings.has(v))
       if (ratingValue !== undefined) devSubmitRatingAs(player.id, song.id, ratingValue)
     })
   }
@@ -328,6 +336,7 @@ export function GuessAndRate() {
         isOwnSong={isOwnSong}
         visiblePlayers={visiblePlayers}
         assignedElsewhere={assignedElsewhere}
+        ratingScale={ratingScale}
         unavailableRatings={unavailableRatings}
         initialAnswer={initialAnswer}
         onSubmit={handleSubmit}

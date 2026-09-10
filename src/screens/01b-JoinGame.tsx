@@ -155,8 +155,8 @@ export function JoinGame() {
     setJoining(false)
     if (result === 'not-found') {
       setError('Game not found — check the code and try again.')
-    } else if (result === 'full') {
-      setError('That game is already full.')
+    } else if (result === 'in-progress') {
+      setError('That game has already started — you can join once the next round begins.')
     }
   }
 

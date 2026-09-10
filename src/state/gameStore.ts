@@ -15,6 +15,13 @@ import { CATEGORIES } from './mockData'
 
 export const MAX_SELECTED_CATEGORIES = 1
 
+// Slots in the lobby are organic - the host is never asked a player count,
+// the room just grows as people join. This is the only gate on starting a
+// round: with 1 it's effectively just "a category is picked", but it's a
+// named constant so raising it later (e.g. back to 3-4 for real play) is a
+// one-line change.
+export const MIN_PLAYERS_TO_START = 1
+
 // Enforced via the input's own maxLength, but names are still rendered in a
 // lot of fixed-width places (player lists, guess buttons, tables) - keeping
 // this a shared constant so any future input validating a name can match it.
@@ -38,13 +45,12 @@ const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const SESSION_KEY = 'mmr_session'
 
 type Phase = 'lobby' | 'submit' | 'guess' | 'results'
-type JoinResult = 'ok' | 'not-found' | 'full'
+type JoinResult = 'ok' | 'not-found' | 'in-progress'
 
 interface GameState {
   roomCode: string | null
   localPlayerId: string | null
   hostId: string | null
-  maxPlayers: number | null
   phase: Phase
   players: Player[]
   categories: Category[]
@@ -58,7 +64,7 @@ interface GameState {
   roundsCompleted: number
   lobbyReadyPlayerIds: string[]
 
-  createGame: (hostName: string, maxPlayers: number, selectedCategoryIds: string[]) => Promise<string>
+  createGame: (hostName: string) => Promise<string>
   joinGame: (roomCode: string, playerName: string) => Promise<JoinResult>
   resumeSession: () => Promise<boolean>
   leaveGame: (removeFromRoom?: boolean) => void
@@ -141,7 +147,6 @@ function shuffle<T>(items: T[]): T[] {
 
 interface RoomRecord {
   hostId?: string
-  maxPlayers?: number
   phase?: Phase
   selectedCategoryIds?: string[]
   currentSongIndex?: number
@@ -172,7 +177,6 @@ function parseRoom(data: RoomRecord) {
 
   return {
     hostId: data.hostId ?? null,
-    maxPlayers: data.maxPlayers ?? null,
     phase: data.phase ?? 'lobby',
     players,
     selectedCategoryIds: data.selectedCategoryIds ?? [],
@@ -206,7 +210,6 @@ export const useGameStore = create<GameState>((set, get) => {
     roomCode: null,
     localPlayerId: null,
     hostId: null,
-    maxPlayers: null,
     phase: 'lobby',
     players: [],
     categories: CATEGORIES,
@@ -220,18 +223,19 @@ export const useGameStore = create<GameState>((set, get) => {
     roundsCompleted: 0,
     lobbyReadyPlayerIds: [],
 
-    createGame: async (hostName, maxPlayers, selectedCategoryIds) => {
+    createGame: async (hostName) => {
       const playerId = crypto.randomUUID()
       let roomCode = generateRoomCode()
       while ((await dbGet(ref(db, `games/${roomCode}`))).exists()) {
         roomCode = generateRoomCode()
       }
+      // No category yet - the host picks it in the Lobby, the same way
+      // every round after the first already works.
       await dbSet(ref(db, `games/${roomCode}`), {
         createdAt: serverTimestamp(),
         hostId: playerId,
-        maxPlayers,
         phase: 'lobby',
-        selectedCategoryIds,
+        selectedCategoryIds: [],
         currentSongIndex: 0,
         songOrder: [],
         players: { [playerId]: { name: hostName, joinedAt: serverTimestamp() } },
@@ -245,8 +249,10 @@ export const useGameStore = create<GameState>((set, get) => {
       const snap = await dbGet(ref(db, `games/${roomCode}`))
       if (!snap.exists()) return 'not-found'
       const data = snap.val() as RoomRecord
-      const currentCount = Object.keys(data.players ?? {}).length
-      if (data.maxPlayers !== undefined && currentCount >= data.maxPlayers) return 'full'
+      // Slots are open only while the room is in the lobby - once a round is
+      // underway, would-be joiners wait for it to finish (phase returns to
+      // 'lobby' between rounds, so joining then still works).
+      if ((data.phase ?? 'lobby') !== 'lobby') return 'in-progress'
 
       const playerId = crypto.randomUUID()
       await dbSet(ref(db, `games/${roomCode}/players/${playerId}`), {
@@ -287,7 +293,6 @@ export const useGameStore = create<GameState>((set, get) => {
         roomCode: null,
         localPlayerId: null,
         hostId: null,
-        maxPlayers: null,
         phase: 'lobby',
         players: [],
         selectedCategoryIds: [],

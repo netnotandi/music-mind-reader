@@ -61,3 +61,127 @@ Leikstjóri velur 1–2 af þessum flokkum í Lobby-skjánum fyrir ALLAN hópinn
 3. Byggja raunverulega fjölspilun (bakendi, websockets, gagnagrunnur fyrir leiki/spilara/lög/stig).
 4. Safna notkunargögnum (fjöldi leikja, endurkoma, meðaltími í leik).
 5. Þegar traustur notendafjöldi/gögn liggja fyrir: hafa samband við Spotify/Tidal viðskiptaþróun með tilbúna vöru og gögn.
+
+## Fjölspilun — Arkitektúr (viðbót við upprunalega spec)
+
+### Ákvörðun
+Netshýst lausn, EKKI staðarnet (local WiFi). Ástæða: gestir geta verið á farsímagögnum (5G/4G) í stað sama WiFi-nets, og staðarnets-lausn myndi bresta fyrir þá. Netshýst lausn virkar óháð network — WiFi eða farsímagögn, sama hvað.
+
+### Tækni
+- **Frontend**: sama Vite + React + TypeScript + Tailwind + Zustand grunnur og áður — engin ástæða til að endurskrifa það sem er þegar til.
+- **Realtime bakendi**: Firebase Realtime Database (eða Supabase Realtime sem jafngildur valkostur). Ástæða: ELDIR er ekki þörf á að skrifa/hýsa eigin websocket-server — client SDK-ið talar beint við þjónustuna, og allar breytingar sem einn síma gerir birtast sjálfkrafa á öllum öðrum símum sem eru „subscribed" á sama leik.
+- **Hýsing fyrir frontend**: Vercel eða Netlify — ókeypis, sjálfvirk dreifing beint úr git repo-inu sem er nú þegar til.
+- **Gagnalíkan**: eitt tré `games/{roomCode}` í Firebase sem inniheldur: `players` (nafn + id hvers leikmanns), `phase` (lobby / submit / playing / guessing / results), `categories`, `submissions`, `guesses`, `ratings`. Allir símar sem hlusta á sama `roomCode` fá breytingar í rauntíma sjálfkrafa, engin handvirk endurhleðsla.
+- **Auðkenni leikmanns**: engin innskráning eða reikningar. Bara nafn + slembinn client-ID sem er vistaður í `localStorage` símans, bundinn við þennan `roomCode`. Ef síminn missir samband og tengist aftur (t.d. lyftan, veikt merki), finnur hann sjálfan sig aftur í sama leik með sama ID.
+- **Join-kóði**: 4-6 handahófskennd tákn (t.d. "BLUE7"), sýnt sem texti OG QR-kóði sem vísar beint í `https://<domain>/join/<roomCode>` — skönnun opnar join-skjáinn með kóðanum útfylltum sjálfkrafa.
+
+### Hvað breytist í núverandi kóða
+- `gameStore.ts` breytist úr „uppspretta sannleikans" (allt í client-minni) í „syncaðan spegil" af Firebase-gögnunum. Aðgerðir eins og að skila lagi, giska eða gefa einkunn verða núna skrif til Firebase í stað þess að breyta local state beint — breytingin birtist svo öllum símum um leið, þeirra á meðal þeim sem framkvæmdi hana.
+- `PlayerSwitcher`-component (sem lét okkur prófa sem 4 mismunandi leikmenn á einum skjá) er ekki lengur þörf í alvöru fjölspilun — hver sími ER sinn eigin leikmaður núna. Hægt að halda honum til hliðar sem debug-tól fyrir þróun.
+- Lobby-skjárinn fær núna ALVÖRU lista yfir hverjir eru komnir inn, uppfærður í rauntíma, í stað gervigagna.
+- `scoring.ts` (allar fimm reglurnar) þarf ekki að breytast — sömu hreinu útreikningsfallin, keyrð á endanlegum gögnum úr Firebase þegar öll innsending er búin.
+
+### Röð vinnu
+1. Setja upp Firebase-verkefni (ókeypis) og bæta SDK við núverandi React-verkefni.
+2. Skilgreina `games/{roomCode}` gagnalíkanið sem endurspeglar núverandi TypeScript-týpur (`Player`, `Song`, `Category`, `Guess`, `Round`).
+3. Breyta `gameStore.ts` úr local-state í Firebase-syncað state.
+4. Uppfæra Lobby-skjáinn til að sýna alvöru leikmenn sem ganga inn í rauntíma, með join-kóða + QR.
+5. Deploya frontend á Vercel/Netlify svo hlekkurinn/QR-kóðinn virki fyrir alla gesti, óháð network.
+6. Prófa með alvöru hópi þar sem sumir eru á WiFi og sumir á farsímagögnum samtímis, til að staðfesta að netshýsta lausnin virki fyrir öll tilvik.
+
+
+## Viðvarandi lobby með uppsafnaðri stigagjöf (viðbót við CLAUDE.md)
+
+### Vandamál sem leyst er
+Núna endar leikur á að leysa upp herbergið — hópurinn þarf að stofna/joina nýtt lobby til að spila aftur saman, og stig byrja alltaf á núlli. Notendaábending (frá playtesti): hópurinn vill geta haldið áfram að spila fleiri umferðir í sama lobby-inu, með uppsafnaðri stigatölu sem safnast upp á milli umferða.
+
+### Gagnalíkan
+Bæta við `totalScore` (eða sambærilegu) fyrir hvern leikmann í `players/{playerId}` sem lifir áfram milli umferða — ólíkt umferðar-sértækum gögnum (`songs`, `guesses`, `ratings`, `songOrder`, `currentSongIndex`, `selectedCategoryIds`) sem núllstillast við hverja nýja umferð.
+
+### Results-skjárinn
+Tveir hnappar, í þessari röð:
+1. **„Go to lobby"** (nýr, efri/aðal-hnappur) — bætir stigum þessarar umferðar við `totalScore` hvers leikmanns, núllstillir umferðargögnin, og fer með ALLA aftur í SAMA lobby (sama `roomCode`) — ekki nýtt herbergi.
+2. **„Leave Game"** (sami hnappur og er nú þegar til, óbreyttur að staðsetningu/hegðun fyrir neðan) — fyrir þá sem vilja hætta alveg og leysa upp herbergið.
+
+### Lobby-skjárinn
+Sýnir „leaderboard" með uppsafnaðri stigatölu (`totalScore`) um leið og a.m.k. ein umferð er búin — falið í allra fyrstu umferð þar sem ekkert er til að sýna enn.
+
+### Nýir leikmenn milli umferða
+Leyft — ef einhver joinar eftir að fyrsta umferð er búin, byrjar hann á núlli í `totalScore` en sést strax á leaderboard-inu með hinum. Ef hópurinn vill alveg nýtt herbergi (t.d. fyrir annan/nýjan hóp), fara þeir bara í Home og stofna nýtt lobby eins og áður — það flæði er óbreytt.
+
+### Óbreytt
+Sjálf stigaútreikningsrökin í `scoring.ts` fyrir eina umferð breytast ekki — þetta er bara viðbótarlag sem safnar saman niðurstöðum margra umferða ofan á það sem er nú þegar til.
+
+
+
+## Lagaspilun í appinu (viðbót við CLAUDE.md — næsta stóra skref EFTIR að fjölspilun er staðfest í loftinu)
+
+### Vandamálið sem er verið að leysa
+Núverandi flæði (leikstjóri spilar lögin utan appsins, t.d. í Spotify/YouTube Music) er tafsamt í framkvæmd: einn þarf að halda utan um playlist í öðru appi, allir þurfa að koma lögunum sínum til hans, og í hvert sinn sem lag klárast þarf hann að finna og velja næsta lag handvirkt í hinu appinu. Þetta er núningsflötur sem getur drepið stemninguna í samkvæminu.
+
+### Ákvörðun
+Bæta beinni lagaspilun við appið sjálft, í gegnum YouTube — EKKI Spotify (áfram bannað í leikjum, staðfest fyrr í þessu ferli) og EKKI Deezer (óljósir skilmálar fyrir leikjanotkun). YouTube leyfir innfellingu (embedding) þriðja aðila forrita samkvæmt þeirra eigin verktakareglum, en með skilyrðum.
+
+### Skilyrði frá YouTube sem VERÐUR að fylgja
+- Spilarinn verður að vera SÝNILEGUR á skjánum — má ekki fela hann eða spila bara hljóðið í bakgrunni.
+- YouTube-uppruni verður að vera skýr fyrir notandanum (merki/branding sýnilegt).
+- Ekki má taka hljóðið úr og einangra það frá myndbandinu — spilarinn verður að virka óbreyttur eins og YouTube hannaði hann.
+- Engin sérstök takmörkun fannst á leikja-/spurningakeppna-notkun sjálfri (ólíkt Spotify).
+
+Í praxís þýðir þetta: „Now Playing" skjárinn þarf að sýna alvöru YouTube-spilara (með myndbandi) í stað þess að vera bara texti/hljóð falið á bak við eigið útlit.
+
+### Tæknilegar þarfir
+- **YouTube Data API**: notað til að leita að og finna rétt myndbands-ID fyrir lagið sem einhver skrifar inn (t.d. „Master of Puppets — Metallica" → finnur samsvarandi YouTube video-ID). Þarf ókeypis Google Cloud-verkefni og API-lykil — svipað ferli og Firebase-uppsetningin sem þið eruð nú þegar vön.
+- **YouTube IFrame Player API**: notað til að spila valda myndbandið beint í appinu, sýnilegt á skjánum.
+- Söngvaleitin (MusicBrainz, sem áður var rædd fyrir autocomplete) og YouTube-leitin geta unnið saman: MusicBrainz gefur „rétt" nafn á lagi/flytjanda, YouTube-leitin finnur svo myndbands-ID til að spila.
+
+### Hvað breytist í leikjaflæðinu
+- Í stað þess að leikstjóri „finni og spili" hvert lag handvirkt utan appsins, spilar appið sjálft næsta lag sjálfkrafa þegar röðin kemur að því (nýtir sömu „phase"/röð-strúktúr og fjölspilunar-planið notar nú þegar fyrir `songOrder`/`currentSongIndex`).
+- Allir sjá sama YouTube-spilarann samtímis (ekki bara leikstjórinn) — sem er í raun betri upplifun en núverandi fyrirkomulag þar sem bara leikstjórinn horfir á skjáinn sem spilar tónlistina.
+- Handvirki textainnslátturinn helst sem öryggisnet: ef YouTube-leitin finnur ekkert samsvarandi myndband fyrir lagið sem einhver skrifaði inn, þarf notandinn samt að geta klárað innsendinguna (t.d. með því að líma inn beinan YouTube-hlekk sjálfur í staðinn).
+
+### Röð — EKKI byrja fyrr en núverandi fjölspilunarvinna er staðfest í loftinu
+1. Klára núverandi skref: öryggisreglur birtar, GitHub Secrets komin inn, deployað, prófað með alvöru hópi á mismunandi netum.
+2. Stofna Google Cloud-verkefni + YouTube Data API lykil (þið gerið, svipað og Firebase-skrefin).
+3. Bæta YouTube-leit við lagaskil-flæðið (finna video-ID við innsendingu eða þegar „Now Playing" hefst).
+4. Skipta út „leikstjóri spilar utan appsins" fyrir alvöru IFrame-spilara á Now Playing-skjánum, tengdan við `songOrder`/`currentSongIndex`.
+5. Handvirkt öryggisnet: leyfa beinan YouTube-hlekk sem varaleið ef sjálfvirk leit finnur ekki réttan hlut.
+6. Prófa með alvöru hópi — staðfesta að sjálfvirk spilun/framvinda virki fyrir alla samtímis.
+
+## Flæðandi lobby + dýnamísk stigagjöf (viðbót við CLAUDE.md)
+
+### 1. Enginn fyrirfram valinn spilarafjöldi
+
+Leikstjóri velur flokk(a) og fer beint inn í lobby-ið — ALDREI spurður hversu margir eigi að spila. Það er ekkert „slots"-hugtak.
+
+- `players`-nóðan í Firebase er listi sem stækkar lífrænt eftir því sem fólk joinar. Hver nýr spilari = nýr lykill undir `players/{playerId}`, ekkert frátekið fyrirfram.
+- Lobby-skjárinn sýnir bara þá sem eru komnir inn hverju sinni, uppfært í rauntíma.
+- „Byrja leik" hnappurinn virkjast um leið og lágmarksfjöldi (t.d. 2+) er kominn inn. Leikstjóri má samt bíða lengur — 4–10 spilarar er kjörsvið fyrir upplifunina, ekki krafa.
+- Join er opið hvenær sem er á meðan `phase === 'lobby'`. Um leið og `phase` fer í `submit` er lokað fyrir nýja spilara þar til næsta umferð (join milli umferða er þegar leyft, sjá viðvarandi-lobby-planið).
+
+### 2. Einkunnaskalinn verður að vera dýnamískur, ekki fastur 0–10
+
+Núverandi kerfi: hver giskandi úthlutar HVERJU lagi (nema sínu eigin) STAKRI einkunn — sama gildi má ekki nota tvisvar hjá sama giskanda. Þetta er í raun röðun/úthlutun stiga, ekki frjáls endurtekin einkunnagjöf.
+
+Fastur skali 0–10 (11 gildi) dugði nákvæmlega fyrir allt að 12 spilara, af því hver giskar á 11 önnur lög. Þar sem lobby-ið er núna flæðandi (sjá kafla 1) og fjöldinn getur farið yfir 12, verður skalinn að reiknast út frá raunverulegum fjölda laga í hverri umferð í stað þess að vera hardkódaður.
+
+**Formúla:**
+```
+hámarkseinkunn = N - 2
+```
+þar sem `N` = fjöldi laga sem eru í spilun þessa umferð (lög sem raunverulega komust í spilun — ekki heildarfjöldi skráðra spilara, sjá brúnatilvikið um að skila ekki lagi í tæka tíð). Skalinn er þá `0` til `N-2`, sem gefur nákvæmlega `N-1` gildi — eitt á hvert lag sem hver spilari metur (sitt eigið lag er undanskilið, því er alltaf N-1 lög sem þarf að meta, ekki N).
+
+Dæmi:
+| Lög í umferð (N) | Skali |
+|---|---|
+| 8 | 0–6 |
+| 12 | 0–10 (sami og fastur skalinn í dag) |
+| 13 | 0–11 |
+
+Reiknað í byrjun hverrar umferðar út frá raunverulegum lagafjölda — ekki hardkódað gildi í kóðanum lengur.
+
+### 3. Normalisering — ákveðið gegn (var íhugað, ekki útfært)
+
+Í fyrstu var talið að af því skalinn getur verið mismunandi milli umferða (8 spiluðu → 0–6, 12 spiluðu → 0–10) þyrfti að normalisera hráar einkunnir (`einkunn / (N-2)`) áður en þær leggjast í `totalScore`, svo „besta frammistaða" væri alltaf jafn mikils virði.
+
+**Ákvörðun:** ekki gera þetta. Leikjarökin, meðaltalsútreikningurinn og `totalScore`-uppsöfnunin breytast ekki neitt — hráa einkunnin (nú allt að `N-2`) flæðir í gegn nákvæmlega eins og `0–10` gerði. Eina sem raunverulega breytist er að nú er hægt að gefa hærri en 10 í stærri umferð, og það misræmi milli umferða er samþykkt sem nógu sanngjarnt. `scoring.ts` er því ósnert.

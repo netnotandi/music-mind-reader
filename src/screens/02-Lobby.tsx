@@ -1,7 +1,7 @@
 import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
 import { CategoryPicker } from '../components/CategoryPicker'
-import { toggleCategorySelection, useGameStore } from '../state/gameStore'
+import { MIN_PLAYERS_TO_START, toggleCategorySelection, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 
 export function Lobby() {
@@ -10,7 +10,6 @@ export function Lobby() {
   // green pill unchanged, matching the same distinction made in SubmitSong.
   const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const roomCode = useGameStore((s) => s.roomCode)
-  const maxPlayers = useGameStore((s) => s.maxPlayers)
   const players = useGameStore((s) => s.players)
   const hostId = useGameStore((s) => s.hostId)
   const localPlayerId = useGameStore((s) => s.localPlayerId)
@@ -33,7 +32,6 @@ export function Lobby() {
 
   const isHost = localPlayerId !== null && localPlayerId === hostId
   const selectedCategories = categories.filter((c) => selectedCategoryIds.includes(c.id))
-  const seatCount = maxPlayers ?? players.length
   const ranked = [...players].sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0))
   // While a round has just ended, `phase` stays 'results' for anyone who
   // hasn't clicked "Go to Lobby" yet - reachable here at all only means
@@ -78,9 +76,7 @@ export function Lobby() {
       </div>
 
       <h2 className="mb-2 flex items-center justify-between text-sm font-semibold uppercase tracking-wide text-text-secondary">
-        <span>
-          Players ({players.length}/{seatCount})
-        </span>
+        <span>Players ({players.length})</span>
         {roundsCompleted > 0 && <span>Score</span>}
       </h2>
       <ul className="mb-8 space-y-1">
@@ -100,38 +96,25 @@ export function Lobby() {
                 </span>
               </li>
             ))
-          : Array.from({ length: seatCount }, (_, i) => players[i]).map((player, i) => (
+          : players.map((player) => (
               <li
-                key={player?.id ?? `empty-${i}`}
+                key={player.id}
                 className="flex items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-2 text-text"
               >
-                {player ? (
-                  <>
-                    <span className="min-w-0 truncate">{player.name}</span>
-                    {isPlayerReady(player.id) && (
-                      <span className="flex-shrink-0 text-xs text-success">connected</span>
-                    )}
-                  </>
-                ) : (
-                  <span className="flex items-center gap-2 text-sm text-violet/70">
-                    <span className="motion-safe:animate-pulse">〜</span>
-                    Waiting for player…
-                  </span>
+                <span className="min-w-0 truncate">{player.name}</span>
+                {isPlayerReady(player.id) && (
+                  <span className="flex-shrink-0 text-xs text-success">connected</span>
                 )}
               </li>
             ))}
-        {roundsCompleted > 0 &&
-          Array.from({ length: Math.max(seatCount - players.length, 0) }, (_, i) => (
-            <li
-              key={`empty-${i}`}
-              className="flex items-center justify-between rounded-lg bg-surface-muted px-3 py-2 text-text"
-            >
-              <span className="flex items-center gap-2 text-sm text-violet/70">
-                <span className="motion-safe:animate-pulse">〜</span>
-                Waiting for player…
-              </span>
-            </li>
-          ))}
+        {/* No fixed "seats" anymore - one perpetual hint row while the room
+            is open, so it still reads as "more people can join". */}
+        {!roundStillWrappingUp && (
+          <li className="flex items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-sm text-violet/70">
+            <span className="motion-safe:animate-pulse">〜</span>
+            Waiting for more players…
+          </li>
+        )}
       </ul>
 
       {selectedCategories.length > 0 ? (
@@ -169,7 +152,7 @@ export function Lobby() {
       ) : isHost ? (
         <button
           type="button"
-          disabled={selectedCategoryIds.length === 0}
+          disabled={selectedCategoryIds.length === 0 || players.length < MIN_PLAYERS_TO_START}
           onClick={startSubmitting}
           className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
         >

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
-import { MAX_NAME_LENGTH } from '../state/gameStore'
+import { MAX_NAME_LENGTH, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 
 const WAVE_REPLAY_INTERVAL_MS = 15000
@@ -14,7 +14,9 @@ export function CreateJoin() {
   // the same solid violet/white-card look every other screen uses, per the
   // "gradient is rare brand emphasis only" rule. Dark is untouched below.
   const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
+  const createGame = useGameStore((s) => s.createGame)
   const [name, setName] = useState('')
+  const [creating, setCreating] = useState(false)
   // The CSS animation runs once (forwards, not infinite) - remounting the
   // field via a changing key restarts it fresh, giving a periodic burst
   // instead of a continuous loop.
@@ -30,9 +32,13 @@ export function CreateJoin() {
   // forward once a name is entered, so it's never asked for twice.
   const roomCodeFromQr = (location.state as { roomCode?: string } | null)?.roomCode ?? null
 
-  function handleCreateGame() {
-    if (!name.trim()) return
-    navigate('/setup', { state: { hostName: name.trim() } })
+  async function handleCreateGame() {
+    if (!name.trim() || creating) return
+    setCreating(true)
+    // No explicit navigate - createGame resolving attaches the room
+    // listener, which syncs phase 'lobby' and lets the app-wide phase
+    // watcher route this device (and every other) to the Lobby.
+    await createGame(name.trim())
   }
 
   function handleJoinGame() {
@@ -99,7 +105,7 @@ export function CreateJoin() {
           )}
           <button
             type="button"
-            disabled={!name.trim()}
+            disabled={!name.trim() || creating}
             onClick={handleCreateGame}
             className={
               isLight
@@ -107,7 +113,7 @@ export function CreateJoin() {
                 : 'rounded-full bg-gradient-to-r from-cyan via-violet to-pink px-5 py-3 text-sm font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40'
             }
           >
-            CREATE GAME
+            {creating ? 'CREATING…' : 'CREATE GAME'}
           </button>
 
           <div className="flex items-center gap-3">
