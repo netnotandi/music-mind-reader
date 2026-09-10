@@ -246,6 +246,8 @@ Til að gera þetta skýrt fyrir notandanum: spjaldið fyrir lag sem hann á enn
 - **Short**: host advanc-ar þegar `allAnswered` (núverandi lag) EÐA `onCap` (90s spilun, `SHORT_MODE_CAP_SECONDS`) EÐA `onEnded`. Lag án video → wall-clock 90s.
 - **Long**: host advanc-ar bara við `onEnded` eða „Skip song".
 - `NowPlayingPlayer` (host) fylgist með `getCurrentTime()` og `PlayerState.ENDED` og kallar `onCap`/`onEnded`.
-- Wrap-up (`roundPlaythroughDone`): spilari stoppaður, allir sjá „This round" listann (`SongList`) með litaðum spjöldum (áberandi = á eftir að svara, grænt ✓ = lokið), klára ólokið, „Confirm final answers" → host „See Results".
+- Wrap-up (`roundPlaythroughDone`): spilari stoppaður, „All songs played — finish your answers below.", klára ólokið lög, „Confirm final answers" → host „See Results".
 - Persónuleg sýn (`viewIndex`) fylgir hópnum bara ef spilari er búinn með lagið sem hann er á — annars situr hún kyrr.
+- Vafur milli laga: einfaldur „← Previous song" / „Next song →" stepper (ekkert `SongList`). Í spilun nær hann aftur að lagi í gangi; í wrap-up yfir öll lög. Hvorugur takkinn hreyfir hópinn. „Reviewing an earlier song — jump back…" banner þegar spilari er ekki á laginu í gangi.
+- Þegar spilari á eftir að giska/gefa einkunn fyrir lagið sem hann skoðar verður `SongCard` bleikt (`needsAnswer` → `border-pink`/`bg-pink/15`/`text-pink`) — „umhverfið" gefur til kynna að hann sé ekki búinn.
 - Þekkt takmörkun: ef host bakgrunnar appið mið-lag stoppa timer-ar; host-failover er sérstakt seinna verk.

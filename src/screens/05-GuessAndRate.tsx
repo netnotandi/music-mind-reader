@@ -16,6 +16,9 @@ interface AnswerFormProps {
   index: number
   total: number
   isOwnSong: boolean
+  // This player still owes a guess/rating for this song - the song card
+  // switches to the "you're not done here" colour.
+  needsAnswer: boolean
   visiblePlayers: Player[]
   assignedElsewhere: Map<string, string>
   ratingScale: number[]
@@ -31,6 +34,7 @@ function AnswerForm({
   index,
   total,
   isOwnSong,
+  needsAnswer,
   visiblePlayers,
   assignedElsewhere,
   ratingScale,
@@ -48,7 +52,13 @@ function AnswerForm({
   return (
     <>
       <div className="mb-6">
-        <SongCard title={song.title} artist={song.artist} index={index} total={total} />
+        <SongCard
+          title={song.title}
+          artist={song.artist}
+          index={index}
+          total={total}
+          needsAnswer={needsAnswer}
+        />
       </div>
 
       {isOwnSong ? (
@@ -128,66 +138,6 @@ function AnswerForm({
         </>
       )}
     </>
-  )
-}
-
-interface SongListProps {
-  songs: Song[]
-  reachedCount: number
-  currentSongIndex: number
-  viewIndex: number
-  roundPlaythroughDone: boolean
-  isDoneForMe: (s: Song) => boolean
-  localPlayerId: string
-  onPick: (index: number) => void
-}
-
-// The round's songs as a tap-to-open list. A song you still owe an answer
-// for is flagged prominently; done / your own songs read quietly. Lets a
-// player who fell behind the music go back and finish.
-function SongList({
-  songs,
-  reachedCount,
-  currentSongIndex,
-  viewIndex,
-  roundPlaythroughDone,
-  isDoneForMe,
-  localPlayerId,
-  onPick,
-}: SongListProps) {
-  const rows = songs.slice(0, reachedCount)
-  if (rows.length === 0) return null
-  return (
-    <div className="mt-6 space-y-1.5">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">This round</h2>
-      {rows.map((s, i) => {
-        const mine = s.playerId === localPlayerId
-        const done = isDoneForMe(s)
-        const needs = !mine && !done
-        const isNowPlaying = i === currentSongIndex && !roundPlaythroughDone
-        const isViewing = i === viewIndex
-        return (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => onPick(i)}
-            className={`flex w-full items-center justify-between gap-2 rounded-lg border-2 px-3 py-2 text-left text-sm transition ${
-              needs
-                ? 'border-primary bg-primary-soft text-primary'
-                : 'border-border bg-surface-muted text-text-secondary'
-            } ${isViewing ? 'ring-2 ring-cyan ring-offset-1 ring-offset-bg' : ''}`}
-          >
-            <span className="font-semibold">
-              Song {i + 1}
-              {isNowPlaying && <span className="ml-2 text-xs font-normal text-cyan">now playing</span>}
-            </span>
-            <span className="flex-shrink-0 text-xs font-medium">
-              {mine ? 'your song' : done ? <span className="text-success">✓ done</span> : 'answer →'}
-            </span>
-          </button>
-        )
-      })}
-    </div>
   )
 }
 
@@ -327,7 +277,19 @@ export function GuessAndRate() {
   const hasConfirmed = confirmedPlayerIds.includes(localPlayerId)
   const allConfirmed = players.length > 0 && confirmedPlayerIds.length >= players.length
   const myUnanswered = songs.filter((s) => s.playerId !== localPlayerId && !isDoneForMe(s)).length
-  const reachedCount = roundPlaythroughDone ? songs.length : currentSongIndex + 1
+  const needsAnswer = !isOwnSong && !isDoneForMe(song)
+
+  // Browse the round's songs with a simple prev/next stepper. Neither button
+  // moves the group - during play you can only step back as far as the song
+  // that's currently playing; once the round has played through you can
+  // range over every song to finish up.
+  const maxReachableIndex = roundPlaythroughDone ? songs.length - 1 : currentSongIndex
+  function goPrev() {
+    setViewIndex((i) => Math.max(i - 1, 0))
+  }
+  function goNext() {
+    setViewIndex((i) => Math.min(i + 1, maxReachableIndex))
+  }
 
   function handleSubmit(guessedPlayerId: string, rating: number | null) {
     const conflictSong = categorySongs.find(
@@ -384,19 +346,8 @@ export function GuessAndRate() {
           All songs played — finish your answers below.
         </div>
       ) : (
-        <div className="mb-6 flex items-center justify-center gap-2 text-sm text-text-secondary">
-          <span>
-            Now playing: <span className="font-semibold text-text">Song {currentSongIndex + 1}</span>
-          </span>
-          {!isViewingCurrent && (
-            <button
-              type="button"
-              onClick={() => setViewIndex(currentSongIndex)}
-              className="text-cyan underline"
-            >
-              jump to it
-            </button>
-          )}
+        <div className="mb-6 text-center text-sm text-text-secondary">
+          Now playing: <span className="font-semibold text-text">Song {currentSongIndex + 1}</span>
         </div>
       )}
 
@@ -406,6 +357,7 @@ export function GuessAndRate() {
         index={viewIndex}
         total={songs.length}
         isOwnSong={isOwnSong}
+        needsAnswer={needsAnswer}
         visiblePlayers={visiblePlayers}
         assignedElsewhere={assignedElsewhere}
         ratingScale={ratingScale}
@@ -413,6 +365,38 @@ export function GuessAndRate() {
         initialAnswer={initialAnswer}
         onSubmit={handleSubmit}
       />
+
+      {!isViewingCurrent && !roundPlaythroughDone && (
+        <button
+          type="button"
+          onClick={() => setViewIndex(currentSongIndex)}
+          className="mb-6 w-full rounded-lg border border-cyan/40 bg-cyan/10 px-4 py-2 text-sm text-cyan transition hover:border-cyan"
+        >
+          Reviewing an earlier song — jump back to the one playing now →
+        </button>
+      )}
+
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          disabled={viewIndex === 0}
+          onClick={goPrev}
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          ← Previous song
+        </button>
+        <span className="flex-shrink-0 text-xs text-text-muted">
+          {viewIndex + 1} / {songs.length}
+        </span>
+        <button
+          type="button"
+          disabled={viewIndex >= maxReachableIndex}
+          onClick={goNext}
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          Next song →
+        </button>
+      </div>
 
       {!isOwnSong && (
         <p className="mb-4 text-center text-sm text-text-secondary">
@@ -439,17 +423,6 @@ export function GuessAndRate() {
           Skip song →
         </button>
       )}
-
-      <SongList
-        songs={songs}
-        reachedCount={reachedCount}
-        currentSongIndex={currentSongIndex}
-        viewIndex={viewIndex}
-        roundPlaythroughDone={roundPlaythroughDone}
-        isDoneForMe={isDoneForMe}
-        localPlayerId={localPlayerId}
-        onPick={setViewIndex}
-      />
 
       {roundPlaythroughDone && (
         <div className="mt-8">
