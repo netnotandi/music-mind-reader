@@ -43,6 +43,12 @@ export const CATEGORIES: Category[] = [
   { id: 'wake-me-from-a-coma', name: 'A Song That Would Wake Me From a Coma' },
   { id: 'biggest-red-flag', name: 'My Biggest Red-Flag Song' },
   { id: 'celebrity-song', name: 'A Surprisingly Good Celebrity Song' },
+  { id: 'fave-another-country', name: 'My Favourite Song From Another Country' },
+  { id: 'fave-past-decade', name: 'My Favourite Song From a Past Decade' },
+  { id: 'fave-another-language', name: 'My Favourite Song in Another Language' },
+  { id: 'fave-from-a-movie', name: 'My Favourite Song From a Movie' },
+  { id: 'fave-solo-artist', name: 'My Favourite Song by a Solo Artist' },
+  { id: 'fave-single-year', name: 'My Favourite Song From a Single Year' },
 ]
 
 // Notað til að fylla sjálfkrafa út lög fyrir gervi-leikmenn sem "hafa ekki skilað" ennþá.
