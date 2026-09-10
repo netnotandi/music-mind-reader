@@ -42,6 +42,7 @@ export const CATEGORIES: Category[] = [
   { id: 'describes-friend-group', name: 'A Song That Describes This Friend Group' },
   { id: 'wake-me-from-a-coma', name: 'A Song That Would Wake Me From a Coma' },
   { id: 'biggest-red-flag', name: 'My Biggest Red-Flag Song' },
+  { id: 'celebrity-song', name: 'A Surprisingly Good Celebrity Song' },
 ]
 
 // Notað til að fylla sjálfkrafa út lög fyrir gervi-leikmenn sem "hafa ekki skilað" ennþá.
