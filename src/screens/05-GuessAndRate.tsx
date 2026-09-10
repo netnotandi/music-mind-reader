@@ -314,16 +314,6 @@ export function GuessAndRate() {
         </div>
       )}
 
-      {!isViewingCurrent && (
-        <button
-          type="button"
-          onClick={() => setViewIndex(currentSongIndex)}
-          className="mb-6 w-full rounded-lg border border-info-border bg-info-bg px-4 py-2 text-center text-sm text-info-text transition hover:border-info-border"
-        >
-          Reviewing an earlier song — tap to jump back to the current one
-        </button>
-      )}
-
       {isFirstOfCategory && viewIndex > 0 && (
         <div className="mb-6 rounded-lg border border-info-border bg-info-bg px-4 py-2 text-center text-sm text-info-text">
           Next up: {categoryName}
@@ -343,6 +333,16 @@ export function GuessAndRate() {
         initialAnswer={initialAnswer}
         onSubmit={handleSubmit}
       />
+
+      {!isViewingCurrent && (
+        <button
+          type="button"
+          onClick={() => setViewIndex(currentSongIndex)}
+          className="mb-6 w-full rounded-lg border border-info-border bg-info-bg px-4 py-2 text-center text-sm text-info-text transition hover:border-info-border"
+        >
+          Reviewing an earlier song — tap to jump back to the current one
+        </button>
+      )}
 
       {/* Credits the owner as already "done" from the start, so the count
           reads out of every player rather than just required responders -
