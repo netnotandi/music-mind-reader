@@ -16,6 +16,9 @@ export interface Song {
   title: string
   artist: string
   youtubeVideoId?: string
+  // The title of the YouTube video the player picked in search - kept so a
+  // song with a sparse or empty title/artist still has a real name to show.
+  youtubeTitle?: string
 }
 
 export interface Guess {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { NowPlayingPlayer } from '../components/NowPlayingPlayer'
 import { SongCard } from '../components/SongCard'
+import { songLabel } from '../logic/songLabel'
 import { getCurrentRoundSongs, SHORT_MODE_CAP_SECONDS, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 import type { Player, Song } from '../types'
@@ -55,6 +56,7 @@ function AnswerForm({
         <SongCard
           title={song.title}
           artist={song.artist}
+          youtubeTitle={song.youtubeTitle}
           index={index}
           total={total}
           needsAnswer={needsAnswer}
@@ -259,7 +261,7 @@ export function GuessAndRate() {
   for (const g of guesses) {
     if (g.guesserId !== localPlayerId || g.songId === song.id) continue
     const assignedSong = categorySongs.find((s) => s.id === g.songId)
-    if (assignedSong) assignedElsewhere.set(g.guessedPlayerId, assignedSong.title)
+    if (assignedSong) assignedElsewhere.set(g.guessedPlayerId, songLabel(assignedSong).primary)
   }
 
   const existingGuess = guesses.find((g) => g.songId === song.id && g.guesserId === localPlayerId)

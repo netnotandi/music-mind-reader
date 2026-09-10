@@ -15,7 +15,12 @@ function describeSong(title: string, artist: string) {
 interface SongFormProps {
   category: Category
   existingSong: { title: string; artist: string } | undefined
-  onSubmit: (title: string, artist: string, youtubeVideoId: string | null) => void
+  onSubmit: (
+    title: string,
+    artist: string,
+    youtubeVideoId: string | null,
+    youtubeTitle: string | null
+  ) => void
 }
 
 // Keyed by `${category.id}` from the parent, so React remounts this (and
@@ -80,7 +85,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   }
 
   function finish(youtubeVideoId: string, picked: YouTubeSearchResult | null) {
-    onSubmit(title.trim(), artist.trim(), youtubeVideoId)
+    onSubmit(title.trim(), artist.trim(), youtubeVideoId, picked?.title ?? null)
     // Doesn't remount (same category, key unchanged) when this is the only
     // selected category left to edit - handled by hand so a successful
     // submit doesn't leave an earlier stage showing as if it were still
@@ -358,7 +363,9 @@ export function SubmitSong() {
         key={categoryToShow.id}
         category={categoryToShow}
         existingSong={existingSong}
-        onSubmit={(title, artist, youtubeVideoId) => submitSong(categoryToShow.id, title, artist, youtubeVideoId)}
+        onSubmit={(title, artist, youtubeVideoId, youtubeTitle) =>
+          submitSong(categoryToShow.id, title, artist, youtubeVideoId, youtubeTitle)
+        }
       />
 
       <ProgressTable

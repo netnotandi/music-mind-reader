@@ -86,7 +86,13 @@ interface GameState {
   // Host only, from Game Setup: short vs long round, live-synced.
   chooseRoundMode: (mode: RoundMode) => void
   startSubmitting: () => void
-  submitSong: (categoryId: string, title: string, artist: string, youtubeVideoId: string | null) => void
+  submitSong: (
+    categoryId: string,
+    title: string,
+    artist: string,
+    youtubeVideoId: string | null,
+    youtubeTitle: string | null
+  ) => void
   shuffleSongOrder: () => void
   submitGuess: (songId: string, guessedPlayerId: string) => void
   clearGuess: (songId: string) => void
@@ -176,7 +182,14 @@ interface RoomRecord {
   players?: Record<string, { name: string; joinedAt: number; totalScore?: number }>
   songs?: Record<
     string,
-    { playerId: string; categoryId: string; title: string; artist: string; youtubeVideoId?: string }
+    {
+      playerId: string
+      categoryId: string
+      title: string
+      artist: string
+      youtubeVideoId?: string
+      youtubeTitle?: string
+    }
   >
   guesses?: Record<string, Guess>
   ratings?: Record<string, Rating>
@@ -366,7 +379,7 @@ export const useGameStore = create<GameState>((set, get) => {
       dbUpdate(ref(db, `games/${roomCode}`), { phase: 'submit' })
     },
 
-    submitSong: (categoryId, title, artist, youtubeVideoId) => {
+    submitSong: (categoryId, title, artist, youtubeVideoId, youtubeTitle) => {
       const { roomCode, localPlayerId } = get()
       if (!roomCode || !localPlayerId) return
       const songId = `${localPlayerId}__${categoryId}`
@@ -375,9 +388,10 @@ export const useGameStore = create<GameState>((set, get) => {
         categoryId,
         title,
         artist,
-        // Firebase rejects `undefined` values outright, so the key is only
-        // included at all once there's an actual id to store.
+        // Firebase rejects `undefined` values outright, so these keys are
+        // only included at all once there's an actual value to store.
         ...(youtubeVideoId ? { youtubeVideoId } : {}),
+        ...(youtubeTitle ? { youtubeTitle } : {}),
       })
     },
 

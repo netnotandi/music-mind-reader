@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Player, Song } from '../types'
 import type { ScoreBreakdownRow, Title } from '../logic/scoring'
+import { songLabel } from '../logic/songLabel'
 
 interface ScoreBoardProps {
   players: Player[]
@@ -64,17 +65,22 @@ export function ScoreBoard({ players, scores, titles, breakdowns, songsByPlayer 
 
               {ownedSongs.length > 0 && (
                 <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
-                  {ownedSongs.map(({ song, avgRating }) => (
+                  {ownedSongs.map(({ song, avgRating }) => {
+                    const { primary, secondary } = songLabel(song)
+                    return (
                     <div key={song.id} className="flex items-center justify-between gap-3">
                       <div className="flex items-baseline gap-2">
-                        <span className="font-medium text-text">{song.title}</span>
-                        <span className="text-sm text-text-secondary">{song.artist}</span>
+                        <span className="font-medium text-text">{primary}</span>
+                        {secondary && (
+                          <span className="truncate text-sm text-text-secondary">{secondary}</span>
+                        )}
                       </div>
                       <span className="flex-shrink-0 text-xs text-text-muted">
                         avg rating {avgRating.toFixed(1)}
                       </span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </button>
