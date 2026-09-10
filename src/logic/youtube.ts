@@ -57,6 +57,41 @@ export async function searchYouTubeVideos(query: string, pageToken?: string): Pr
   }
 }
 
+// @types/youtube declares the YT namespace but not the two globals the
+// IFrame API actually hangs off window.
+declare global {
+  interface Window {
+    YT?: typeof YT
+    onYouTubeIframeAPIReady?: () => void
+  }
+}
+
+// The IFrame Player API loads via a global callback (onYouTubeIframeAPIReady)
+// and a one-off <script> injection. Memoised so it only happens once no
+// matter how many times the Now Playing player mounts across rounds.
+let iframeApiPromise: Promise<typeof YT> | null = null
+
+export function loadYouTubeIframeApi(): Promise<typeof YT> {
+  if (iframeApiPromise) return iframeApiPromise
+  iframeApiPromise = new Promise((resolve) => {
+    if (window.YT?.Player) {
+      resolve(window.YT)
+      return
+    }
+    // YouTube calls this global once the API is ready; chain any existing
+    // handler so we don't clobber one another set.
+    const prev = window.onYouTubeIframeAPIReady
+    window.onYouTubeIframeAPIReady = () => {
+      prev?.()
+      resolve(window.YT)
+    }
+    const script = document.createElement('script')
+    script.src = 'https://www.youtube.com/iframe_api'
+    document.head.appendChild(script)
+  })
+  return iframeApiPromise
+}
+
 const YOUTUBE_URL_PATTERNS = [
   /youtube\.com\/watch\?v=([\w-]{11})/,
   /youtu\.be\/([\w-]{11})/,

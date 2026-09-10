@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { NowPlayingPlayer } from '../components/NowPlayingPlayer'
 import { SongCard } from '../components/SongCard'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
@@ -301,18 +302,7 @@ export function GuessAndRate() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
-      {isHost && currentSong?.youtubeVideoId && (
-        <div className="mb-6 overflow-hidden rounded-xl border border-border">
-          <iframe
-            key={currentSong.id}
-            className="aspect-video w-full"
-            src={`https://www.youtube.com/embed/${currentSong.youtubeVideoId}?autoplay=1`}
-            title="Now playing"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-          />
-        </div>
-      )}
+      {isHost && currentSong && <NowPlayingPlayer videoId={currentSong.youtubeVideoId ?? null} />}
 
       {isFirstOfCategory && viewIndex > 0 && (
         <div className="mb-6 rounded-lg border border-info-border bg-info-bg px-4 py-2 text-center text-sm text-info-text">

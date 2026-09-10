@@ -186,3 +186,22 @@ Reiknað í byrjun hverrar umferðar — ekki hardkódað gildi í kóðanum len
 Í fyrstu var talið að af því skalinn getur verið mismunandi milli umferða (8 spiluðu → 0–6, 12 spiluðu → 0–10) þyrfti að normalisera hráar einkunnir (`einkunn / (N-2)`) áður en þær leggjast í `totalScore`, svo „besta frammistaða" væri alltaf jafn mikils virði.
 
 **Ákvörðun:** ekki gera þetta. Leikjarökin, meðaltalsútreikningurinn og `totalScore`-uppsöfnunin breytast ekki neitt — hráa einkunnin (nú allt að `N-2`) flæðir í gegn nákvæmlega eins og `0–10` gerði. Eina sem raunverulega breytist er að nú er hægt að gefa hærri en 10 í stærri umferð, og það misræmi milli umferða er samþykkt sem nógu sanngjarnt. `scoring.ts` er því ósnert.
+
+
+## Mjúk umskipting milli laga (viðbót við CLAUDE.md — hluti af lagaspilun í appinu)
+
+Þegar skipt er úr einu lagi yfir í það næsta (t.d. þegar allir eru búnir að giska/gefa einkunn fyrir núverandi lag), á hljóðið að fjara út frekar en að stoppa/skipta harkalega — ekki harður "cut" á milli laga.
+
+### Útfærsla
+- Nota `player.setVolume(0–100)` úr YouTube IFrame Player API-inu — staðlað stýring sem spilarinn sjálfur býður upp á, ekki einangrun á hljóði frá myndbandi, svo þetta brýtur ekki YouTube-skilyrðin sem eru þegar skráð fyrir lagaspilunina.
+- Keyra stutt interval sem lækkar hljóðstyrk skref fyrir skref (t.d. 100 → 0 á ~1–1.5 sek).
+- Hlaða næsta lag inn (`loadVideoById`) þegar hljóðstyrkur er kominn í 0.
+- Hækka hljóðstyrk aftur (fade-in) um leið og nýja lagið byrjar — gefur „crossfade"-tilfinningu í stað harkalegs skiptis.
+
+### Sjónræn mýking (valfrjálst, til viðbótar)
+IFrame API hefur enga innbyggða leið til að láta sjálft MYNDIÐ fjara út (bara hljóðið). Ef sjónræn mýking er líka æskileg: nota létt yfirlags-element (t.d. svartur `div` með `opacity`-transition) sem hylur spilarann rétt á meðan skiptingin á sér stað, samstillt við hljóðfade-ið — gefur „fade to black og til baka" tilfinningu.
+
+### Staða
+Útfært (`src/components/NowPlayingPlayer.tsx`): host-spilarinn notar núna YouTube IFrame Player API-ið í stað hrás `<iframe>` — hljóðið fjarar út (~0.9s), næsta lag hleðst inn með `loadVideoById`, og fjarar svo inn aftur, með svörtum yfirlags-`div` sem fylgir hljóðfade-inu. `unMute()` kallað (bæði beint og á `onStateChange` PLAYING) svo autoplay-stefna vafrans þaggi ekki niður í laginu sem er skipt inn.
+
+Restin af „Lagaspilun í appinu" áfanganum (sjálfvirk framvinda milli laga o.fl.) er enn eftir.
