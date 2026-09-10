@@ -25,6 +25,20 @@ interface NowPlayingPlayerProps {
 
 const FADE_MS = 900
 const FADE_STEPS = 18
+const VOLUME_STORAGE_KEY = 'mmr-player-volume'
+
+function readStoredVolume(): number {
+  try {
+    const raw = localStorage.getItem(VOLUME_STORAGE_KEY)
+    if (raw !== null) {
+      const v = Number(raw)
+      if (Number.isFinite(v) && v >= 0 && v <= 100) return v
+    }
+  } catch {
+    // no storage - fall through
+  }
+  return 100
+}
 
 // The host's Now Playing player. Uses the YouTube IFrame Player API (not a
 // plain embed) so switching songs can crossfade the audio, and so playback
@@ -50,6 +64,9 @@ export function NowPlayingPlayer({
   const capFiredRef = useRef(false)
   const floorFiredRef = useRef(false)
   const endedFiredRef = useRef(false)
+  // Set right before a new video loads; consumed on the next PLAYING event
+  // to force the freshly-started video audible (see restoreAudio).
+  const wantAudioRef = useRef(false)
   // Kept in refs so the persistent player callbacks always see the latest.
   const capSecondsRef = useRef(capSeconds)
   const onCapRef = useRef(onCap)
@@ -61,7 +78,15 @@ export function NowPlayingPlayer({
   floorSecondsRef.current = floorSeconds
   onFloorRef.current = onFloor
   onEndedRef.current = onEnded
+
   const [covered, setCovered] = useState(true)
+  const [volume, setVolumeState] = useState(readStoredVolume)
+  // A browser can refuse to unmute media that started without a fresh user
+  // gesture (every song after the first auto-advances with no click). When
+  // we detect that, this shows a one-tap unmute button over the player.
+  const [audioBlocked, setAudioBlocked] = useState(false)
+  const volumeRef = useRef(volume)
+  volumeRef.current = volume
 
   function clearFade() {
     if (fadeTimerRef.current !== null) {
@@ -76,13 +101,17 @@ export function NowPlayingPlayer({
     }
   }
 
+  // Ramp the player volume from where it is to `to` over FADE_MS. Used for
+  // the fade-OUT before a song swap; the fade-IN is handled on the PLAYING
+  // event instead, where setVolume calls aren't swallowed by a player that
+  // is still buffering the new video.
   function fadeVolume(player: YT.Player, to: number, onDone?: () => void) {
     clearFade()
-    let from = 100
+    let from = to
     try {
       from = player.getVolume()
     } catch {
-      // player not ready / already gone - fall back to a full-range fade
+      // player not ready / already gone - jump straight to the target
     }
     let step = 0
     fadeTimerRef.current = setInterval(() => {
@@ -101,8 +130,34 @@ export function NowPlayingPlayer({
     }, FADE_MS / FADE_STEPS)
   }
 
+  // Bring the freshly-started video up to the host's volume (a short
+  // fade-in), then double-check a moment later: if the browser kept it
+  // muted because there was no user gesture, surface the tap-to-unmute
+  // button.
+  function restoreAudio(player: YT.Player) {
+    try {
+      player.unMute()
+      player.setVolume(0)
+    } catch {
+      // ignore
+    }
+    fadeVolume(player, volumeRef.current)
+    setAudioBlocked(false)
+    window.setTimeout(() => {
+      try {
+        if (player.isMuted()) {
+          player.unMute()
+          player.setVolume(volumeRef.current)
+          if (player.isMuted()) setAudioBlocked(true)
+        }
+      } catch {
+        // player gone - nothing to do
+      }
+    }, 700)
+  }
+
   // Poll playback position while a video is playing; fire the short-mode
-  // time cap once it's crossed.
+  // time floor / cap once they're crossed.
   function startPoll(player: YT.Player) {
     clearPoll()
     pollTimerRef.current = setInterval(() => {
@@ -149,25 +204,27 @@ export function NowPlayingPlayer({
             if (cancelled || !player) return
             playerRef.current = player
             playingRef.current = videoId
-            try {
-              player.setVolume(0)
-              player.unMute()
-            } catch {
-              // ignore
+            if (import.meta.env.DEV) {
+              ;(window as unknown as { __mmrPlayer?: YT.Player }).__mmrPlayer = player
             }
             if (videoId) {
-              fadeVolume(player, 100)
+              wantAudioRef.current = true
               startPoll(player)
               setCovered(false)
             }
           },
           onStateChange: (e) => {
             if (e.data === YTns.PlayerState.PLAYING) {
-              // YouTube tends to (re)mute a video it just started.
-              try {
-                e.target.unMute()
-              } catch {
-                // ignore
+              if (wantAudioRef.current) {
+                wantAudioRef.current = false
+                restoreAudio(e.target)
+              } else {
+                // resumed after a pause - just make sure it isn't muted
+                try {
+                  e.target.unMute()
+                } catch {
+                  // ignore
+                }
               }
             }
             if (e.data === YTns.PlayerState.ENDED && !endedFiredRef.current) {
@@ -209,13 +266,13 @@ export function NowPlayingPlayer({
     setCovered(true)
     fadeVolume(player, 0, () => {
       if (videoId) {
+        wantAudioRef.current = true
         try {
+          player.setVolume(0)
           player.loadVideoById(videoId)
-          player.unMute()
         } catch {
           // ignore
         }
-        fadeVolume(player, 100)
         startPoll(player)
         setCovered(false)
       } else {
@@ -230,19 +287,78 @@ export function NowPlayingPlayer({
     })
   }, [videoId])
 
+  // Host dragged the volume slider - a user gesture, so this is also the
+  // moment a blocked unmute becomes allowed.
+  function handleVolumeChange(next: number) {
+    setVolumeState(next)
+    try {
+      localStorage.setItem(VOLUME_STORAGE_KEY, String(next))
+    } catch {
+      // no storage - the value still applies for this session
+    }
+    const player = playerRef.current
+    if (!player) return
+    try {
+      player.unMute()
+      player.setVolume(next)
+    } catch {
+      // ignore
+    }
+    setAudioBlocked(false)
+  }
+
+  function forceUnmute() {
+    const player = playerRef.current
+    if (!player) return
+    try {
+      player.unMute()
+      player.setVolume(volumeRef.current || 100)
+    } catch {
+      // ignore
+    }
+    setAudioBlocked(false)
+  }
+
   return (
-    <div className="relative mb-6 aspect-video overflow-hidden rounded-xl border border-border">
-      <div ref={wrapperRef} className="absolute inset-0" />
-      <div
-        className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black"
-        style={{ opacity: covered ? 1 : 0, transition: `opacity ${FADE_MS}ms ease` }}
-      >
-        {wrapUp ? (
-          <span className="text-xs text-slate-300">All songs played</span>
-        ) : videoId === null ? (
-          <span className="text-xs text-slate-300">No video for this song</span>
-        ) : null}
+    <div className="mb-6">
+      <div className="relative aspect-video overflow-hidden rounded-xl border border-border">
+        <div ref={wrapperRef} className="absolute inset-0" />
+        <div
+          className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black"
+          style={{ opacity: covered ? 1 : 0, transition: `opacity ${FADE_MS}ms ease` }}
+        >
+          {wrapUp ? (
+            <span className="text-xs text-slate-300">All songs played</span>
+          ) : videoId === null ? (
+            <span className="text-xs text-slate-300">No video for this song</span>
+          ) : null}
+        </div>
+        {audioBlocked && !covered && videoId !== null && !wrapUp && (
+          <button
+            type="button"
+            onClick={forceUnmute}
+            className="absolute inset-x-0 bottom-0 bg-black/75 px-3 py-2 text-center text-xs font-semibold text-white"
+          >
+            🔇 Sound is muted — tap to unmute
+          </button>
+        )}
       </div>
+
+      {videoId !== null && !wrapUp && (
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-xs text-text-muted">Vol</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={volume}
+            onChange={(e) => handleVolumeChange(Number(e.target.value))}
+            aria-label="Player volume"
+            className="h-1 flex-1 accent-primary"
+          />
+          <span className="w-8 text-right text-xs tabular-nums text-text-muted">{volume}</span>
+        </div>
+      )}
     </div>
   )
 }

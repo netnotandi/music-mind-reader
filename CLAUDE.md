@@ -202,9 +202,15 @@ Reiknað í byrjun hverrar umferðar — ekki hardkódað gildi í kóðanum len
 IFrame API hefur enga innbyggða leið til að láta sjálft MYNDIÐ fjara út (bara hljóðið). Ef sjónræn mýking er líka æskileg: nota létt yfirlags-element (t.d. svartur `div` með `opacity`-transition) sem hylur spilarann rétt á meðan skiptingin á sér stað, samstillt við hljóðfade-ið — gefur „fade to black og til baka" tilfinningu.
 
 ### Staða
-Útfært (`src/components/NowPlayingPlayer.tsx`): host-spilarinn notar núna YouTube IFrame Player API-ið í stað hrás `<iframe>` — hljóðið fjarar út (~0.9s), næsta lag hleðst inn með `loadVideoById`, og fjarar svo inn aftur, með svörtum yfirlags-`div` sem fylgir hljóðfade-inu. `unMute()` kallað (bæði beint og á `onStateChange` PLAYING) svo autoplay-stefna vafrans þaggi ekki niður í laginu sem er skipt inn.
+Útfært (`src/components/NowPlayingPlayer.tsx`): host-spilarinn notar YouTube IFrame Player API-ið í stað hrás `<iframe>` — hljóðið fjarar út (~0.9s), næsta lag hleðst inn með `loadVideoById`, svartur yfirlags-`div` hylur skiptinguna.
 
-Restin af „Lagaspilun í appinu" áfanganum (sjálfvirk framvinda milli laga o.fl.) er enn eftir.
+Hljóð-endurheimt: `setVolume`-köll á meðan nýtt lag er enn að buffera geta týnst, svo hljóðið er ekki hækkað fyrr en `onStateChange` → `PLAYING` fyrir nýja lagið (`restoreAudio`): `unMute()` + fade upp í valinn hljóðstyrk. 700ms síðar er athugað `isMuted()` — ef vafrinn neitar að af-þagga (ekkert nýtt user-gesture, á sérstaklega við um sjálfvirka framvindu) birtist „tap to unmute" hnappur yfir spilaranum (smellur = gesture → virkar).
+
+Hljóðstyrkur: host er með eigin volume-slaufu undir spilaranum (`setVolume`, geymt í `localStorage` `mmr-player-volume`) — YouTube-spilarans eigin stýring er óþægileg, sérstaklega í tölvu.
+
+Í DEV er `window.__mmrPlayer` látið vísa á `YT.Player` til að auðvelda prófun.
+
+Restin af „Lagaspilun í appinu" áfanganum er komin (sjálfvirk framvinda: sjá Long/Short kaflann).
 
 
 ## Lobby og Game Setup aðskilin (viðbót við CLAUDE.md)

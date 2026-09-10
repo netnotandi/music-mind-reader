@@ -3,8 +3,16 @@ import { type RoundMode, toggleCategorySelection, useGameStore } from '../state/
 import { useThemeStore } from '../state/themeStore'
 
 const ROUND_MODES: { mode: RoundMode; label: string; blurb: string }[] = [
-  { mode: 'short', label: 'Short', blurb: '90 seconds a song, or once everyone has answered.' },
-  { mode: 'long', label: 'Long', blurb: 'Each song plays out in full; the host can skip ahead.' },
+  {
+    mode: 'short',
+    label: 'Short',
+    blurb: 'Every song plays at least 60 seconds (90 max), then moves on once everyone has answered. The host can skip a song early.',
+  },
+  {
+    mode: 'long',
+    label: 'Long',
+    blurb: 'Each song plays out in full. The host can skip a song early.',
+  },
 ]
 
 // Round configuration, on its own screen so the Lobby can stay focused on
