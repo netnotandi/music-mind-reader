@@ -1,22 +1,29 @@
 import { CategoryPicker } from '../components/CategoryPicker'
-import { toggleCategorySelection, useGameStore } from '../state/gameStore'
+import { type RoundMode, toggleCategorySelection, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 
+const ROUND_MODES: { mode: RoundMode; label: string; blurb: string }[] = [
+  { mode: 'short', label: 'Short', blurb: '90 seconds a song, or once everyone has answered.' },
+  { mode: 'long', label: 'Long', blurb: 'Each song plays out in full; the host can skip ahead.' },
+]
+
 // Round configuration, on its own screen so the Lobby can stay focused on
-// "is everyone here?". Right now that's just the category; laid out with
-// room for more settings (round length, Extended Play, ...) as siblings.
+// "is everyone here?".
 export function GameSetup() {
   const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const localPlayerId = useGameStore((s) => s.localPlayerId)
   const hostId = useGameStore((s) => s.hostId)
   const categories = useGameStore((s) => s.categories)
   const selectedCategoryIds = useGameStore((s) => s.selectedCategoryIds)
+  const roundMode = useGameStore((s) => s.roundMode)
   const chooseCategories = useGameStore((s) => s.chooseCategories)
+  const chooseRoundMode = useGameStore((s) => s.chooseRoundMode)
   const startSubmitting = useGameStore((s) => s.startSubmitting)
   const backToLobby = useGameStore((s) => s.backToLobby)
 
   const isHost = localPlayerId !== null && localPlayerId === hostId
   const selectedCategories = categories.filter((c) => selectedCategoryIds.includes(c.id))
+  const activeMode = ROUND_MODES.find((m) => m.mode === roundMode) ?? ROUND_MODES[0]
 
   function toggleCategory(categoryId: string) {
     chooseCategories(toggleCategorySelection(selectedCategoryIds, categoryId))
@@ -26,9 +33,39 @@ export function GameSetup() {
     <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
       <h1 className="mb-8 text-2xl font-bold text-text">Game Setup</h1>
 
-      {/* Future round settings (e.g. a short/long logo-reveal toggle, round
-          length / Extended Play) slot in here as sibling <section>s above
-          the category picker - the screen is laid out with room for them. */}
+      <section className="mb-8">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary">
+          Round length
+        </h2>
+        {isHost ? (
+          <>
+            <div className="flex gap-2">
+              {ROUND_MODES.map((m) => {
+                const active = m.mode === roundMode
+                return (
+                  <button
+                    key={m.mode}
+                    type="button"
+                    onClick={() => chooseRoundMode(m.mode)}
+                    className={`flex-1 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition ${
+                      active
+                        ? 'border-primary bg-primary-soft text-primary'
+                        : `border-border text-text-secondary hover:border-border-strong ${isLight ? 'bg-surface' : ''}`
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-2 text-xs text-text-muted">{activeMode.blurb}</p>
+          </>
+        ) : (
+          <p className="mt-1 text-sm text-text-secondary">
+            {activeMode.label} — {activeMode.blurb}
+          </p>
+        )}
+      </section>
 
       <section>
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-text-secondary">

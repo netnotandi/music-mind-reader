@@ -3,31 +3,57 @@ import { loadYouTubeIframeApi } from '../logic/youtube'
 
 interface NowPlayingPlayerProps {
   // The group's current song's video id, or null when it has no stored
-  // video (a manual entry that failed to resolve, or a dev-autofilled song).
+  // video (a manual entry that failed to resolve, or a dev-autofilled song)
+  // or the round has played through every song (wrapUp).
   videoId: string | null
+  // Short mode: fire onCap once this many seconds of the current video have
+  // played. null in long mode / wrap-up.
+  capSeconds: number | null
+  // The current video reached capSeconds of playback (short-mode time cap).
+  onCap: () => void
+  // The current video reached its natural end.
+  onEnded: () => void
+  // The round's music has finished - show "all songs played", not a player.
+  wrapUp: boolean
 }
 
 const FADE_MS = 900
 const FADE_STEPS = 18
 
 // The host's Now Playing player. Uses the YouTube IFrame Player API (not a
-// plain embed) so switching songs can crossfade the audio - fade the
-// current song's volume to 0, load the next one, fade it back up - instead
-// of a hard cut. A black overlay fades in step with the audio so the swap
-// reads as intentional rather than a glitch.
-export function NowPlayingPlayer({ videoId }: NowPlayingPlayerProps) {
+// plain embed) so switching songs can crossfade the audio, and so playback
+// time / the ENDED event can drive automatic song progression. A black
+// overlay fades in step with the audio so the swap reads as intentional.
+export function NowPlayingPlayer({ videoId, capSeconds, onCap, onEnded, wrapUp }: NowPlayingPlayerProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<YT.Player | null>(null)
   const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   // What the player is actually playing right now - so the videoId-change
   // effect can tell a real group advance from an incidental re-render.
   const playingRef = useRef<string | null>(null)
+  // Latches so onCap / onEnded fire at most once per video.
+  const capFiredRef = useRef(false)
+  const endedFiredRef = useRef(false)
+  // Kept in refs so the persistent player callbacks always see the latest.
+  const capSecondsRef = useRef(capSeconds)
+  const onCapRef = useRef(onCap)
+  const onEndedRef = useRef(onEnded)
+  capSecondsRef.current = capSeconds
+  onCapRef.current = onCap
+  onEndedRef.current = onEnded
   const [covered, setCovered] = useState(true)
 
   function clearFade() {
     if (fadeTimerRef.current !== null) {
       clearInterval(fadeTimerRef.current)
       fadeTimerRef.current = null
+    }
+  }
+  function clearPoll() {
+    if (pollTimerRef.current !== null) {
+      clearInterval(pollTimerRef.current)
+      pollTimerRef.current = null
     }
   }
 
@@ -54,6 +80,26 @@ export function NowPlayingPlayer({ videoId }: NowPlayingPlayerProps) {
         onDone?.()
       }
     }, FADE_MS / FADE_STEPS)
+  }
+
+  // Poll playback position while a video is playing; fire the short-mode
+  // time cap once it's crossed.
+  function startPoll(player: YT.Player) {
+    clearPoll()
+    pollTimerRef.current = setInterval(() => {
+      const cap = capSecondsRef.current
+      if (capFiredRef.current || cap === null) return
+      let t = 0
+      try {
+        t = player.getCurrentTime()
+      } catch {
+        return
+      }
+      if (t >= cap) {
+        capFiredRef.current = true
+        onCapRef.current()
+      }
+    }, 1000)
   }
 
   // Create the player once. The div YouTube replaces with its iframe is
@@ -88,19 +134,22 @@ export function NowPlayingPlayer({ videoId }: NowPlayingPlayerProps) {
             }
             if (videoId) {
               fadeVolume(player, 100)
+              startPoll(player)
               setCovered(false)
             }
           },
-          // YouTube tends to (re)mute a video it just started, especially
-          // one swapped in via loadVideoById - unmute again once it's
-          // actually playing so the fade-in is audible.
           onStateChange: (e) => {
             if (e.data === YTns.PlayerState.PLAYING) {
+              // YouTube tends to (re)mute a video it just started.
               try {
                 e.target.unMute()
               } catch {
                 // ignore
               }
+            }
+            if (e.data === YTns.PlayerState.ENDED && !endedFiredRef.current) {
+              endedFiredRef.current = true
+              onEndedRef.current()
             }
           },
         },
@@ -110,6 +159,7 @@ export function NowPlayingPlayer({ videoId }: NowPlayingPlayerProps) {
     return () => {
       cancelled = true
       clearFade()
+      clearPoll()
       try {
         player?.destroy()
       } catch {
@@ -129,28 +179,29 @@ export function NowPlayingPlayer({ videoId }: NowPlayingPlayerProps) {
     if (!player) return
     if (videoId === playingRef.current) return
     playingRef.current = videoId
+    capFiredRef.current = false
+    endedFiredRef.current = false
 
     setCovered(true)
     fadeVolume(player, 0, () => {
       if (videoId) {
         try {
           player.loadVideoById(videoId)
-          // loadVideoById fires ~a second after the tap, outside the user
-          // gesture, so the browser's autoplay policy may mute it - the
-          // volume ramp below is separate from mute state, so clear it.
           player.unMute()
         } catch {
           // ignore
         }
         fadeVolume(player, 100)
+        startPoll(player)
         setCovered(false)
       } else {
+        clearPoll()
         try {
           player.stopVideo()
         } catch {
           // ignore
         }
-        // leave the overlay up with the "no video" caption
+        // leave the overlay up with its caption
       }
     })
   }, [videoId])
@@ -162,7 +213,11 @@ export function NowPlayingPlayer({ videoId }: NowPlayingPlayerProps) {
         className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black"
         style={{ opacity: covered ? 1 : 0, transition: `opacity ${FADE_MS}ms ease` }}
       >
-        {videoId === null && <span className="text-xs text-slate-300">No video for this song</span>}
+        {wrapUp ? (
+          <span className="text-xs text-slate-300">All songs played</span>
+        ) : videoId === null ? (
+          <span className="text-xs text-slate-300">No video for this song</span>
+        ) : null}
       </div>
     </div>
   )

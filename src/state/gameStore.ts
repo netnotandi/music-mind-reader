@@ -46,6 +46,11 @@ const SESSION_KEY = 'mmr_session'
 
 type Phase = 'lobby' | 'setup' | 'submit' | 'guess' | 'results'
 type JoinResult = 'ok' | 'not-found' | 'in-progress'
+export type RoundMode = 'short' | 'long'
+
+// Short mode: a song advances after this many seconds of playback (or once
+// everyone has answered, whichever comes first).
+export const SHORT_MODE_CAP_SECONDS = 90
 
 interface GameState {
   roomCode: string | null
@@ -55,11 +60,15 @@ interface GameState {
   players: Player[]
   categories: Category[]
   selectedCategoryIds: string[]
+  roundMode: RoundMode
   songs: Song[]
   guesses: Guess[]
   ratings: Rating[]
   currentSongIndex: number
   songOrder: string[]
+  // Set once the group's music has played through the last song - the
+  // guess screen switches to the wrap-up / confirm-final-answers state.
+  roundPlaythroughDone: boolean
   confirmedPlayerIds: string[]
   roundsCompleted: number
   lobbyReadyPlayerIds: string[]
@@ -74,16 +83,20 @@ interface GameState {
   // Host only: back out of Game Setup to the Lobby - reopens joining (the
   // join gate is `phase === 'lobby'`); a picked category is left as-is.
   backToLobby: () => void
+  // Host only, from Game Setup: short vs long round, live-synced.
+  chooseRoundMode: (mode: RoundMode) => void
   startSubmitting: () => void
   submitSong: (categoryId: string, title: string, artist: string, youtubeVideoId: string | null) => void
   shuffleSongOrder: () => void
   submitGuess: (songId: string, guessedPlayerId: string) => void
   clearGuess: (songId: string) => void
   submitRating: (songId: string, value: number) => void
-  nextSong: () => void
-  prevSong: () => void
-  // Only these two can end the guess phase - nextSong() alone never does,
-  // so the group can never be swept into Results by one impatient click.
+  // The single writer for group song progression - only ever called from
+  // the host's device (its driver effect / skip button). Advances the
+  // shared position, or flips roundPlaythroughDone once past the last song.
+  // Group progression is deliberately independent of whether individuals
+  // have finished answering - the music never waits.
+  advanceGroup: () => void
   confirmFinalAnswers: () => void
   finishRound: () => void
   // Per-device, like leaveGame - marks this player ready and lets THIS
@@ -154,8 +167,10 @@ interface RoomRecord {
   hostId?: string
   phase?: Phase
   selectedCategoryIds?: string[]
+  roundMode?: RoundMode
   currentSongIndex?: number
   songOrder?: string[]
+  roundPlaythroughDone?: boolean
   roundsCompleted?: number
   lobbyReady?: Record<string, true>
   players?: Record<string, { name: string; joinedAt: number; totalScore?: number }>
@@ -185,11 +200,13 @@ function parseRoom(data: RoomRecord) {
     phase: data.phase ?? 'lobby',
     players,
     selectedCategoryIds: data.selectedCategoryIds ?? [],
+    roundMode: data.roundMode ?? 'short',
     songs,
     guesses,
     ratings,
     currentSongIndex: data.currentSongIndex ?? 0,
     songOrder: data.songOrder ?? [],
+    roundPlaythroughDone: data.roundPlaythroughDone ?? false,
     confirmedPlayerIds: Object.keys(data.finalConfirmations ?? {}),
     roundsCompleted: data.roundsCompleted ?? 0,
     lobbyReadyPlayerIds: Object.keys(data.lobbyReady ?? {}),
@@ -219,11 +236,13 @@ export const useGameStore = create<GameState>((set, get) => {
     players: [],
     categories: CATEGORIES,
     selectedCategoryIds: [],
+    roundMode: 'short',
     songs: [],
     guesses: [],
     ratings: [],
     currentSongIndex: 0,
     songOrder: [],
+    roundPlaythroughDone: false,
     confirmedPlayerIds: [],
     roundsCompleted: 0,
     lobbyReadyPlayerIds: [],
@@ -301,11 +320,13 @@ export const useGameStore = create<GameState>((set, get) => {
         phase: 'lobby',
         players: [],
         selectedCategoryIds: [],
+        roundMode: 'short',
         songs: [],
         guesses: [],
         ratings: [],
         currentSongIndex: 0,
         songOrder: [],
+        roundPlaythroughDone: false,
         confirmedPlayerIds: [],
         roundsCompleted: 0,
         lobbyReadyPlayerIds: [],
@@ -331,6 +352,12 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode } = get()
       if (!roomCode) return
       dbUpdate(ref(db, `games/${roomCode}`), { phase: 'lobby' })
+    },
+
+    chooseRoundMode: (mode) => {
+      const { roomCode } = get()
+      if (!roomCode) return
+      dbUpdate(ref(db, `games/${roomCode}`), { roundMode: mode })
     },
 
     startSubmitting: () => {
@@ -364,7 +391,13 @@ export const useGameStore = create<GameState>((set, get) => {
       const songOrder = selectedCategoryIds.flatMap((categoryId) =>
         shuffle(songs.filter((s) => s.categoryId === categoryId)).map((s) => s.id)
       )
-      dbUpdate(ref(db, `games/${roomCode}`), { songOrder, phase: 'guess', finalConfirmations: null })
+      dbUpdate(ref(db, `games/${roomCode}`), {
+        songOrder,
+        phase: 'guess',
+        currentSongIndex: 0,
+        roundPlaythroughDone: null,
+        finalConfirmations: null,
+      })
     },
 
     // Also clears this player's own final confirmation, if they'd already
@@ -396,19 +429,18 @@ export const useGameStore = create<GameState>((set, get) => {
       })
     },
 
-    // Only ever advances to another song - never ends the round itself
-    // (see finishRound), so nobody can be swept into Results by someone
-    // else clicking through the last song.
-    nextSong: () => {
-      const { roomCode, currentSongIndex, songOrder } = get()
-      if (!roomCode || currentSongIndex >= songOrder.length - 1) return
-      dbUpdate(ref(db, `games/${roomCode}`), { currentSongIndex: currentSongIndex + 1 })
-    },
-
-    prevSong: () => {
-      const { roomCode, currentSongIndex } = get()
-      if (!roomCode) return
-      dbUpdate(ref(db, `games/${roomCode}`), { currentSongIndex: Math.max(currentSongIndex - 1, 0) })
+    // Single writer for group progression. Never ends the round itself
+    // (finishRound does that, after everyone confirms) - it just moves the
+    // shared position along, or, once past the last song, flips
+    // roundPlaythroughDone so the guess screen enters wrap-up.
+    advanceGroup: () => {
+      const { roomCode, currentSongIndex, songOrder, roundPlaythroughDone } = get()
+      if (!roomCode || roundPlaythroughDone) return
+      if (currentSongIndex < songOrder.length - 1) {
+        dbUpdate(ref(db, `games/${roomCode}`), { currentSongIndex: currentSongIndex + 1 })
+      } else {
+        dbUpdate(ref(db, `games/${roomCode}`), { roundPlaythroughDone: true })
+      }
     },
 
     confirmFinalAnswers: () => {
@@ -451,10 +483,12 @@ export const useGameStore = create<GameState>((set, get) => {
         ratings: null,
         songOrder: null,
         currentSongIndex: 0,
+        roundPlaythroughDone: null,
         selectedCategoryIds: null,
         finalConfirmations: null,
         lobbyReady: null,
         roundsCompleted: roundsCompleted + 1,
+        // roundMode is left as-is - it persists as the group's preference.
       }
       for (const player of players) {
         const roundScore = roundScores[player.id] ?? 0

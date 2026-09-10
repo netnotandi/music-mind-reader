@@ -217,3 +217,35 @@ Lobby-skjárinn gerði tvennt á einu korti: sýndi spilaralista OG lét host ve
 Nýjar store-aðgerðir: `startRoundSetup()` (lobby→setup), `backToLobby()` (setup→lobby, opnar join aftur). Join er áfram bara leyft í `phase === 'lobby'` — ef host er kominn í setup og einhvern vantar, fer host „← Back to lobby". Milli umferða: `finalizeRoundIfReady` → `phase: 'lobby'` (stigatafla), svo host í setup aftur.
 
 Þar sem eldri kaflar segja „host velur flokk í Lobby" er átt við þennan Game Setup skjá núna.
+
+## Long/Short lagalengd + sjálfvirk framvinda (viðbót við CLAUDE.md — hluti af lagaspilun í appinu)
+
+Leikstjóri velur hvort umferðin keyrir í „long" eða „short" ham (t.d. valið í lobby-inu, samhliða flokkavali).
+
+### Short
+Skipt er um lag þegar ANNAÐ HVORT gerist (hvort sem kemur á undan):
+- allir hafa giskað á spilara (player) og gefið einkunn fyrir núverandi lag, EÐA
+- lagið nær 1:30 mín að lengd.
+
+### Long
+Lagið fær að klárast (náttúrulegt `ENDED` frá YouTube IFrame Player API) og þá er sjálfkrafa skipt í næsta lag — nema sá sem bjó til lobby-ið (leikstjórinn) velji að skipta handvirkt yfir í næsta lag fyrr sjálfur.
+
+Í báðum hömum er sjálf skiptingin gerð með fade-út/fade-inn (mjúk hljóðlækkun/hækkun gegnum `setVolume` á IFrame-spilaranum), ekki harkalegt skipti.
+
+### Mikilvægt atriði #1 — tónlistin má ALDREI stoppa
+Um leið og skiptiskilyrðið næst (lag klárast, allir giska/gefa einkunn, eða 1:30-markið í short-ham) VERÐUR næsta lag að byrja sjálfkrafa — óháð því hvort einhver einstakur notandi er ennþá ófinished með að giska/gefa einkunn fyrir núverandi lag. Ef tónlistin stoppar af því einhver var ekki tilbúinn, drepur það stemninguna í partýinu (buzz killer). M.ö.o.: framvinda tónlistarinnar fyrir HÓPINN og staða HVERS EINSTAKS notanda eru tvö algjörlega aðskilin kerfi — annað ræður hvenær næsta lag byrjar fyrir alla, hitt er persónulegt og hindrar aldrei hitt.
+
+### Mikilvægt atriði #2 — ólokin giskun/einkunn: farið til baka + sjónræn merking
+Ef umskiptin verða áður en einhver notandi er búinn að giska/gefa einkunn fyrir það lag, má hann klára það seinna — fara til baka í listann yfir spiluð lög umferðarinnar og klára giskið/einkunnina þá. Þetta er óhætt af því eigendur laga eru ekki afhjúpaðir fyrr en á Results-skjánum í lok umferðarinnar, svo enginn hefur upplýsingaforskot þótt hann klári seinna en aðrir.
+
+Til að gera þetta skýrt fyrir notandanum: spjaldið fyrir lag sem hann á enn eftir að giska/gefa einkunn fyrir á að vera í ÖÐRUM LIT en lög sem hann er búinn með — áberandi merking sem segir „þú átt eftir að gera þetta hér", og breytist í venjulegan/„lokið" lit um leið og hann klárar það.
+
+### Staða — útfært
+- `roundMode: 'short' | 'long'` valið á Game Setup (`chooseRoundMode`), syncað. Sjálfgefið `'short'`, helst milli umferða.
+- `advanceGroup()` er EINI ritarinn að hópframvindu — kallað bara af host-tækinu (driver-effect + „Skip song" takki). Fer í næsta lag eða, komið fram hjá síðasta lagi, setur `roundPlaythroughDone: true`.
+- **Short**: host advanc-ar þegar `allAnswered` (núverandi lag) EÐA `onCap` (90s spilun, `SHORT_MODE_CAP_SECONDS`) EÐA `onEnded`. Lag án video → wall-clock 90s.
+- **Long**: host advanc-ar bara við `onEnded` eða „Skip song".
+- `NowPlayingPlayer` (host) fylgist með `getCurrentTime()` og `PlayerState.ENDED` og kallar `onCap`/`onEnded`.
+- Wrap-up (`roundPlaythroughDone`): spilari stoppaður, allir sjá „This round" listann (`SongList`) með litaðum spjöldum (áberandi = á eftir að svara, grænt ✓ = lokið), klára ólokið, „Confirm final answers" → host „See Results".
+- Persónuleg sýn (`viewIndex`) fylgir hópnum bara ef spilari er búinn með lagið sem hann er á — annars situr hún kyrr.
+- Þekkt takmörkun: ef host bakgrunnar appið mið-lag stoppa timer-ar; host-failover er sérstakt seinna verk.
