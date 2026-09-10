@@ -11,6 +11,12 @@ interface NowPlayingPlayerProps {
   capSeconds: number | null
   // The current video reached capSeconds of playback (short-mode time cap).
   onCap: () => void
+  // Short mode: fire onFloor once this many seconds of the current video
+  // have played - the earliest point "everyone answered" may advance it.
+  // null in long mode / wrap-up.
+  floorSeconds: number | null
+  // The current video reached floorSeconds of playback.
+  onFloor: () => void
   // The current video reached its natural end.
   onEnded: () => void
   // The round's music has finished - show "all songs played", not a player.
@@ -24,7 +30,15 @@ const FADE_STEPS = 18
 // plain embed) so switching songs can crossfade the audio, and so playback
 // time / the ENDED event can drive automatic song progression. A black
 // overlay fades in step with the audio so the swap reads as intentional.
-export function NowPlayingPlayer({ videoId, capSeconds, onCap, onEnded, wrapUp }: NowPlayingPlayerProps) {
+export function NowPlayingPlayer({
+  videoId,
+  capSeconds,
+  onCap,
+  floorSeconds,
+  onFloor,
+  onEnded,
+  wrapUp,
+}: NowPlayingPlayerProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<YT.Player | null>(null)
   const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -34,13 +48,18 @@ export function NowPlayingPlayer({ videoId, capSeconds, onCap, onEnded, wrapUp }
   const playingRef = useRef<string | null>(null)
   // Latches so onCap / onEnded fire at most once per video.
   const capFiredRef = useRef(false)
+  const floorFiredRef = useRef(false)
   const endedFiredRef = useRef(false)
   // Kept in refs so the persistent player callbacks always see the latest.
   const capSecondsRef = useRef(capSeconds)
   const onCapRef = useRef(onCap)
+  const floorSecondsRef = useRef(floorSeconds)
+  const onFloorRef = useRef(onFloor)
   const onEndedRef = useRef(onEnded)
   capSecondsRef.current = capSeconds
   onCapRef.current = onCap
+  floorSecondsRef.current = floorSeconds
+  onFloorRef.current = onFloor
   onEndedRef.current = onEnded
   const [covered, setCovered] = useState(true)
 
@@ -87,17 +106,21 @@ export function NowPlayingPlayer({ videoId, capSeconds, onCap, onEnded, wrapUp }
   function startPoll(player: YT.Player) {
     clearPoll()
     pollTimerRef.current = setInterval(() => {
-      const cap = capSecondsRef.current
-      if (capFiredRef.current || cap === null) return
       let t = 0
       try {
         t = player.getCurrentTime()
       } catch {
         return
       }
-      if (t >= cap) {
+      const cap = capSecondsRef.current
+      if (!capFiredRef.current && cap !== null && t >= cap) {
         capFiredRef.current = true
         onCapRef.current()
+      }
+      const floor = floorSecondsRef.current
+      if (!floorFiredRef.current && floor !== null && t >= floor) {
+        floorFiredRef.current = true
+        onFloorRef.current()
       }
     }, 1000)
   }
@@ -180,6 +203,7 @@ export function NowPlayingPlayer({ videoId, capSeconds, onCap, onEnded, wrapUp }
     if (videoId === playingRef.current) return
     playingRef.current = videoId
     capFiredRef.current = false
+    floorFiredRef.current = false
     endedFiredRef.current = false
 
     setCovered(true)

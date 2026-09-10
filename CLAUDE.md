@@ -224,8 +224,10 @@ Leikstjóri velur hvort umferðin keyrir í „long" eða „short" ham (t.d. va
 
 ### Short
 Skipt er um lag þegar ANNAÐ HVORT gerist (hvort sem kemur á undan):
-- allir hafa giskað á spilara (player) og gefið einkunn fyrir núverandi lag, EÐA
-- lagið nær 1:30 mín að lengd.
+- allir hafa giskað á spilara (player) og gefið einkunn fyrir núverandi lag OG lagið hefur spilast í a.m.k. 60 sek, EÐA
+- lagið nær 1:30 mín að lengd (harða þakið).
+
+Lagið spilast sem sagt ALLTAF í a.m.k. 60 sek í short-ham, sama þótt allir séu búnir að giska/gefa einkunn strax — það á ekki að slökkva á lagi nokkrum sekúndum eftir að það byrjaði.
 
 ### Long
 Lagið fær að klárast (náttúrulegt `ENDED` frá YouTube IFrame Player API) og þá er sjálfkrafa skipt í næsta lag — nema sá sem bjó til lobby-ið (leikstjórinn) velji að skipta handvirkt yfir í næsta lag fyrr sjálfur.
@@ -233,7 +235,7 @@ Lagið fær að klárast (náttúrulegt `ENDED` frá YouTube IFrame Player API) 
 Í báðum hömum er sjálf skiptingin gerð með fade-út/fade-inn (mjúk hljóðlækkun/hækkun gegnum `setVolume` á IFrame-spilaranum), ekki harkalegt skipti.
 
 ### Mikilvægt atriði #1 — tónlistin má ALDREI stoppa
-Um leið og skiptiskilyrðið næst (lag klárast, allir giska/gefa einkunn, eða 1:30-markið í short-ham) VERÐUR næsta lag að byrja sjálfkrafa — óháð því hvort einhver einstakur notandi er ennþá ófinished með að giska/gefa einkunn fyrir núverandi lag. Ef tónlistin stoppar af því einhver var ekki tilbúinn, drepur það stemninguna í partýinu (buzz killer). M.ö.o.: framvinda tónlistarinnar fyrir HÓPINN og staða HVERS EINSTAKS notanda eru tvö algjörlega aðskilin kerfi — annað ræður hvenær næsta lag byrjar fyrir alla, hitt er persónulegt og hindrar aldrei hitt.
+Um leið og skiptiskilyrðið næst (lag klárast, allir giska/gefa einkunn eftir 60s-lágmarkið, eða 1:30-markið í short-ham) VERÐUR næsta lag að byrja sjálfkrafa — óháð því hvort einhver einstakur notandi er ennþá ófinished með að giska/gefa einkunn fyrir núverandi lag. Ef tónlistin stoppar af því einhver var ekki tilbúinn, drepur það stemninguna í partýinu (buzz killer). M.ö.o.: framvinda tónlistarinnar fyrir HÓPINN og staða HVERS EINSTAKS notanda eru tvö algjörlega aðskilin kerfi — annað ræður hvenær næsta lag byrjar fyrir alla, hitt er persónulegt og hindrar aldrei hitt.
 
 ### Mikilvægt atriði #2 — ólokin giskun/einkunn: farið til baka + sjónræn merking
 Ef umskiptin verða áður en einhver notandi er búinn að giska/gefa einkunn fyrir það lag, má hann klára það seinna — fara til baka í listann yfir spiluð lög umferðarinnar og klára giskið/einkunnina þá. Þetta er óhætt af því eigendur laga eru ekki afhjúpaðir fyrr en á Results-skjánum í lok umferðarinnar, svo enginn hefur upplýsingaforskot þótt hann klári seinna en aðrir.
@@ -243,9 +245,9 @@ Til að gera þetta skýrt fyrir notandanum: spjaldið fyrir lag sem hann á enn
 ### Staða — útfært
 - `roundMode: 'short' | 'long'` valið á Game Setup (`chooseRoundMode`), syncað. Sjálfgefið `'short'`, helst milli umferða.
 - `advanceGroup()` er EINI ritarinn að hópframvindu — kallað bara af host-tækinu (driver-effect + „Skip song" takki). Fer í næsta lag eða, komið fram hjá síðasta lagi, setur `roundPlaythroughDone: true`.
-- **Short**: host advanc-ar þegar `allAnswered` (núverandi lag) EÐA `onCap` (90s spilun, `SHORT_MODE_CAP_SECONDS`) EÐA `onEnded`. Lag án video → wall-clock 90s.
+- **Short**: host advanc-ar þegar (`allAnswered` OG `minPlaybackReached`) EÐA `onCap` (90s, `SHORT_MODE_CAP_SECONDS`) EÐA `onEnded`. `minPlaybackReached` = lagið spilað a.m.k. `SHORT_MODE_MIN_SECONDS` (60s), sett af `onFloor` frá spilaranum (eða wall-clock fyrir lag án video). Núllstillt við hvert nýtt `currentSongIndex`. Lag án video → wall-clock 60s (floor) + 90s (cap).
 - **Long**: host advanc-ar bara við `onEnded` eða „Skip song".
-- `NowPlayingPlayer` (host) fylgist með `getCurrentTime()` og `PlayerState.ENDED` og kallar `onCap`/`onEnded`.
+- `NowPlayingPlayer` (host) fylgist með `getCurrentTime()` (1s poll) og `PlayerState.ENDED` og kallar `onCap`/`onFloor`/`onEnded` (hvert latch-að einu sinni per video).
 - Wrap-up (`roundPlaythroughDone`): spilari stoppaður, „All songs played — finish your answers below.", klára ólokið lög, „Confirm final answers" → host „See Results".
 - Persónuleg sýn (`viewIndex`) fylgir hópnum bara ef spilari er búinn með lagið sem hann er á — annars situr hún kyrr.
 - Vafur milli laga: einfaldur „← Previous song" / „Next song →" stepper (ekkert `SongList`). Í spilun nær hann aftur að lagi í gangi; í wrap-up yfir öll lög. Hvorugur takkinn hreyfir hópinn. „Reviewing an earlier song — jump back…" banner þegar spilari er ekki á laginu í gangi.

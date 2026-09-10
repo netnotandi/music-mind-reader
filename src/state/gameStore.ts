@@ -48,8 +48,13 @@ type Phase = 'lobby' | 'setup' | 'submit' | 'guess' | 'results'
 type JoinResult = 'ok' | 'not-found' | 'in-progress'
 export type RoundMode = 'short' | 'long'
 
-// Short mode: a song advances after this many seconds of playback (or once
-// everyone has answered, whichever comes first).
+// Short mode: a song always plays this long before "everyone has answered"
+// is allowed to advance it - so a song never cuts out seconds after it
+// started just because the group was quick.
+export const SHORT_MODE_MIN_SECONDS = 60
+// Short mode: a song advances after this many seconds of playback no matter
+// what (the hard cap), or once everyone has answered AND it has played at
+// least SHORT_MODE_MIN_SECONDS - whichever comes first.
 export const SHORT_MODE_CAP_SECONDS = 90
 
 interface GameState {

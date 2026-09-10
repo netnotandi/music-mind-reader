@@ -3,7 +3,12 @@ import { useShallow } from 'zustand/react/shallow'
 import { NowPlayingPlayer } from '../components/NowPlayingPlayer'
 import { SongCard } from '../components/SongCard'
 import { songLabel } from '../logic/songLabel'
-import { getCurrentRoundSongs, SHORT_MODE_CAP_SECONDS, useGameStore } from '../state/gameStore'
+import {
+  getCurrentRoundSongs,
+  SHORT_MODE_CAP_SECONDS,
+  SHORT_MODE_MIN_SECONDS,
+  useGameStore,
+} from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 import type { Player, Song } from '../types'
 
@@ -218,20 +223,33 @@ export function GuessAndRate() {
     advancedForRef.current = currentSongIndex
     advanceGroup()
   }
-  // short mode also advances once everyone has answered the current song
+  // Short mode: the current song must play at least SHORT_MODE_MIN_SECONDS
+  // before "everyone answered" is allowed to advance it (the NowPlayingPlayer
+  // poll, or a wall clock for a no-video song, flips this). Reset on every
+  // new current song.
+  const [minPlaybackReached, setMinPlaybackReached] = useState(false)
+  useEffect(() => {
+    setMinPlaybackReached(false)
+  }, [currentSongIndex])
+  // short mode also advances once everyone has answered the current song -
+  // but not before it has played the minimum
   const currentAllAnswered = currentSong ? answeredComplete(currentSong) : false
   useEffect(() => {
     if (!isHost || roundPlaythroughDone || roundMode !== 'short') return
-    if (currentAllAnswered) doAdvance()
+    if (currentAllAnswered && minPlaybackReached) doAdvance()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, roundMode, roundPlaythroughDone, currentAllAnswered, currentSongIndex])
+  }, [isHost, roundMode, roundPlaythroughDone, currentAllAnswered, minPlaybackReached, currentSongIndex])
   // a current song with no video can't be timed by the player - fall back
-  // to a wall clock in short mode
+  // to a wall clock in short mode for both the minimum and the hard cap
   useEffect(() => {
     if (!isHost || roundPlaythroughDone || roundMode !== 'short') return
     if (currentSong?.youtubeVideoId) return
-    const t = setTimeout(() => doAdvance(), SHORT_MODE_CAP_SECONDS * 1000)
-    return () => clearTimeout(t)
+    const floor = setTimeout(() => setMinPlaybackReached(true), SHORT_MODE_MIN_SECONDS * 1000)
+    const cap = setTimeout(() => doAdvance(), SHORT_MODE_CAP_SECONDS * 1000)
+    return () => {
+      clearTimeout(floor)
+      clearTimeout(cap)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, roundMode, roundPlaythroughDone, currentSongIndex, currentSong?.youtubeVideoId])
 
@@ -338,6 +356,8 @@ export function GuessAndRate() {
           onCap={() => {
             if (roundMode === 'short') doAdvance()
           }}
+          floorSeconds={roundMode === 'short' && !roundPlaythroughDone ? SHORT_MODE_MIN_SECONDS : null}
+          onFloor={() => setMinPlaybackReached(true)}
           onEnded={() => doAdvance()}
           wrapUp={roundPlaythroughDone}
         />
