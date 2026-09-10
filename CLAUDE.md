@@ -26,7 +26,9 @@ Staðfest beint hjá Spotify (ágúst 2026):
 Leikstjóri velur 1–2 af þessum flokkum í Lobby-skjánum fyrir ALLAN hópinn — ekki einstaklingsbundið val.
 **Tegund:** Rokk, Popp, Guilty pleasure, Lag fyrir ræktina, Lag fyrir lok kvöldsins, Besta íslenska lagið
 
-**Um mig:** Lag sem kemur mér í stuð, Besta lag allra tíma, Lag sem ég hlustaði á 18 ára, Lag sem enginn býst við að ég fíli, Lag sem ég myndi velja í karaoke, Lag sem lýsir einhverjum öðrum í hópnum, My funeral song, Óþolandi gott lag
+**Um mig:** Lag sem kemur mér í stuð, Besta lag allra tíma, Lag sem ég hlustaði á 18 ára, Lag sem enginn býst við að ég fíli, Lag sem ég myndi velja í karaoke, Lag sem lýsir einhverjum öðrum í hópnum, Óþolandi gott lag
+
+Raunverulegi listinn (ensku, flatur — ekki grúppaður í UI-inu) er í `src/state/mockData.ts` (`CATEGORIES`).
 
 ## Stigagjöf (samræmt)
 - Rétt ágiskun á eiganda lags: **+3 stig**
