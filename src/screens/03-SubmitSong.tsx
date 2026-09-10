@@ -300,11 +300,14 @@ export function SubmitSong() {
   const categories = useGameStore((s) => s.categories)
   const selectedCategoryIds = useGameStore((s) => s.selectedCategoryIds)
   const localPlayerId = useGameStore((s) => s.localPlayerId)
+  const hostId = useGameStore((s) => s.hostId)
   const songs = useGameStore((s) => s.songs)
   const submitSong = useGameStore((s) => s.submitSong)
   const devSubmitSongAs = useGameStore((s) => s.devSubmitSongAs)
   const shuffleSongOrder = useGameStore((s) => s.shuffleSongOrder)
 
+  const isHost = localPlayerId !== null && localPlayerId === hostId
+  const hostPlayer = players.find((p) => p.id === hostId)
   const selectedCategories = categories.filter((c) => selectedCategoryIds.includes(c.id))
   const hasSong = (playerId: string, categoryId: string) =>
     songs.some((s) => s.playerId === playerId && s.categoryId === categoryId)
@@ -375,13 +378,18 @@ export function SubmitSong() {
         </button>
       )}
 
+      {/* Host-only, like every other "advance the whole group" action -
+          the host runs the game. Everyone else sees the same button
+          disabled with a waiting label once submissions are all in. */}
       <button
         type="button"
-        disabled={!allSubmitted}
+        disabled={!allSubmitted || !isHost}
         onClick={shuffleSongOrder}
         className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
       >
-        Start Guessing
+        {allSubmitted && !isHost
+          ? `Waiting for ${hostPlayer?.name ?? 'the host'} to start guessing`
+          : 'Start Guessing'}
       </button>
     </div>
   )

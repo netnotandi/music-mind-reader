@@ -163,22 +163,23 @@ Leikstjóri velur flokk(a) og fer beint inn í lobby-ið — ALDREI spurður hve
 
 Núverandi kerfi: hver giskandi úthlutar HVERJU lagi (nema sínu eigin) STAKRI einkunn — sama gildi má ekki nota tvisvar hjá sama giskanda. Þetta er í raun röðun/úthlutun stiga, ekki frjáls endurtekin einkunnagjöf.
 
-Fastur skali 0–10 (11 gildi) dugði nákvæmlega fyrir allt að 12 spilara, af því hver giskar á 11 önnur lög. Þar sem lobby-ið er núna flæðandi (sjá kafla 1) og fjöldinn getur farið yfir 12, verður skalinn að reiknast út frá raunverulegum fjölda laga í hverri umferð í stað þess að vera hardkódaður.
+Fastur skali 0–10 (11 gildi) dugði nákvæmlega fyrir allt að 12 spilara, af því hver giskar á 11 önnur lög. Skalinn á ALLTAF að vera a.m.k. 0–10 — hann stækkar bara ef leikmenn verða fleiri en 12.
 
 **Formúla:**
 ```
-hámarkseinkunn = N - 2
+hámarkseinkunn = max(10, N - 2)
 ```
-þar sem `N` = fjöldi laga sem eru í spilun þessa umferð (lög sem raunverulega komust í spilun — ekki heildarfjöldi skráðra spilara, sjá brúnatilvikið um að skila ekki lagi í tæka tíð). Skalinn er þá `0` til `N-2`, sem gefur nákvæmlega `N-1` gildi — eitt á hvert lag sem hver spilari metur (sitt eigið lag er undanskilið, því er alltaf N-1 lög sem þarf að meta, ekki N).
+þar sem `N` = fjöldi laga sem eru í spilun þessa umferð (lög sem raunverulega komust í spilun — ekki heildarfjöldi skráðra spilara, sjá brúnatilvikið um að skila ekki lagi í tæka tíð).
 
 Dæmi:
 | Lög í umferð (N) | Skali |
 |---|---|
-| 8 | 0–6 |
-| 12 | 0–10 (sami og fastur skalinn í dag) |
+| 3 | 0–10 (lágmark) |
+| 12 | 0–10 |
 | 13 | 0–11 |
+| 14 | 0–12 |
 
-Reiknað í byrjun hverrar umferðar út frá raunverulegum lagafjölda — ekki hardkódað gildi í kóðanum lengur.
+Reiknað í byrjun hverrar umferðar — ekki hardkódað gildi í kóðanum lengur.
 
 ### 3. Normalisering — ákveðið gegn (var íhugað, ekki útfært)
 

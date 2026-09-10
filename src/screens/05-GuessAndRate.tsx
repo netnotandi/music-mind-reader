@@ -92,7 +92,7 @@ function AnswerForm({
           </div>
 
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary">
-            {maxRating >= 1 ? `Rating (0–${maxRating})` : 'Rating'}
+            Rating (0–{maxRating})
           </h2>
           {!ratingAvailable && (
             <p className="mb-2 text-xs text-text-muted">
@@ -206,10 +206,12 @@ export function GuessAndRate() {
   const isFirstOfCategory = viewIndex === 0 || songs[viewIndex - 1]?.categoryId !== song.categoryId
   const categoryName = categories.find((c) => c.id === song.categoryId)?.name
   const categorySongs = songs.filter((s) => s.categoryId === song.categoryId)
-  // Ratings are a distinct-value ranking of the OTHER songs in the category
-  // (own song excluded), so N songs need N-1 values: 0..(N-2). Was a fixed
-  // 0-10; now follows the actual round size so it works past 12 players.
-  const ratingScale = Array.from({ length: Math.max(categorySongs.length - 1, 0) }, (_, i) => i)
+  // Always at least 0-10 (the original fixed scale). Ratings are a
+  // distinct-value ranking of the OTHER songs in the category, so N songs
+  // need N-1 values - once N-1 exceeds 11 (i.e. more than 12 players) the
+  // top of the scale grows: 13 -> 0-11, 14 -> 0-12, etc.
+  const maxRating = Math.max(10, categorySongs.length - 2)
+  const ratingScale = Array.from({ length: maxRating + 1 }, (_, i) => i)
 
   // Everyone but the owner has to weigh in on the song currently playing
   // before the group can move on.
