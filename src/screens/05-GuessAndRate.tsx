@@ -85,7 +85,7 @@ function AnswerForm({
                   key={p.id}
                   type="button"
                   onClick={() => setGuessedPlayerId(p.id)}
-                  className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                  className={`flex max-w-full items-baseline gap-1 rounded-full border px-3 py-1.5 text-sm transition ${
                     guessedPlayerId === p.id
                       ? isLight
                         ? 'border-primary bg-primary-soft text-primary'
@@ -93,8 +93,10 @@ function AnswerForm({
                       : 'border-border-strong text-text-secondary hover:border-border-strong'
                   }`}
                 >
-                  <span className="inline-block max-w-[9rem] truncate align-bottom">{p.name}</span>
-                  {assignedTo && <span className="ml-1 text-xs text-text-muted">· {assignedTo}</span>}
+                  <span className="max-w-[9rem] flex-shrink-0 truncate">{p.name}</span>
+                  {assignedTo && (
+                    <span className="min-w-0 truncate text-xs text-text-muted">· {assignedTo}</span>
+                  )}
                 </button>
               )
             })}
@@ -279,7 +281,7 @@ export function GuessAndRate() {
   for (const g of guesses) {
     if (g.guesserId !== localPlayerId || g.songId === song.id) continue
     const assignedSong = categorySongs.find((s) => s.id === g.songId)
-    if (assignedSong) assignedElsewhere.set(g.guessedPlayerId, songLabel(assignedSong).primary)
+    if (assignedSong) assignedElsewhere.set(g.guessedPlayerId, songLabel(assignedSong).short)
   }
 
   const existingGuess = guesses.find((g) => g.songId === song.id && g.guesserId === localPlayerId)
