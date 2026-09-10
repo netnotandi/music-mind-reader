@@ -16,6 +16,17 @@ export interface YouTubeSearchPage {
 const MAX_SEARCH_RESULTS = 3
 const EMPTY_PAGE: YouTubeSearchPage = { results: [], nextPageToken: null }
 
+// The YouTube API returns snippet titles with HTML entities left in
+// (&#39; &amp; &quot; ...). Decode them so a stored/shown video title reads
+// as plain text - "Rapper's Delight", not "Rapper&#39;s Delight".
+export function decodeHtmlEntities(text: string): string {
+  if (!text || !text.includes('&')) return text
+  if (typeof document === 'undefined') return text
+  const el = document.createElement('textarea')
+  el.innerHTML = text
+  return el.value
+}
+
 // Best-effort matches only - the player still has to confirm one (or fall
 // back to a direct link via extractYouTubeVideoId) rather than anything
 // being submitted silently. A short list rather than a single top match
@@ -47,7 +58,7 @@ export async function searchYouTubeVideos(query: string, pageToken?: string): Pr
       const title = item?.snippet?.title
       const thumbnailUrl = item?.snippet?.thumbnails?.default?.url
       if (typeof videoId === 'string' && typeof title === 'string' && typeof thumbnailUrl === 'string') {
-        results.push({ videoId, title, thumbnailUrl })
+        results.push({ videoId, title: decodeHtmlEntities(title), thumbnailUrl })
       }
     }
     const nextPageToken = typeof data.nextPageToken === 'string' ? data.nextPageToken : null

@@ -32,7 +32,7 @@ export function SongCard({ title, artist, youtubeTitle, index, total, needsAnswe
       <p className={`mb-3 text-sm font-semibold ${label}`}>
         Song {index + 1} of {total}
       </p>
-      <p className="text-2xl font-bold text-text">{primary}</p>
+      <p className="line-clamp-3 text-2xl font-bold text-text">{primary}</p>
       {secondary && <p className="mt-1 line-clamp-2 text-lg text-text-secondary">{secondary}</p>}
     </div>
   )
