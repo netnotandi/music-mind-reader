@@ -44,7 +44,7 @@ const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
 const SESSION_KEY = 'mmr_session'
 
-type Phase = 'lobby' | 'submit' | 'guess' | 'results'
+type Phase = 'lobby' | 'setup' | 'submit' | 'guess' | 'results'
 type JoinResult = 'ok' | 'not-found' | 'in-progress'
 
 interface GameState {
@@ -69,6 +69,11 @@ interface GameState {
   resumeSession: () => Promise<boolean>
   leaveGame: (removeFromRoom?: boolean) => void
   chooseCategories: (categoryIds: string[]) => void
+  // Host only: Lobby ("is everyone here?") -> Game Setup (round config).
+  startRoundSetup: () => void
+  // Host only: back out of Game Setup to the Lobby - reopens joining (the
+  // join gate is `phase === 'lobby'`); a picked category is left as-is.
+  backToLobby: () => void
   startSubmitting: () => void
   submitSong: (categoryId: string, title: string, artist: string, youtubeVideoId: string | null) => void
   shuffleSongOrder: () => void
@@ -314,6 +319,18 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode } = get()
       if (!roomCode) return
       dbUpdate(ref(db, `games/${roomCode}`), { selectedCategoryIds: categoryIds })
+    },
+
+    startRoundSetup: () => {
+      const { roomCode } = get()
+      if (!roomCode) return
+      dbUpdate(ref(db, `games/${roomCode}`), { phase: 'setup' })
+    },
+
+    backToLobby: () => {
+      const { roomCode } = get()
+      if (!roomCode) return
+      dbUpdate(ref(db, `games/${roomCode}`), { phase: 'lobby' })
     },
 
     startSubmitting: () => {

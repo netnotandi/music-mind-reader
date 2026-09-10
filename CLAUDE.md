@@ -205,3 +205,15 @@ IFrame API hefur enga innbyggða leið til að láta sjálft MYNDIÐ fjara út (
 Útfært (`src/components/NowPlayingPlayer.tsx`): host-spilarinn notar núna YouTube IFrame Player API-ið í stað hrás `<iframe>` — hljóðið fjarar út (~0.9s), næsta lag hleðst inn með `loadVideoById`, og fjarar svo inn aftur, með svörtum yfirlags-`div` sem fylgir hljóðfade-inu. `unMute()` kallað (bæði beint og á `onStateChange` PLAYING) svo autoplay-stefna vafrans þaggi ekki niður í laginu sem er skipt inn.
 
 Restin af „Lagaspilun í appinu" áfanganum (sjálfvirk framvinda milli laga o.fl.) er enn eftir.
+
+
+## Lobby og Game Setup aðskilin (viðbót við CLAUDE.md)
+
+Lobby-skjárinn gerði tvennt á einu korti: sýndi spilaralista OG lét host velja flokk. Þessu er skipt í tvo skjái / tvær phase-ir:
+
+- **Lobby** (`phase: 'lobby'`, `02-Lobby.tsx`) — bara „eru allir komnir?": QR, game code, spilaralisti, „waiting for more players", og (frá 2. umferð) uppsöfnuð stigatafla. Host smellir á **„Set up round"**.
+- **Game Setup** (`phase: 'setup'`, `02b-GameSetup.tsx`) — rúmgóður umferðar-stillingaskjár. Núna bara flokkavalið (`CategoryPicker`, syncað lifandi með `chooseCategories`), en lagt upp fyrir fleiri stillingar seinna (Extended Play, umferðarlengd). Host: „Start Submitting Songs" + „← Back to lobby". Aðrir: sjá valinn flokk lifandi + „host is setting up".
+
+Nýjar store-aðgerðir: `startRoundSetup()` (lobby→setup), `backToLobby()` (setup→lobby, opnar join aftur). Join er áfram bara leyft í `phase === 'lobby'` — ef host er kominn í setup og einhvern vantar, fer host „← Back to lobby". Milli umferða: `finalizeRoundIfReady` → `phase: 'lobby'` (stigatafla), svo host í setup aftur.
+
+Þar sem eldri kaflar segja „host velur flokk í Lobby" er átt við þennan Game Setup skjá núna.

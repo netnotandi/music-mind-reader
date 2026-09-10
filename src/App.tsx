@@ -4,6 +4,7 @@ import { MenuOverlay } from './components/MenuOverlay'
 import { CreateJoin } from './screens/01-CreateJoin'
 import { JoinGame } from './screens/01b-JoinGame'
 import { Lobby } from './screens/02-Lobby'
+import { GameSetup } from './screens/02b-GameSetup'
 import { SubmitSong } from './screens/03-SubmitSong'
 import { GuessAndRate } from './screens/05-GuessAndRate'
 import { Results } from './screens/06-Results'
@@ -11,6 +12,7 @@ import { useGameStore } from './state/gameStore'
 
 const ROUTE_FOR_PHASE = {
   lobby: '/lobby',
+  setup: '/setup',
   submit: '/submit',
   guess: '/guess',
   results: '/results',
@@ -79,6 +81,7 @@ function AppRoutes() {
       <Route path="/join" element={<JoinGame />} />
       <Route path="/join/:roomCode" element={<JoinRedirect />} />
       <Route path="/lobby" element={<Lobby />} />
+      <Route path="/setup" element={<GameSetup />} />
       <Route path="/submit" element={<SubmitSong />} />
       <Route path="/guess" element={<GuessAndRate />} />
       <Route path="/results" element={<Results />} />

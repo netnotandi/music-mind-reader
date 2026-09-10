@@ -1,25 +1,21 @@
 import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
-import { CategoryPicker } from '../components/CategoryPicker'
-import { MIN_PLAYERS_TO_START, toggleCategorySelection, useGameStore } from '../state/gameStore'
+import { MIN_PLAYERS_TO_START, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 
+// Just "is everyone here?" - QR / game code / player list, and (from the
+// second round on) the running leaderboard. Round config lives on the
+// separate Game Setup screen the host advances to from here.
 export function Lobby() {
-  // Light-only: the chosen category is its own "assigned identity" (primary/
-  // violet), not a success/confirmation signal - dark keeps its original
-  // green pill unchanged, matching the same distinction made in SubmitSong.
   const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const roomCode = useGameStore((s) => s.roomCode)
   const players = useGameStore((s) => s.players)
   const hostId = useGameStore((s) => s.hostId)
   const localPlayerId = useGameStore((s) => s.localPlayerId)
-  const categories = useGameStore((s) => s.categories)
-  const selectedCategoryIds = useGameStore((s) => s.selectedCategoryIds)
   const roundsCompleted = useGameStore((s) => s.roundsCompleted)
   const phase = useGameStore((s) => s.phase)
   const lobbyReadyPlayerIds = useGameStore((s) => s.lobbyReadyPlayerIds)
-  const chooseCategories = useGameStore((s) => s.chooseCategories)
-  const startSubmitting = useGameStore((s) => s.startSubmitting)
+  const startRoundSetup = useGameStore((s) => s.startRoundSetup)
 
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
 
@@ -31,25 +27,17 @@ export function Lobby() {
   }, [roomCode])
 
   const isHost = localPlayerId !== null && localPlayerId === hostId
-  const selectedCategories = categories.filter((c) => selectedCategoryIds.includes(c.id))
   const ranked = [...players].sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0))
   // While a round has just ended, `phase` stays 'results' for anyone who
   // hasn't clicked "Go to Lobby" yet - reachable here at all only means
   // THIS device already has (see usePhaseNavigation). Reflect that same
   // per-player readiness for everyone else, rather than showing "connected"
-  // for players who are still back on Results. Once the round is fully
-  // wrapped up (phase moves on), lobbyReadyPlayerIds resets and this just
-  // means "present in the room" again, like before.
+  // for players who are still back on Results.
   const isPlayerReady = (playerId: string) => phase !== 'results' || lobbyReadyPlayerIds.includes(playerId)
   // This device already sees the Lobby route (per-player readiness override
   // in usePhaseNavigation), but the shared room is still mid-transition
-  // until finalizeRoundIfReady actually runs - starting a new round before
-  // then would carry over stale round data and skip scoring this one.
+  // until finalizeRoundIfReady actually runs.
   const roundStillWrappingUp = phase === 'results'
-
-  function toggleCategory(categoryId: string) {
-    chooseCategories(toggleCategorySelection(selectedCategoryIds, categoryId))
-  }
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 py-8">
@@ -117,34 +105,6 @@ export function Lobby() {
         )}
       </ul>
 
-      {selectedCategories.length > 0 ? (
-        <div className="mb-6 flex flex-wrap justify-center gap-1.5">
-          {selectedCategories.map((c) => (
-            <span
-              key={c.id}
-              className={`rounded-full px-2.5 py-1 text-xs ${
-                isLight ? 'bg-primary/15 text-primary' : 'bg-success/20 text-success'
-              }`}
-            >
-              {c.name}
-            </span>
-          ))}
-        </div>
-      ) : (
-        <div className="mb-8">
-          <h2 className="mb-4 text-xl font-bold text-text">
-            {isHost ? 'Choose categories for this round' : 'Waiting for the host to choose categories...'}
-          </h2>
-          {isHost && (
-            <CategoryPicker
-              categories={categories}
-              selectedCategoryIds={selectedCategoryIds}
-              onToggle={toggleCategory}
-            />
-          )}
-        </div>
-      )}
-
       {roundStillWrappingUp ? (
         <div className="rounded-xl border border-border bg-surface-muted px-4 py-4 text-center text-text-secondary">
           Waiting for everyone to head back to the Lobby...
@@ -152,11 +112,11 @@ export function Lobby() {
       ) : isHost ? (
         <button
           type="button"
-          disabled={selectedCategoryIds.length === 0 || players.length < MIN_PLAYERS_TO_START}
-          onClick={startSubmitting}
+          disabled={players.length < MIN_PLAYERS_TO_START}
+          onClick={startRoundSetup}
           className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
         >
-          Start Submitting Songs
+          Set up round
         </button>
       ) : (
         <div className="rounded-xl border border-border bg-surface-muted px-4 py-4 text-center text-text-secondary">
