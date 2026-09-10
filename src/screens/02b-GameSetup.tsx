@@ -26,6 +26,10 @@ export function GameSetup() {
     <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
       <h1 className="mb-8 text-2xl font-bold text-text">Game Setup</h1>
 
+      {/* Future round settings (e.g. a short/long logo-reveal toggle, round
+          length / Extended Play) slot in here as sibling <section>s above
+          the category picker - the screen is laid out with room for them. */}
+
       <section>
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-text-secondary">
           Category for this round

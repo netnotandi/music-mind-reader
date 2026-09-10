@@ -10,7 +10,9 @@ interface CategoryPickerProps {
   onToggle: (categoryId: string) => void
 }
 
-const PAGE_SIZE = 6
+// Game Setup is a screen of its own now with room to spare, so more
+// categories fit per page than the old cramped-into-the-Lobby days.
+const PAGE_SIZE = 10
 
 export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: CategoryPickerProps) {
   // Local to this component instance - paged browsing is a pure UI concern,
