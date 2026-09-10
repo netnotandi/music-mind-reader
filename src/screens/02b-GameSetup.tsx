@@ -1,19 +1,29 @@
 import { CategoryPicker } from '../components/CategoryPicker'
-import { type RoundMode, toggleCategorySelection, useGameStore } from '../state/gameStore'
+import {
+  type RoundMode,
+  SHORT_MODE_CAP_OPTIONS,
+  type ShortModeCapSeconds,
+  toggleCategorySelection,
+  useGameStore,
+} from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 
-const ROUND_MODES: { mode: RoundMode; label: string; blurb: string }[] = [
-  {
-    mode: 'short',
-    label: 'Short',
-    blurb: 'Every song plays at least 60 seconds (90 max), then moves on once everyone has answered. The host can skip a song early.',
-  },
-  {
-    mode: 'long',
-    label: 'Long',
-    blurb: 'Each song plays out in full. The host can skip a song early.',
-  },
+const ROUND_MODES: { mode: RoundMode; label: string }[] = [
+  { mode: 'short', label: 'Short' },
+  { mode: 'long', label: 'Long' },
 ]
+
+const CAP_LABELS: Record<ShortModeCapSeconds, string> = {
+  60: '1 min',
+  90: '90 sec',
+  120: '2 min',
+}
+
+function roundLengthBlurb(mode: RoundMode, cap: ShortModeCapSeconds): string {
+  if (mode === 'long') return 'Each song plays out in full. The host can skip a song early.'
+  if (cap === 60) return 'Each song plays a full minute, then moves on. The host can skip a song early.'
+  return `Each song plays 60 seconds to ${CAP_LABELS[cap]}, moving on sooner once everyone has answered. The host can skip a song early.`
+}
 
 // Round configuration, on its own screen so the Lobby can stay focused on
 // "is everyone here?".
@@ -24,14 +34,17 @@ export function GameSetup() {
   const categories = useGameStore((s) => s.categories)
   const selectedCategoryIds = useGameStore((s) => s.selectedCategoryIds)
   const roundMode = useGameStore((s) => s.roundMode)
+  const shortModeCapSeconds = useGameStore((s) => s.shortModeCapSeconds)
   const chooseCategories = useGameStore((s) => s.chooseCategories)
   const chooseRoundMode = useGameStore((s) => s.chooseRoundMode)
+  const chooseShortModeCap = useGameStore((s) => s.chooseShortModeCap)
   const startSubmitting = useGameStore((s) => s.startSubmitting)
   const backToLobby = useGameStore((s) => s.backToLobby)
 
   const isHost = localPlayerId !== null && localPlayerId === hostId
   const selectedCategories = categories.filter((c) => selectedCategoryIds.includes(c.id))
   const activeMode = ROUND_MODES.find((m) => m.mode === roundMode) ?? ROUND_MODES[0]
+  const blurb = roundLengthBlurb(roundMode, shortModeCapSeconds)
 
   function toggleCategory(categoryId: string) {
     chooseCategories(toggleCategorySelection(selectedCategoryIds, categoryId))
@@ -66,11 +79,34 @@ export function GameSetup() {
                 )
               })}
             </div>
-            <p className="mt-2 text-xs text-text-muted">{activeMode.blurb}</p>
+
+            {roundMode === 'short' && (
+              <div className="mt-2 flex gap-1.5">
+                {SHORT_MODE_CAP_OPTIONS.map((seconds) => {
+                  const active = seconds === shortModeCapSeconds
+                  return (
+                    <button
+                      key={seconds}
+                      type="button"
+                      onClick={() => chooseShortModeCap(seconds)}
+                      className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition ${
+                        active
+                          ? 'border-primary bg-primary-soft text-primary'
+                          : `border-border text-text-secondary hover:border-border-strong ${isLight ? 'bg-surface' : ''}`
+                      }`}
+                    >
+                      {CAP_LABELS[seconds]}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            <p className="mt-2 text-xs text-text-muted">{blurb}</p>
           </>
         ) : (
           <p className="mt-1 text-sm text-text-secondary">
-            {activeMode.label} — {activeMode.blurb}
+            {activeMode.label} — {blurb}
           </p>
         )}
       </section>

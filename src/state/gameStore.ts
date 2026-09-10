@@ -52,10 +52,12 @@ export type RoundMode = 'short' | 'long'
 // is allowed to advance it - so a song never cuts out seconds after it
 // started just because the group was quick.
 export const SHORT_MODE_MIN_SECONDS = 60
-// Short mode: a song advances after this many seconds of playback no matter
-// what (the hard cap), or once everyone has answered AND it has played at
-// least SHORT_MODE_MIN_SECONDS - whichever comes first.
-export const SHORT_MODE_CAP_SECONDS = 90
+// Short mode: the group picks how long a song may play before it advances
+// no matter what (the hard cap). It advances sooner once everyone has
+// answered AND it has played at least SHORT_MODE_MIN_SECONDS.
+export const SHORT_MODE_CAP_OPTIONS = [60, 90, 120] as const
+export type ShortModeCapSeconds = (typeof SHORT_MODE_CAP_OPTIONS)[number]
+export const DEFAULT_SHORT_MODE_CAP_SECONDS: ShortModeCapSeconds = 90
 
 interface GameState {
   roomCode: string | null
@@ -66,6 +68,8 @@ interface GameState {
   categories: Category[]
   selectedCategoryIds: string[]
   roundMode: RoundMode
+  // Short mode: how long a song may play before it advances no matter what.
+  shortModeCapSeconds: ShortModeCapSeconds
   songs: Song[]
   guesses: Guess[]
   ratings: Rating[]
@@ -90,6 +94,8 @@ interface GameState {
   backToLobby: () => void
   // Host only, from Game Setup: short vs long round, live-synced.
   chooseRoundMode: (mode: RoundMode) => void
+  // Host only, from Game Setup: short-mode per-song cap, live-synced.
+  chooseShortModeCap: (seconds: ShortModeCapSeconds) => void
   startSubmitting: () => void
   submitSong: (
     categoryId: string,
@@ -179,6 +185,7 @@ interface RoomRecord {
   phase?: Phase
   selectedCategoryIds?: string[]
   roundMode?: RoundMode
+  shortModeCapSeconds?: number
   currentSongIndex?: number
   songOrder?: string[]
   roundPlaythroughDone?: boolean
@@ -219,6 +226,11 @@ function parseRoom(data: RoomRecord) {
     players,
     selectedCategoryIds: data.selectedCategoryIds ?? [],
     roundMode: data.roundMode ?? 'short',
+    shortModeCapSeconds: (SHORT_MODE_CAP_OPTIONS as readonly number[]).includes(
+      data.shortModeCapSeconds ?? -1
+    )
+      ? (data.shortModeCapSeconds as ShortModeCapSeconds)
+      : DEFAULT_SHORT_MODE_CAP_SECONDS,
     songs,
     guesses,
     ratings,
@@ -255,6 +267,7 @@ export const useGameStore = create<GameState>((set, get) => {
     categories: CATEGORIES,
     selectedCategoryIds: [],
     roundMode: 'short',
+    shortModeCapSeconds: DEFAULT_SHORT_MODE_CAP_SECONDS,
     songs: [],
     guesses: [],
     ratings: [],
@@ -339,6 +352,7 @@ export const useGameStore = create<GameState>((set, get) => {
         players: [],
         selectedCategoryIds: [],
         roundMode: 'short',
+        shortModeCapSeconds: DEFAULT_SHORT_MODE_CAP_SECONDS,
         songs: [],
         guesses: [],
         ratings: [],
@@ -376,6 +390,12 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode } = get()
       if (!roomCode) return
       dbUpdate(ref(db, `games/${roomCode}`), { roundMode: mode })
+    },
+
+    chooseShortModeCap: (seconds) => {
+      const { roomCode } = get()
+      if (!roomCode) return
+      dbUpdate(ref(db, `games/${roomCode}`), { shortModeCapSeconds: seconds })
     },
 
     startSubmitting: () => {

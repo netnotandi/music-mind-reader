@@ -3,12 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { NowPlayingPlayer } from '../components/NowPlayingPlayer'
 import { SongCard } from '../components/SongCard'
 import { songLabel } from '../logic/songLabel'
-import {
-  getCurrentRoundSongs,
-  SHORT_MODE_CAP_SECONDS,
-  SHORT_MODE_MIN_SECONDS,
-  useGameStore,
-} from '../state/gameStore'
+import { getCurrentRoundSongs, SHORT_MODE_MIN_SECONDS, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 import type { Player, Song } from '../types'
 
@@ -154,6 +149,7 @@ export function GuessAndRate() {
   const songs = useGameStore(useShallow(getCurrentRoundSongs))
   const currentSongIndex = useGameStore((s) => s.currentSongIndex)
   const roundMode = useGameStore((s) => s.roundMode)
+  const shortModeCapSeconds = useGameStore((s) => s.shortModeCapSeconds)
   const roundPlaythroughDone = useGameStore((s) => s.roundPlaythroughDone)
   const localPlayerId = useGameStore((s) => s.localPlayerId)
   const hostId = useGameStore((s) => s.hostId)
@@ -246,14 +242,22 @@ export function GuessAndRate() {
   useEffect(() => {
     if (!isHost || roundPlaythroughDone || roundMode !== 'short') return
     if (currentSong?.youtubeVideoId) return
-    const floor = setTimeout(() => setMinPlaybackReached(true), SHORT_MODE_MIN_SECONDS * 1000)
-    const cap = setTimeout(() => doAdvance(), SHORT_MODE_CAP_SECONDS * 1000)
+    const floorMs = Math.min(SHORT_MODE_MIN_SECONDS, shortModeCapSeconds) * 1000
+    const floor = setTimeout(() => setMinPlaybackReached(true), floorMs)
+    const cap = setTimeout(() => doAdvance(), shortModeCapSeconds * 1000)
     return () => {
       clearTimeout(floor)
       clearTimeout(cap)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, roundMode, roundPlaythroughDone, currentSongIndex, currentSong?.youtubeVideoId])
+  }, [
+    isHost,
+    roundMode,
+    roundPlaythroughDone,
+    currentSongIndex,
+    currentSong?.youtubeVideoId,
+    shortModeCapSeconds,
+  ])
 
   if (!localPlayerId || songs.length === 0) {
     return (
@@ -356,12 +360,16 @@ export function GuessAndRate() {
           and plays with sound by default; a follower starts muted. */}
       <NowPlayingPlayer
         videoId={roundPlaythroughDone ? null : (currentSong?.youtubeVideoId ?? null)}
-        capSeconds={isHost && roundMode === 'short' && !roundPlaythroughDone ? SHORT_MODE_CAP_SECONDS : null}
+        capSeconds={
+          isHost && roundMode === 'short' && !roundPlaythroughDone ? shortModeCapSeconds : null
+        }
         onCap={() => {
           if (isHost && roundMode === 'short') doAdvance()
         }}
         floorSeconds={
-          isHost && roundMode === 'short' && !roundPlaythroughDone ? SHORT_MODE_MIN_SECONDS : null
+          isHost && roundMode === 'short' && !roundPlaythroughDone
+            ? Math.min(SHORT_MODE_MIN_SECONDS, shortModeCapSeconds)
+            : null
         }
         onFloor={() => {
           if (isHost) setMinPlaybackReached(true)
