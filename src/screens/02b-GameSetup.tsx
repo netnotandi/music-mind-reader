@@ -27,8 +27,7 @@ const CAP_PROSE: Record<ShortModeCapSeconds, string> = {
 
 function roundLengthBlurb(mode: RoundMode, cap: ShortModeCapSeconds): string {
   if (mode === 'long') return 'Each song plays out in full. The host can skip a song early.'
-  if (cap === 60) return 'Each song plays a full minute, then moves on. The host can skip a song early.'
-  return `Each song plays up to ${CAP_PROSE[cap]} — sooner once everyone has answered, but always at least a minute. The host can skip a song early.`
+  return `Each song plays for ${CAP_PROSE[cap]}, then moves on - whether or not everyone has answered. The host can skip a song early.`
 }
 
 // Round configuration, on its own screen so the Lobby can stay focused on

@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { NowPlayingPlayer } from '../components/NowPlayingPlayer'
 import { SongCard } from '../components/SongCard'
 import { songLabel } from '../logic/songLabel'
-import { getCurrentRoundSongs, SHORT_MODE_MIN_SECONDS, useGameStore } from '../state/gameStore'
+import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 import type { Player, Song } from '../types'
 
@@ -221,34 +221,15 @@ export function GuessAndRate() {
     advancedForRef.current = currentSongIndex
     advanceGroup()
   }
-  // Short mode: the current song must play at least SHORT_MODE_MIN_SECONDS
-  // before "everyone answered" is allowed to advance it (the NowPlayingPlayer
-  // poll, or a wall clock for a no-video song, flips this). Reset on every
-  // new current song.
-  const [minPlaybackReached, setMinPlaybackReached] = useState(false)
-  useEffect(() => {
-    setMinPlaybackReached(false)
-  }, [currentSongIndex])
-  // short mode also advances once everyone has answered the current song -
-  // but not before it has played the minimum
-  const currentAllAnswered = currentSong ? answeredComplete(currentSong) : false
-  useEffect(() => {
-    if (!isHost || roundPlaythroughDone || roundMode !== 'short') return
-    if (currentAllAnswered && minPlaybackReached) doAdvance()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, roundMode, roundPlaythroughDone, currentAllAnswered, minPlaybackReached, currentSongIndex])
-  // a current song with no video can't be timed by the player - fall back
-  // to a wall clock in short mode for both the minimum and the hard cap
+  // Short mode: the song always plays for exactly shortModeCapSeconds,
+  // whether or not everyone has answered - only a natural end (a shorter
+  // video) or the host skipping cuts it off sooner. A current song with no
+  // video can't be timed by the player, so a wall clock stands in.
   useEffect(() => {
     if (!isHost || roundPlaythroughDone || roundMode !== 'short') return
     if (currentSong?.youtubeVideoId) return
-    const floorMs = Math.min(SHORT_MODE_MIN_SECONDS, shortModeCapSeconds) * 1000
-    const floor = setTimeout(() => setMinPlaybackReached(true), floorMs)
     const cap = setTimeout(() => doAdvance(), shortModeCapSeconds * 1000)
-    return () => {
-      clearTimeout(floor)
-      clearTimeout(cap)
-    }
+    return () => clearTimeout(cap)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isHost,
@@ -356,8 +337,8 @@ export function GuessAndRate() {
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
       {/* Everyone gets the video so people playing remotely can follow
-          along. Only the host's player drives progression (cap/floor/ended)
-          and plays with sound by default; a follower starts muted. */}
+          along. Only the host's player drives progression (cap/ended) and
+          plays with sound by default; a follower starts muted. */}
       <NowPlayingPlayer
         videoId={roundPlaythroughDone ? null : (currentSong?.youtubeVideoId ?? null)}
         capSeconds={
@@ -365,14 +346,6 @@ export function GuessAndRate() {
         }
         onCap={() => {
           if (isHost && roundMode === 'short') doAdvance()
-        }}
-        floorSeconds={
-          isHost && roundMode === 'short' && !roundPlaythroughDone
-            ? Math.min(SHORT_MODE_MIN_SECONDS, shortModeCapSeconds)
-            : null
-        }
-        onFloor={() => {
-          if (isHost) setMinPlaybackReached(true)
         }}
         onEnded={() => {
           if (isHost) doAdvance()

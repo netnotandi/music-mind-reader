@@ -48,13 +48,10 @@ type Phase = 'lobby' | 'setup' | 'submit' | 'guess' | 'results'
 type JoinResult = 'ok' | 'not-found' | 'in-progress'
 export type RoundMode = 'short' | 'long'
 
-// Short mode: a song always plays this long before "everyone has answered"
-// is allowed to advance it - so a song never cuts out seconds after it
-// started just because the group was quick.
-export const SHORT_MODE_MIN_SECONDS = 60
-// Short mode: the group picks how long a song may play before it advances
-// no matter what (the hard cap). It advances sooner once everyone has
-// answered AND it has played at least SHORT_MODE_MIN_SECONDS.
+// Short mode: the group picks exactly how long each song plays before the
+// host's device advances the group - regardless of who has or hasn't
+// finished answering. A shorter video's natural end, or the host skipping,
+// can still cut it off sooner.
 export const SHORT_MODE_CAP_OPTIONS = [60, 90, 120] as const
 export type ShortModeCapSeconds = (typeof SHORT_MODE_CAP_OPTIONS)[number]
 export const DEFAULT_SHORT_MODE_CAP_SECONDS: ShortModeCapSeconds = 90
