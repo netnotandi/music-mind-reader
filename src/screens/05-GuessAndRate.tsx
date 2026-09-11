@@ -13,13 +13,7 @@ interface Answer {
 }
 
 interface AnswerFormProps {
-  song: Song
-  index: number
-  total: number
   isOwnSong: boolean
-  // This player still owes a guess/rating for this song - the song card
-  // switches to the "you're not done here" colour.
-  needsAnswer: boolean
   visiblePlayers: Player[]
   assignedElsewhere: Map<string, string>
   ratingScale: number[]
@@ -28,14 +22,16 @@ interface AnswerFormProps {
   onSubmit: (guessedPlayerId: string, rating: number | null) => void
 }
 
+// Confirmation flash + a quick pop stay visible on the button after a
+// submit/update - the view no longer jumps away the moment you're done
+// (see the comment on handleSubmit), so there's time to actually notice it.
+const SAVED_FLASH_MS = 1400
+const SAVED_POP_MS = 180
+
 // Keyed by `song.id` from the parent, so React remounts this (and resets
 // guessedPlayerId/rating from initialAnswer) whenever the song changes.
 function AnswerForm({
-  song,
-  index,
-  total,
   isOwnSong,
-  needsAnswer,
   visiblePlayers,
   assignedElsewhere,
   ratingScale,
@@ -46,23 +42,34 @@ function AnswerForm({
   const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
   const [guessedPlayerId, setGuessedPlayerId] = useState(initialAnswer?.guessedPlayerId ?? null)
   const [rating, setRating] = useState(initialAnswer?.rating ?? null)
+  const [justSaved, setJustSaved] = useState(false)
+  const [popped, setPopped] = useState(false)
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const popTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current)
+      if (popTimeoutRef.current) clearTimeout(popTimeoutRef.current)
+    }
+  }, [])
 
   const maxRating = ratingScale.length > 0 ? ratingScale[ratingScale.length - 1] : 0
   const ratingAvailable = ratingScale.some((v) => !unavailableRatings.has(v))
 
+  function handleSubmitClick() {
+    if (!guessedPlayerId || (ratingAvailable && rating === null)) return
+    onSubmit(guessedPlayerId, rating)
+    setJustSaved(true)
+    setPopped(true)
+    if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current)
+    savedTimeoutRef.current = setTimeout(() => setJustSaved(false), SAVED_FLASH_MS)
+    if (popTimeoutRef.current) clearTimeout(popTimeoutRef.current)
+    popTimeoutRef.current = setTimeout(() => setPopped(false), SAVED_POP_MS)
+  }
+
   return (
     <>
-      <div className="mb-6">
-        <SongCard
-          title={song.title}
-          artist={song.artist}
-          youtubeTitle={song.youtubeTitle}
-          index={index}
-          total={total}
-          needsAnswer={needsAnswer}
-        />
-      </div>
-
       {isOwnSong ? (
         <div className="mb-6 rounded-xl border border-border bg-surface-muted px-4 py-4 text-center text-text-secondary">
           This is your own song — you don't guess or rate it.
@@ -132,12 +139,16 @@ function AnswerForm({
           <button
             type="button"
             disabled={!guessedPlayerId || (ratingAvailable && rating === null)}
-            onClick={() =>
-              guessedPlayerId !== null && (!ratingAvailable || rating !== null) && onSubmit(guessedPlayerId, rating)
-            }
-            className="mb-6 w-full rounded-lg border border-primary bg-primary px-4 py-2 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
+            onClick={handleSubmitClick}
+            className={`mb-6 w-full transform-gpu rounded-lg border px-4 py-2 font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text ${
+              popped ? 'scale-105' : 'scale-100'
+            } ${
+              justSaved
+                ? 'border-success bg-success/20 text-success'
+                : 'border-primary bg-primary text-text-on-primary hover:bg-primary-hover active:bg-primary-active'
+            }`}
           >
-            {initialAnswer ? 'Update Answer' : 'Submit'}
+            {justSaved ? '✓ Saved' : initialAnswer ? 'Update Answer' : 'Submit'}
           </button>
         </>
       )}
@@ -307,8 +318,11 @@ export function GuessAndRate() {
     if (conflictSong) clearGuess(conflictSong.id)
     submitGuess(song.id, guessedPlayerId)
     if (rating !== null) submitRating(song.id, rating)
-    // Finished this one - hop to whatever's playing now.
-    if (!roundPlaythroughDone) setViewIndex(currentSongIndex)
+    // Stay put rather than jumping back to the current song - reviewing/
+    // fixing several earlier answers in a row shouldn't mean re-navigating
+    // back to where you were after every single one. Once a song you were
+    // stuck on is done, the viewIndex-follow effect above will pick you back
+    // up automatically next time the group actually advances.
   }
 
   function handleDevAutofillRest() {
@@ -364,13 +378,55 @@ export function GuessAndRate() {
         </div>
       )}
 
+      <div className="mb-4">
+        <SongCard
+          title={song.title}
+          artist={song.artist}
+          youtubeTitle={song.youtubeTitle}
+          index={viewIndex}
+          total={songs.length}
+          needsAnswer={needsAnswer}
+        />
+      </div>
+
+      {!isViewingCurrent && !roundPlaythroughDone && (
+        <button
+          type="button"
+          onClick={() => setViewIndex(currentSongIndex)}
+          className="mb-4 w-full rounded-lg border border-cyan/40 bg-cyan/10 px-4 py-2 text-sm text-cyan transition hover:border-cyan"
+        >
+          Reviewing an earlier song — jump back to the one playing now →
+        </button>
+      )}
+
+      {/* Bigger, higher up (right under the song card) so browsing back and
+          forth to review or fix an earlier answer doesn't mean hunting for
+          small buttons further down the page. */}
+      <div className="mb-6 flex items-stretch gap-2">
+        <button
+          type="button"
+          disabled={viewIndex === 0}
+          onClick={goPrev}
+          className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          ← Previous
+        </button>
+        <span className="flex-shrink-0 self-center text-xs text-text-muted">
+          {viewIndex + 1}/{songs.length}
+        </span>
+        <button
+          type="button"
+          disabled={viewIndex >= maxReachableIndex}
+          onClick={goNext}
+          className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          Next →
+        </button>
+      </div>
+
       <AnswerForm
         key={song.id}
-        song={song}
-        index={viewIndex}
-        total={songs.length}
         isOwnSong={isOwnSong}
-        needsAnswer={needsAnswer}
         visiblePlayers={visiblePlayers}
         assignedElsewhere={assignedElsewhere}
         ratingScale={ratingScale}
@@ -378,38 +434,6 @@ export function GuessAndRate() {
         initialAnswer={initialAnswer}
         onSubmit={handleSubmit}
       />
-
-      {!isViewingCurrent && !roundPlaythroughDone && (
-        <button
-          type="button"
-          onClick={() => setViewIndex(currentSongIndex)}
-          className="mb-6 w-full rounded-lg border border-cyan/40 bg-cyan/10 px-4 py-2 text-sm text-cyan transition hover:border-cyan"
-        >
-          Reviewing an earlier song — jump back to the one playing now →
-        </button>
-      )}
-
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <button
-          type="button"
-          disabled={viewIndex === 0}
-          onClick={goPrev}
-          className="rounded-lg border border-border-strong px-4 py-2 text-sm text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          ← Previous song
-        </button>
-        <span className="flex-shrink-0 text-xs text-text-muted">
-          {viewIndex + 1} / {songs.length}
-        </span>
-        <button
-          type="button"
-          disabled={viewIndex >= maxReachableIndex}
-          onClick={goNext}
-          className="rounded-lg border border-border-strong px-4 py-2 text-sm text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          Next song →
-        </button>
-      </div>
 
       {!isOwnSong && (
         <p className="mb-4 text-center text-sm text-text-secondary">
