@@ -212,17 +212,11 @@ export function GuessAndRate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSongIndex])
 
-  // When the round finishes playing through, drop the player onto their
-  // first unanswered song so the "finish up" task is right in front of them.
-  const wrappedRef = useRef(false)
+  // When the round finishes playing through, everyone lands on the overview
+  // card (not straight into editing a song) - see wrapUpEditing below.
+  const [wrapUpEditing, setWrapUpEditing] = useState(false)
   useEffect(() => {
-    if (roundPlaythroughDone && !wrappedRef.current) {
-      wrappedRef.current = true
-      const firstUnanswered = songs.findIndex((s) => !isDoneForMe(s))
-      if (firstUnanswered >= 0) setViewIndex(firstUnanswered)
-    }
-    if (!roundPlaythroughDone) wrappedRef.current = false
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (roundPlaythroughDone) setWrapUpEditing(false)
   }, [roundPlaythroughDone])
 
   // ---- Host-only: the single driver of group song progression ----
@@ -293,9 +287,13 @@ export function GuessAndRate() {
   )
 
   const hasConfirmed = confirmedPlayerIds.includes(localPlayerId)
-  const allConfirmed = players.length > 0 && confirmedPlayerIds.length >= players.length
   const myUnanswered = songs.filter((s) => s.playerId !== localPlayerId && !isDoneForMe(s)).length
   const needsAnswer = !isOwnSong && !isDoneForMe(song)
+
+  function openSongInOverview(index: number) {
+    setViewIndex(index)
+    setWrapUpEditing(true)
+  }
 
   // Browse the round's songs with a simple prev/next stepper. Neither button
   // moves the group - during play you can only step back as far as the song
@@ -369,151 +367,189 @@ export function GuessAndRate() {
       />
 
       {roundPlaythroughDone ? (
-        <div className="mb-6 rounded-lg border border-info-border bg-info-bg px-4 py-2 text-center text-sm text-info-text">
-          All songs played — finish your answers below.
-        </div>
-      ) : (
-        <div className="mb-6 text-center text-sm text-text-secondary">
-          Now playing: <span className="font-semibold text-text">Song {currentSongIndex + 1}</span>
-        </div>
-      )}
+        wrapUpEditing ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setWrapUpEditing(false)}
+              className="mb-4 w-full rounded-lg border border-cyan/40 bg-cyan/10 px-4 py-2 text-sm text-cyan transition hover:border-cyan"
+            >
+              ← Back to overview
+            </button>
 
-      <div className="mb-4">
-        <SongCard
-          title={song.title}
-          artist={song.artist}
-          youtubeTitle={song.youtubeTitle}
-          index={viewIndex}
-          total={songs.length}
-          needsAnswer={needsAnswer}
-        />
-      </div>
+            <div className="mb-4">
+              <SongCard
+                title={song.title}
+                artist={song.artist}
+                youtubeTitle={song.youtubeTitle}
+                index={viewIndex}
+                total={songs.length}
+                needsAnswer={needsAnswer}
+              />
+            </div>
 
-      {!isViewingCurrent && !roundPlaythroughDone && (
-        <button
-          type="button"
-          onClick={() => setViewIndex(currentSongIndex)}
-          className="mb-4 w-full rounded-lg border border-cyan/40 bg-cyan/10 px-4 py-2 text-sm text-cyan transition hover:border-cyan"
-        >
-          Reviewing an earlier song — jump back to the one playing now →
-        </button>
-      )}
+            <div className="mb-6 flex items-stretch gap-2">
+              <button
+                type="button"
+                disabled={viewIndex === 0}
+                onClick={goPrev}
+                className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                ← Previous
+              </button>
+              <span className="flex-shrink-0 self-center text-xs text-text-muted">
+                {viewIndex + 1}/{songs.length}
+              </span>
+              <button
+                type="button"
+                disabled={viewIndex >= maxReachableIndex}
+                onClick={goNext}
+                className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                Next →
+              </button>
+            </div>
 
-      {/* Bigger, higher up (right under the song card) so browsing back and
-          forth to review or fix an earlier answer doesn't mean hunting for
-          small buttons further down the page. */}
-      <div className="mb-6 flex items-stretch gap-2">
-        <button
-          type="button"
-          disabled={viewIndex === 0}
-          onClick={goPrev}
-          className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          ← Previous
-        </button>
-        <span className="flex-shrink-0 self-center text-xs text-text-muted">
-          {viewIndex + 1}/{songs.length}
-        </span>
-        <button
-          type="button"
-          disabled={viewIndex >= maxReachableIndex}
-          onClick={goNext}
-          className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          Next →
-        </button>
-      </div>
+            <AnswerForm
+              key={song.id}
+              isOwnSong={isOwnSong}
+              visiblePlayers={visiblePlayers}
+              assignedElsewhere={assignedElsewhere}
+              ratingScale={ratingScale}
+              unavailableRatings={unavailableRatings}
+              initialAnswer={initialAnswer}
+              onSubmit={handleSubmit}
+            />
 
-      <AnswerForm
-        key={song.id}
-        isOwnSong={isOwnSong}
-        visiblePlayers={visiblePlayers}
-        assignedElsewhere={assignedElsewhere}
-        ratingScale={ratingScale}
-        unavailableRatings={unavailableRatings}
-        initialAnswer={initialAnswer}
-        onSubmit={handleSubmit}
-      />
+            {!isOwnSong && (
+              <p className="mb-4 text-center text-sm text-text-secondary">
+                {answeredCount}/{requiredResponders.length} have answered this song
+              </p>
+            )}
 
-      {!isOwnSong && (
-        <p className="mb-4 text-center text-sm text-text-secondary">
-          {answeredCount}/{requiredResponders.length} have answered this song
-        </p>
-      )}
+            {!answeredComplete(song) && import.meta.env.DEV && (
+              <button
+                type="button"
+                onClick={handleDevAutofillRest}
+                className="mb-4 w-full rounded-lg border border-border-strong px-4 py-2 text-sm text-text-secondary hover:border-border-strong"
+              >
+                Answer for everyone else on this song (dev only, to test the flow)
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="mb-6 text-center">
+              <h1 className="text-lg font-bold text-text">All songs played!</h1>
+              <p className="mt-1 text-sm text-text-secondary">
+                {myUnanswered > 0
+                  ? `You still have ${myUnanswered} song${myUnanswered === 1 ? '' : 's'} to answer below.`
+                  : "Check your answers below, then confirm when you're ready."}
+              </p>
+            </div>
 
-      {!answeredComplete(song) && import.meta.env.DEV && (
-        <button
-          type="button"
-          onClick={handleDevAutofillRest}
-          className="mb-4 w-full rounded-lg border border-border-strong px-4 py-2 text-sm text-text-secondary hover:border-border-strong"
-        >
-          Answer for everyone else on this song (dev only, to test the flow)
-        </button>
-      )}
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary">
+              Your answers this round
+            </h2>
+            <div className="mb-6 overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-text-secondary">
+                    <th className="px-3 py-2 text-left font-medium">Song</th>
+                    <th className="px-3 py-2 text-left font-medium">Your guess</th>
+                    <th className="px-3 py-2 text-center font-medium">Rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {songs.map((s, i) => {
+                    const isOwn = s.playerId === localPlayerId
+                    const rowNeedsAnswer = !isOwn && !isDoneForMe(s)
+                    const rowGuess = guesses.find((g) => g.songId === s.id && g.guesserId === localPlayerId)
+                    const guessedPlayer = rowGuess
+                      ? players.find((p) => p.id === rowGuess.guessedPlayerId)
+                      : undefined
+                    const rowRating = ratings.find((r) => r.songId === s.id && r.raterId === localPlayerId)
+                    return (
+                      <tr
+                        key={s.id}
+                        onClick={() => openSongInOverview(i)}
+                        className={`cursor-pointer border-b border-border transition last:border-0 hover:bg-surface-muted ${
+                          rowNeedsAnswer ? 'bg-pink/10' : ''
+                        }`}
+                      >
+                        <td
+                          className={`max-w-[8rem] truncate px-3 py-2 ${
+                            rowNeedsAnswer ? 'font-semibold text-pink' : 'text-text'
+                          }`}
+                        >
+                          {songLabel(s).short}
+                        </td>
+                        <td
+                          className={`max-w-[6rem] truncate px-3 py-2 ${
+                            rowNeedsAnswer ? 'font-semibold text-pink' : 'text-text-secondary'
+                          }`}
+                        >
+                          {isOwn ? 'Your song' : (guessedPlayer?.name ?? (rowNeedsAnswer ? 'Tap to answer' : '—'))}
+                        </td>
+                        <td className="px-3 py-2 text-center text-text-secondary">
+                          {isOwn ? '—' : (rowRating?.value ?? '—')}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-      {isHost && !roundPlaythroughDone && (
-        <button
-          type="button"
-          onClick={doAdvance}
-          className="w-full rounded-xl border border-border-strong px-5 py-3 text-sm font-semibold text-text-secondary transition hover:border-border-strong"
-        >
-          Skip song →
-        </button>
-      )}
+            <button
+              type="button"
+              disabled={hasConfirmed}
+              onClick={confirmFinalAnswers}
+              className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
+            >
+              {hasConfirmed ? '✓ Confirmed — waiting for others' : 'Confirm final answers'}
+            </button>
 
-      {roundPlaythroughDone && (
-        <div className="mt-8">
-          {myUnanswered > 0 && (
-            <p className="mb-2 text-center text-sm text-primary">
-              You still have {myUnanswered} song{myUnanswered === 1 ? '' : 's'} to answer.
-            </p>
-          )}
-          <button
-            type="button"
-            disabled={hasConfirmed}
-            onClick={confirmFinalAnswers}
-            className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
-          >
-            {hasConfirmed ? '✓ Confirmed — waiting for others' : 'Confirm final answers'}
-          </button>
-
-          <div className="mt-6 overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-text-secondary">
-                  <th className="px-3 py-2 text-left font-medium">Player</th>
-                  <th className="px-3 py-2 text-center font-medium">Confirmed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {players.map((p) => (
-                  <tr
-                    key={p.id}
-                    className={`border-b border-border last:border-0 ${
-                      p.id === localPlayerId ? 'bg-success/10' : ''
-                    }`}
-                  >
-                    <td
-                      className={`max-w-[8rem] truncate px-3 py-2 ${
-                        p.id === localPlayerId ? 'font-semibold text-success' : 'text-text'
+            <div className="mt-6 overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-text-secondary">
+                    <th className="px-3 py-2 text-left font-medium">Player</th>
+                    <th className="px-3 py-2 text-center font-medium">Confirmed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {players.map((p) => (
+                    <tr
+                      key={p.id}
+                      className={`border-b border-border last:border-0 ${
+                        p.id === localPlayerId ? 'bg-success/10' : ''
                       }`}
                     >
-                      {p.name}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      {confirmedPlayerIds.includes(p.id) ? (
-                        <span className="text-success">✓</span>
-                      ) : (
-                        <span className="text-text-muted">·</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <td
+                        className={`max-w-[8rem] truncate px-3 py-2 ${
+                          p.id === localPlayerId ? 'font-semibold text-success' : 'text-text'
+                        }`}
+                      >
+                        {p.name}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {confirmedPlayerIds.includes(p.id) ? (
+                          <span className="text-success">✓</span>
+                        ) : (
+                          <span className="text-text-muted">·</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          {allConfirmed && (
+            {/* Host-only, no automatic timer - same pattern as "Start
+                Submitting Songs"/"Byrja leik": the host decides when the
+                room has waited long enough, rather than the app forcing a
+                threshold. Non-host sees who's driving, disabled. */}
             <button
               type="button"
               disabled={!isHost}
@@ -522,8 +558,97 @@ export function GuessAndRate() {
             >
               {isHost ? 'See Results →' : `Waiting for ${hostPlayer?.name ?? 'the host'} to see results`}
             </button>
+          </>
+        )
+      ) : (
+        <>
+          <div className="mb-6 text-center text-sm text-text-secondary">
+            Now playing: <span className="font-semibold text-text">Song {currentSongIndex + 1}</span>
+          </div>
+
+          <div className="mb-4">
+            <SongCard
+              title={song.title}
+              artist={song.artist}
+              youtubeTitle={song.youtubeTitle}
+              index={viewIndex}
+              total={songs.length}
+              needsAnswer={needsAnswer}
+            />
+          </div>
+
+          {!isViewingCurrent && (
+            <button
+              type="button"
+              onClick={() => setViewIndex(currentSongIndex)}
+              className="mb-4 w-full rounded-lg border border-cyan/40 bg-cyan/10 px-4 py-2 text-sm text-cyan transition hover:border-cyan"
+            >
+              Reviewing an earlier song — jump back to the one playing now →
+            </button>
           )}
-        </div>
+
+          {/* Bigger, higher up (right under the song card) so browsing back
+              and forth to review or fix an earlier answer doesn't mean
+              hunting for small buttons further down the page. */}
+          <div className="mb-6 flex items-stretch gap-2">
+            <button
+              type="button"
+              disabled={viewIndex === 0}
+              onClick={goPrev}
+              className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              ← Previous
+            </button>
+            <span className="flex-shrink-0 self-center text-xs text-text-muted">
+              {viewIndex + 1}/{songs.length}
+            </span>
+            <button
+              type="button"
+              disabled={viewIndex >= maxReachableIndex}
+              onClick={goNext}
+              className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              Next →
+            </button>
+          </div>
+
+          <AnswerForm
+            key={song.id}
+            isOwnSong={isOwnSong}
+            visiblePlayers={visiblePlayers}
+            assignedElsewhere={assignedElsewhere}
+            ratingScale={ratingScale}
+            unavailableRatings={unavailableRatings}
+            initialAnswer={initialAnswer}
+            onSubmit={handleSubmit}
+          />
+
+          {!isOwnSong && (
+            <p className="mb-4 text-center text-sm text-text-secondary">
+              {answeredCount}/{requiredResponders.length} have answered this song
+            </p>
+          )}
+
+          {!answeredComplete(song) && import.meta.env.DEV && (
+            <button
+              type="button"
+              onClick={handleDevAutofillRest}
+              className="mb-4 w-full rounded-lg border border-border-strong px-4 py-2 text-sm text-text-secondary hover:border-border-strong"
+            >
+              Answer for everyone else on this song (dev only, to test the flow)
+            </button>
+          )}
+
+          {isHost && (
+            <button
+              type="button"
+              onClick={doAdvance}
+              className="w-full rounded-xl border border-border-strong px-5 py-3 text-sm font-semibold text-text-secondary transition hover:border-border-strong"
+            >
+              Skip song →
+            </button>
+          )}
+        </>
       )}
     </div>
   )

@@ -264,3 +264,28 @@ Til að gera þetta skýrt fyrir notandanum: spjaldið fyrir lag sem hann á enn
 - Eftir Submit/Update Answer: skjárinn hoppar EKKI lengur sjálfkrafa til baka í lagið sem er í gangi (var `setViewIndex(currentSongIndex)` í `handleSubmit`, tekið út) — spilari er kyrr á laginu sem hann var að klára, svo hann geti farið yfir/leiðrétt fleiri eldri lög í röð án þess að þurfa að flakka til baka eftir hverja breytingu. Takkinn sjálfur sýnir „✓ Saved" (grænn, stutt scale-pop) í `SAVED_FLASH_MS` (1.4s) áður en hann fer aftur í „Update Answer"/„Submit".
 - Þegar spilari á eftir að giska/gefa einkunn fyrir lagið sem hann skoðar verður `SongCard` bleikt (`needsAnswer` → `border-pink`/`bg-pink/15`/`text-pink`) — „umhverfið" gefur til kynna að hann sé ekki búinn.
 - Þekkt takmörkun: ef host bakgrunnar appið mið-lag stoppa timer-ar; host-failover er sérstakt seinna verk.
+
+## Overview-yfirlitskort í lok umferðar (viðbót við CLAUDE.md — hluti af lagaspilun í appinu)
+
+Þegar síðasta lagið í umferðinni klárast (eða skipt er yfir í það, sbr. long/short-hamana) er ÖLLUM sjálfkrafa flett yfir á nýtt „overview"-yfirlitskort — engin bið eftir aðgerð frá neinum.
+
+### Uppbygging kortsins
+
+**Efri tafla (persónuleg, ólík fyrir hvern notanda):** ein lína á hvert lag sem spilað var þá umferð — `Lag — Giskið mitt — Einkunn mín`. Sýnir eigin svör hvers og eins, ekki annarra.
+- Hver lína er SMELLANLEG: smellt er á línu til að fara beint aftur í það lag og breyta gisk/einkunn.
+- Ef notandi á eftir að svara einhverju (gleymdi, var upptekinn þegar lagið spilaði) er sú lína merkt í ÖÐRUM LIT — smellt er á hana til að fara beint í lagið og ljúka skráningunni.
+
+**Neðri tafla (sameiginleg, sýnileg öllum eins):** `Player | Confirmed` — sýnir hvort hver spilari í leiknum hafi merkt sín svör „confirmed". Fylgir statusinn í rauntíma (t.d. „2/2 have answered this song" texti ofar á skjánum).
+
+**„Confirmed — waiting for others" hnappur:** hver notandi ýtir sjálfur á þennan hnapp þegar hann er sáttur við sín svör (allar línur í efri töflunni búnar/staðfestar). Hnappurinn verður óvirkur/grár eftir að ýtt er á hann og sýnir bara stöðu („waiting for others").
+
+**„See Results →" hnappur:** sýnilegur fyrir LEIKSTJÓRA einan, virkjast/verður áberandi þegar neðri taflan sýnir að (næstum) allir séu „confirmed". Leikstjóri ýtir sjálfur á hann þegar hann metur stundina rétta — ENGIN sjálfvirk tímamörk. Sama mynstur og „Byrja leik" í lobby-inu: leikstjóri stýrir taktinum, ekki klukka.
+
+### Af hverju þetta skiptir máli
+Þetta kort er jafnframt svarið við því hvernig spilarar komast til baka og klára/breyta giski og einkunn fyrir fyrri lög umferðarinnar — kortið ER sú leið, ekki sér listi einhvers staðar annars staðar. Það er líka óhætt af sömu ástæðu og áður: eigendur laga eru ekki afhjúpaðir fyrr en á Results-skjánum, svo engin ósanngirni fylgir því að einhver klári/breyti svörum sínum síðar en aðrir.
+
+### Staða — útfært
+- `05-GuessAndRate.tsx`: `wrapUpEditing` (local, sjálfgefið `false`) skiptir wrap-up-skjánum milli tveggja stiga — núllstillt í `false` í hvert sinn sem `roundPlaythroughDone` verður `true`, svo ALLIR lenda á yfirlitskortinu sjálfkrafa, aldrei beint inn í eitt lag.
+- **Yfirlit** (`!wrapUpEditing`): „All songs played!" + smá staða-lína (talning ólokinna laga eða „Check your answers below"). Efri taflan er `songs.map(...)` — Song / Your guess / Rating; `Your song` fyrir eigið lag, annars giskaði spilarinn eða „Tap to answer"; röð með ólokið svar er bleik (`bg-pink/10`, `text-pink`, sami litur og `SongCard`s `needsAnswer`). Sérhver röð er `<tr onClick>` sem kallar `openSongInOverview(i)` → `setViewIndex(i); setWrapUpEditing(true)`. Neðri taflan (Player/Confirmed) og „Confirm final answers" óbreytt frá fyrra korti.
+- **Að breyta einu lagi** (`wrapUpEditing`): „← Back to overview" banni (sami stíll og gamla „Reviewing an earlier song" bannerinn), svo `SongCard` + Prev/Next + `AnswerForm` fyrir bara það lag sem valið var. „Back to overview" fer aftur í `wrapUpEditing=false` — ekkert sjálfvirkt hopp til baka eftir Submit (sami háttur og annars staðar í umferðinni).
+- „See Results →": ekki lengur læst á bak við `allConfirmed` — birtist og er virkur fyrir host um leið og wrap-up byrjar, sama mynstur og „Byrja leik"/„Start Submitting Songs": host ýtir þegar HANN metur stundina rétta, ENGIN sjálfvirk tímamörk eða krafa um að bókstaflega allir séu staðfestir. Aðrir sjá hnappinn óvirkan með „Waiting for {host} to see results".
