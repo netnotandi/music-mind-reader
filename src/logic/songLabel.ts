@@ -17,13 +17,12 @@ function stripDecoration(title: string): string {
 // `title` and `artist` are what the player typed into the search box - often
 // just a lyric, a partial name, or nothing at all. When they went on to
 // pick a YouTube result, that video's title IS the song's name and the
-// typed text is not shown. Only a manual-link song (no search result) falls
-// back to the typed title/artist. Nothing here returns an empty string, so
-// a card never renders a bare "" line.
-//
-// `short` is a compact form for tight spots (the "you guessed them for X"
-// chip hint): the typed title if there is one, else the video title with
-// its decoration stripped.
+// typed text is not shown - anywhere, including the compact `short` form,
+// so the "you guessed them for X" chip hint and the end-of-round overview
+// table read from the same YouTube-sourced name as the song card, not
+// whatever was typed into the search box. Only a manual-link song (no
+// search result) falls back to the typed title/artist. Nothing here
+// returns an empty string, so a card never renders a bare "" line.
 export function songLabel(song: Pick<Song, 'title' | 'artist' | 'youtubeTitle'>): {
   primary: string
   secondary: string | null
@@ -37,7 +36,7 @@ export function songLabel(song: Pick<Song, 'title' | 'artist' | 'youtubeTitle'>)
     return {
       primary: youtubeTitle,
       secondary: null,
-      short: title || stripDecoration(youtubeTitle) || artist || 'Untitled song',
+      short: stripDecoration(youtubeTitle) || title || artist || 'Untitled song',
     }
   }
 
