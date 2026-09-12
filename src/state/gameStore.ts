@@ -376,21 +376,25 @@ export const useGameStore = create<GameState>((set, get) => {
       return true
     },
 
-    // removeFromRoom (default true) asks to free this player's seat - right
-    // for leaving the Lobby, where no round data references them yet. It's
-    // only actually honoured there, though: once a round has started,
-    // other players' guesses, this player's own song/answers, and the
-    // confirm/lobbyReady gates below all reference them by id, so deleting
-    // the row would either orphan that data or (worse) leave a gate no one
-    // can ever satisfy. Mid-round, leaving always keeps the row in place
-    // instead (previously only the Results "Leave Game" did this) - it's
-    // also what lets joinGame's name-based reconnect find them again later
-    // and pick up exactly where they left off, including that same seat.
+    // removeFromRoom (default true) asks to free this player's seat - only
+    // actually honoured in the very first Lobby, before any round has
+    // played (roundsCompleted === 0), where nothing depends on them yet.
+    // Once a round has started, other players' guesses, this player's own
+    // song/answers, and the confirm/lobbyReady gates below all reference
+    // them by id - deleting the row would orphan that data or leave a gate
+    // no one can ever satisfy. And once at least one round has completed,
+    // deleting the row would also throw away their totalScore, which lives
+    // on that same row - a returning Lobby between rounds is NOT the same
+    // as the fresh one, even though `phase` reads 'lobby' in both. Every
+    // other case keeps the row in place instead (previously only the
+    // Results "Leave Game" did this) - it's also what lets joinGame's
+    // name-based reconnect find them again later and pick up exactly where
+    // they left off, score included.
     leaveGame: (removeFromRoom = true) => {
-      const { roomCode, localPlayerId, hostId, players, phase } = get()
+      const { roomCode, localPlayerId, hostId, players, phase, roundsCompleted } = get()
       if (roomCode && localPlayerId) {
         const updates: Record<string, unknown> = {}
-        if (removeFromRoom && phase === 'lobby') {
+        if (removeFromRoom && phase === 'lobby' && roundsCompleted === 0) {
           updates[`players/${localPlayerId}`] = null
         } else {
           // Don't let their absence permanently block either "everyone
