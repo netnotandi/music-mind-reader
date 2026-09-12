@@ -297,3 +297,44 @@ Til að gera þetta skýrt fyrir notandanum: spjaldið fyrir lag sem hann á enn
 - **Yfirlit** (`!wrapUpEditing`): „All songs played!" + smá staða-lína (talning ólokinna laga eða „Check your answers below"). Efri taflan er `songs.map(...)` — Song / Your guess / Rating; `Your song` fyrir eigið lag, annars giskaði spilarinn eða „Tap to answer"; röð með ólokið svar er bleik (`bg-pink/10`, `text-pink`, sami litur og `SongCard`s `needsAnswer`). Sérhver röð er `<tr onClick>` sem kallar `openSongInOverview(i)` → `setViewIndex(i); setWrapUpEditing(true)`. Neðri taflan (Player/Confirmed) og „Confirm final answers" óbreytt frá fyrra korti.
 - **Að breyta einu lagi** (`wrapUpEditing`): „← Back to overview" banni (sami stíll og gamla „Reviewing an earlier song" bannerinn), svo `SongCard` + Prev/Next + `AnswerForm` fyrir bara það lag sem valið var. Hér — ólíkt mið-umferð — HOPPAR skjárinn sjálfkrafa til baka í yfirlitið eftir Submit/Update Answer: „✓ Saved" fær að sjást í `RETURN_TO_OVERVIEW_DELAY_MS` (1s), svo `setWrapUpEditing(false)`. Tímarinn er geymdur í `returnToOverviewRef` og hreinsaður (`clearReturnToOverview`) ef spilari smellir sjálfur á Prev/Next/aðra röð/„Back to overview" áður en hann rennur út, svo hann geti aldrei rykkt manni óvænt til baka úr lagi sem viðkomandi er þegar farinn að skoða.
 - „See Results →": birtist ekki fyrr en `allConfirmed` (BÓKSTAFLEGA allir spilarar staðfestir) — reynt var að sleppa þessari lás alveg (host má sjálfur ákveða hvenær), en það leyfði host að fara í úrslit áður en allir voru búnir að staðfesta gisk/einkunnir sínar, sem er ekki ætlunin. Lásinn er því aftur inni, óbreyttur frá upprunalega korti fyrir yfirlitið. Ekkert sjálfvirkt tímamark eftir sem áður — host ýtir sjálfur á hnappinn þegar hann birtist. Aðrir sjá hnappinn óvirkan með „Waiting for {host} to see results" (bara eftir að hann birtist, þ.e. eftir að allir eru staðfestir).
+
+## „Triple Down" — endurúthlutun á einkunn með sjálfvirkri keðjulækkun (viðbót við CLAUDE.md — hluti af einkunnagjöf)
+
+### Samhengi
+Einkunnagjöfin er STÖK úthlutun, ekki frjáls endurtekin einkunn: hver giskandi úthlutar hverju lagi (nema sínu eigin) einu gildi úr skalanum 0 til N−2, og sama gildi má ekki nota tvisvar (sjá „Einkunnaskalinn — uppfært, dynamískt" í spec-skjalinu). Í grunnútfærslunni þýðir þetta að þegar notandi er kominn áleiðis í að gefa einkunnir (t.d. búinn að úthluta 1, 3, 4, 5, 6, 7, 8 á sjö lög, og á þá eftir 0, 2, 9 og 10 fyrir þau lög sem eftir eru) er hann bundinn við að velja næsta gildi ÚR ÞEIM sem enn eru laus.
+
+„Triple Down" er flýtileið sem leyfir notanda að velja gildi sem ÞEGAR ER í notkun hjá öðru lagi — appið sér þá sjálfkrafa um að endurraða gildunum fyrir neðan svo skalinn haldist gildur (engin tvítekning).
+
+### Dæmi
+Notandi er búinn að úthluta: 1, 3, 4, 5, 6, 7, 8 (lög A–G). Ónotuð gildi: 0, 2, 9, 10. Hann vill núna gefa nýju lagi (t.d. því sem hann telur nýjasta lagið) einkunnina **7** — sama gildi og lag F er nú þegar með.
+
+Útkoman:
+- Nýja lagið fær **7**.
+- Lag F (var 7) → **6**
+- Lag E (var 6) → **5**
+- Lag D (var 5) → **4**
+- Lag C (var 4) → **3**
+- Lag B (var 3) → **2** (fyllir upp í eyðuna sem var þar)
+- Lag A (var 1) → **helst óbreytt í 1** — keðjan brotnar á milli 3 og 1 af því 2 var autt (eyða) áður en B færðist þangað.
+
+### Almenna reglan (algorithm)
+Þegar notandi velur gildi **V** sem er þegar í notkun:
+1. Finndu samfellda runu af NÚVERANDI úthlutuðum gildum sem byrjar á V og heldur áfram niður á við ÁN eyðu (þ.e. V, V−1, V−2, … svo lengi sem hvert þeirra er þegar í notkun).
+2. Láttu þessa runu „falla" um eitt þrep hvor — hver haldari lækkar um 1 (V → V−1, V−1 → V−2, o.s.frv.), þar til neðsta gildið í runinni fellur inn í fyrstu eyðuna sem er fyrir neðan hana (autt gildi sem enginn hélt á).
+3. Þar STOPPAR keðjan sjálfkrafa — allt fyrir neðan þá eyðu er ósnert, af því eyðan „gleypir" hreyfinguna og engin frekari árekstur verður.
+4. Nýja lagið fær sjálft gildið V.
+
+Þetta er í raun „insert-and-cascade": sett er tvítekið gildi efst í rununa, og allt sem á undan var samfellt undir því ýtist niður um eitt þrep þar til fyrsta lausa sætið tekur við höggið.
+
+### Brúnatilvik sem þarf að ákveða
+Hvað gerist ef runan sem er samfelld niður frá V nær alla leið niður í 0 — þ.e. EKKERT autt gildi er fyrir neðan V til að „gleypa" keðjuna? Þá er ekkert pláss til að láta keðjuna stoppa (0 getur ekki lækkað í −1). Möguleikar:
+- Banna þessa tilteknu endurúthlutun í UI (t.d. gráa út þann valmöguleika) þegar engin eyða er fyrir neðan.
+- Eða keðjan gæti í staðinn leitað UPP á við eftir eyðu fyrir ofan og ýtt gildunum þar í staðinn — flóknara og ekki hluti af upprunalegu hugmyndinni.
+
+Einfaldasta og öruggasta útfærslan er líklega sú fyrri: „Triple Down" er einfaldlega ekki í boði fyrir gildi sem hafa enga eyðu fyrir neðan sig í augnablikinu.
+
+### Staða — útfært
+- `src/logic/ratingCascade.ts`: hrein `computeCascade(valueToSongId, value)` — gengur niður frá `value` á meðan gildið er þegar í notkun, skilar lista af `{songId, newValue}` (hvert `newValue = gamla gildið - 1`), eða `null` ef keðjan myndi fara niður fyrir 0 (engin eyða). `hasCascadeRoom(...)` er sama fall, bara boolean fyrir UI-notkun.
+- `gameStore.ts` — `submitRating(songId, value)`: finnur flokk lagsins, byggir `valueToSongId` (gildi → lagId) úr `ratings` viðkomandi giskanda fyrir HIN lögin í sama flokki (ekki lagið sem er verið að gefa einkunn núna), keyrir `computeCascade`, og skrifar ALLAR breytingarnar (keðjuna + nýja gildið) í EINA `update()`-köll — annaðhvort allt eða ekkert (ef `computeCascade` skilar `null` er ekkert skrifað, ver gegn tvítekningu ef eitthvað kallar þetta án þess að UI hafi þegar útilokað gildið).
+- `05-GuessAndRate.tsx` / `AnswerForm`: `takenRatings: Map<number, boolean>` (gildi → má cascade-a) í stað gamla `unavailableRatings: Set<number>`. Takkarnir: frjálst gildi = venjulegur stíll; tekið en cascade-anlegt = `border-dashed border-cyan bg-cyan/10 text-cyan` — SÝNILEGA merkt en samt smellanlegt; tekið án pláss = `disabled` + gamli grái stíllinn. Smá skýringartexti fyrir ofan töfluna („Dashed, cyan numbers are already used...") birtist bara þegar a.m.k. eitt gildi er tekið.
+- Prófað: 4 spilarar, gaf gildi 0, síðan 5, síðan reyndi 5 aftur á þriðja laginu — takkinn „5" var sýndur strikóttur/cyan og SMELLANLEGUR (ekki disabled), og eftir Submit hafði annað lagið (sem átti 5) sjálfkrafa lækkað í 4 meðan þriðja lagið fékk 5.

@@ -9,6 +9,7 @@ import {
 } from 'firebase/database'
 import { create } from 'zustand'
 import { db } from '../firebase'
+import { computeCascade } from '../logic/ratingCascade'
 import { computeFinalScores } from '../logic/scoring'
 import type { Category, Guess, Player, Rating, Song } from '../types'
 import { CATEGORIES } from './mockData'
@@ -539,14 +540,41 @@ export const useGameStore = create<GameState>((set, get) => {
       dbRemove(ref(db, `games/${roomCode}/guesses/${songId}__${localPlayerId}`))
     },
 
+    // "Triple Down" (see CLAUDE.md): picking a value one of this rater's
+    // other songs in the same category already holds cascades that song -
+    // and any more, contiguously, below it - down by one each instead of
+    // being rejected. Computed here (not just in the UI) so it holds
+    // regardless of caller.
     submitRating: (songId, value) => {
-      const { roomCode, localPlayerId } = get()
+      const { roomCode, localPlayerId, songs, ratings } = get()
       if (!roomCode || !localPlayerId) return
-      const ratingId = `${songId}__${localPlayerId}`
-      dbUpdate(ref(db, `games/${roomCode}`), {
-        [`ratings/${ratingId}`]: { songId, raterId: localPlayerId, value },
+      const song = songs.find((s) => s.id === songId)
+      const updates: Record<string, unknown> = {
         [`finalConfirmations/${localPlayerId}`]: null,
-      })
+      }
+
+      if (song) {
+        const categorySongIds = new Set(
+          songs.filter((s) => s.categoryId === song.categoryId).map((s) => s.id)
+        )
+        const valueToSongId = new Map<number, string>()
+        for (const r of ratings) {
+          if (r.raterId !== localPlayerId || r.songId === songId) continue
+          if (!categorySongIds.has(r.songId)) continue
+          valueToSongId.set(r.value, r.songId)
+        }
+        const cascade = computeCascade(valueToSongId, value)
+        // No room to cascade into (the UI doesn't offer this value in that
+        // case, but never write a colliding rating if it somehow gets here
+        // anyway) - refuse instead of creating a duplicate value.
+        if (cascade === null) return
+        for (const move of cascade) {
+          updates[`ratings/${move.songId}__${localPlayerId}/value`] = move.newValue
+        }
+      }
+
+      updates[`ratings/${songId}__${localPlayerId}`] = { songId, raterId: localPlayerId, value }
+      dbUpdate(ref(db, `games/${roomCode}`), updates)
     },
 
     // Single writer for group progression. Never ends the round itself

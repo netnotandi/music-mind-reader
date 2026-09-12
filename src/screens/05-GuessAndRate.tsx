@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { NowPlayingPlayer } from '../components/NowPlayingPlayer'
 import { SongCard } from '../components/SongCard'
+import { hasCascadeRoom } from '../logic/ratingCascade'
 import { songLabel } from '../logic/songLabel'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
@@ -17,7 +18,11 @@ interface AnswerFormProps {
   visiblePlayers: Player[]
   assignedElsewhere: Map<string, string>
   ratingScale: number[]
-  unavailableRatings: Set<number>
+  // "Triple Down" (CLAUDE.md): value -> already taken by another of my
+  // songs in this category? Absent = free. true = taken but pickable (will
+  // cascade the holder down). false = taken with no room to cascade into -
+  // genuinely blocked.
+  takenRatings: Map<number, boolean>
   initialAnswer: Answer | undefined
   onSubmit: (guessedPlayerId: string, rating: number | null) => void
 }
@@ -38,7 +43,7 @@ function AnswerForm({
   visiblePlayers,
   assignedElsewhere,
   ratingScale,
-  unavailableRatings,
+  takenRatings,
   initialAnswer,
   onSubmit,
 }: AnswerFormProps) {
@@ -58,7 +63,9 @@ function AnswerForm({
   }, [])
 
   const maxRating = ratingScale.length > 0 ? ratingScale[ratingScale.length - 1] : 0
-  const ratingAvailable = ratingScale.some((v) => !unavailableRatings.has(v))
+  // Blocked only when taken AND there's no room to cascade into - a taken-
+  // but-cascadable value still counts as available to pick.
+  const ratingAvailable = ratingScale.some((v) => takenRatings.get(v) !== false)
 
   function handleSubmitClick() {
     if (!guessedPlayerId || (ratingAvailable && rating === null)) return
@@ -110,6 +117,12 @@ function AnswerForm({
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary">
             Rating (0–{maxRating})
           </h2>
+          {takenRatings.size > 0 && (
+            <p className="mb-2 text-xs text-text-muted">
+              <span className="text-cyan">Dashed, cyan</span> numbers are already used on another of
+              your songs — pick one to bump it down a notch.
+            </p>
+          )}
           {!ratingAvailable && (
             <p className="mb-2 text-xs text-text-muted">
               You've already used every rating on other songs in this category - this one won't get a
@@ -118,19 +131,24 @@ function AnswerForm({
           )}
           <div className="mb-6 flex flex-wrap gap-2">
             {ratingScale.map((value) => {
-              const disabled = unavailableRatings.has(value)
+              const cascadeInfo = takenRatings.get(value)
+              const isTaken = cascadeInfo !== undefined
+              const blocked = cascadeInfo === false
               return (
                 <button
                   key={value}
                   type="button"
-                  disabled={disabled}
+                  disabled={blocked}
                   onClick={() => setRating(value)}
+                  title={isTaken && !blocked ? 'Already used on another song - picks it up from there' : undefined}
                   className={`h-10 w-10 rounded-full border text-sm font-semibold transition ${
                     rating === value
                       ? 'border-rating bg-rating-soft text-rating'
-                      : disabled
+                      : blocked
                         ? 'border-disabled-border text-disabled-text'
-                        : 'border-border-strong text-text-secondary hover:border-border-strong'
+                        : isTaken
+                          ? 'border-dashed border-cyan bg-cyan/10 text-cyan hover:border-cyan'
+                          : 'border-border-strong text-text-secondary hover:border-border-strong'
                   }`}
                 >
                   {value}
@@ -305,11 +323,23 @@ export function GuessAndRate() {
       ? { guessedPlayerId: existingGuess?.guessedPlayerId ?? null, rating: existingRating?.value ?? null }
       : undefined
 
-  const unavailableRatings = new Set(
-    ratings
-      .filter((r) => r.raterId === localPlayerId && r.songId !== song.id && categorySongs.some((s) => s.id === r.songId))
-      .map((r) => r.value)
-  )
+  // "Triple Down" (see CLAUDE.md): a rating value already used on another of
+  // my songs in this category isn't blocked outright - picking it bumps
+  // that song (and any more, contiguously, below it) down by one each,
+  // stopping at the first free value. Map each already-used value to
+  // whether there's room below it to absorb that shift; a value with no
+  // gap between it and 0 truly can't be picked (nowhere to push the lowest
+  // holder) and stays disabled.
+  const categoryValueToSongId = new Map<number, string>()
+  for (const r of ratings) {
+    if (r.raterId !== localPlayerId || r.songId === song.id) continue
+    if (!categorySongs.some((s) => s.id === r.songId)) continue
+    categoryValueToSongId.set(r.value, r.songId)
+  }
+  const takenRatings = new Map<number, boolean>()
+  for (const value of categoryValueToSongId.keys()) {
+    takenRatings.set(value, hasCascadeRoom(categoryValueToSongId, value))
+  }
 
   const hasConfirmed = confirmedPlayerIds.includes(localPlayerId)
   const allConfirmed = players.length > 0 && confirmedPlayerIds.length >= players.length
@@ -460,7 +490,7 @@ export function GuessAndRate() {
               visiblePlayers={visiblePlayers}
               assignedElsewhere={assignedElsewhere}
               ratingScale={ratingScale}
-              unavailableRatings={unavailableRatings}
+              takenRatings={takenRatings}
               initialAnswer={initialAnswer}
               onSubmit={handleSubmit}
             />
@@ -664,7 +694,7 @@ export function GuessAndRate() {
             visiblePlayers={visiblePlayers}
             assignedElsewhere={assignedElsewhere}
             ratingScale={ratingScale}
-            unavailableRatings={unavailableRatings}
+            takenRatings={takenRatings}
             initialAnswer={initialAnswer}
             onSubmit={handleSubmit}
           />
