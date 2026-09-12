@@ -27,6 +27,9 @@ interface AnswerFormProps {
 // (see the comment on handleSubmit), so there's time to actually notice it.
 const SAVED_FLASH_MS = 1400
 const SAVED_POP_MS = 180
+// From the wrap-up overview only: how long the "✓ Saved" state shows
+// before automatically returning to the overview table.
+const RETURN_TO_OVERVIEW_DELAY_MS = 1000
 
 // Keyed by `song.id` from the parent, so React remounts this (and resets
 // guessedPlayerId/rating from initialAnswer) whenever the song changes.
@@ -219,6 +222,21 @@ export function GuessAndRate() {
     if (roundPlaythroughDone) setWrapUpEditing(false)
   }, [roundPlaythroughDone])
 
+  // After submitting an answer from the overview, briefly show the "Saved"
+  // confirmation on the button, then return to the overview automatically -
+  // no need to hunt for the "Back to overview" button. Cleared if the
+  // player navigates away (Prev/Next, another row, the button itself)
+  // before it fires, so it can't yank them back out of a song they're now
+  // actively looking at.
+  const returnToOverviewRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function clearReturnToOverview() {
+    if (returnToOverviewRef.current !== null) {
+      clearTimeout(returnToOverviewRef.current)
+      returnToOverviewRef.current = null
+    }
+  }
+  useEffect(() => clearReturnToOverview, [])
+
   // ---- Host-only: the single driver of group song progression ----
   const advancedForRef = useRef(-1)
   function doAdvance() {
@@ -291,8 +309,14 @@ export function GuessAndRate() {
   const needsAnswer = !isOwnSong && !isDoneForMe(song)
 
   function openSongInOverview(index: number) {
+    clearReturnToOverview()
     setViewIndex(index)
     setWrapUpEditing(true)
+  }
+
+  function closeOverviewEditing() {
+    clearReturnToOverview()
+    setWrapUpEditing(false)
   }
 
   // Browse the round's songs with a simple prev/next stepper. Neither button
@@ -301,9 +325,11 @@ export function GuessAndRate() {
   // range over every song to finish up.
   const maxReachableIndex = roundPlaythroughDone ? songs.length - 1 : currentSongIndex
   function goPrev() {
+    clearReturnToOverview()
     setViewIndex((i) => Math.max(i - 1, 0))
   }
   function goNext() {
+    clearReturnToOverview()
     setViewIndex((i) => Math.min(i + 1, maxReachableIndex))
   }
 
@@ -316,11 +342,21 @@ export function GuessAndRate() {
     if (conflictSong) clearGuess(conflictSong.id)
     submitGuess(song.id, guessedPlayerId)
     if (rating !== null) submitRating(song.id, rating)
-    // Stay put rather than jumping back to the current song - reviewing/
-    // fixing several earlier answers in a row shouldn't mean re-navigating
-    // back to where you were after every single one. Once a song you were
-    // stuck on is done, the viewIndex-follow effect above will pick you back
-    // up automatically next time the group actually advances.
+    if (roundPlaythroughDone) {
+      // Editing from the overview: let the "Saved" confirmation show for a
+      // moment, then return there automatically - the overview IS the
+      // place to pick the next thing to fix, no need to hunt for a button.
+      clearReturnToOverview()
+      returnToOverviewRef.current = setTimeout(() => {
+        returnToOverviewRef.current = null
+        setWrapUpEditing(false)
+      }, RETURN_TO_OVERVIEW_DELAY_MS)
+    }
+    // Mid-round: stay put rather than jumping back to the current song -
+    // reviewing/fixing several earlier answers in a row shouldn't mean
+    // re-navigating back to where you were after every single one. Once a
+    // song you were stuck on is done, the viewIndex-follow effect above
+    // will pick you back up automatically next time the group advances.
   }
 
   function handleDevAutofillRest() {
@@ -371,7 +407,7 @@ export function GuessAndRate() {
           <>
             <button
               type="button"
-              onClick={() => setWrapUpEditing(false)}
+              onClick={closeOverviewEditing}
               className="mb-4 w-full rounded-lg border border-cyan/40 bg-cyan/10 px-4 py-2 text-sm text-cyan transition hover:border-cyan"
             >
               ← Back to overview
