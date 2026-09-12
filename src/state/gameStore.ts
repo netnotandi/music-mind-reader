@@ -334,9 +334,22 @@ export const useGameStore = create<GameState>((set, get) => {
     // visible on everyone else's scoreboard, so that case passes false to
     // just quietly stop syncing without deleting anything.
     leaveGame: (removeFromRoom = true) => {
-      const { roomCode, localPlayerId } = get()
+      const { roomCode, localPlayerId, hostId, players } = get()
       if (roomCode && localPlayerId && removeFromRoom) {
-        dbRemove(ref(db, `games/${roomCode}/players/${localPlayerId}`)).catch(() => {})
+        // Handing off hostId and removing the player happen in one
+        // multi-path update so the room is never briefly hostless for
+        // other clients' listeners. The successor is whoever else has
+        // been in the room longest (players is joinedAt-ascending) - a
+        // simple, deterministic "next in line" rather than picking at
+        // random.
+        const updates: Record<string, unknown> = {
+          [`players/${localPlayerId}`]: null,
+        }
+        if (localPlayerId === hostId) {
+          const successor = players.find((p) => p.id !== localPlayerId)
+          updates.hostId = successor?.id ?? null
+        }
+        dbUpdate(ref(db, `games/${roomCode}`), updates).catch(() => {})
       }
       detachListener?.()
       detachListener = null
