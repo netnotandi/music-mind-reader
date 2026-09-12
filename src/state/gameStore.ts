@@ -329,6 +329,20 @@ export const useGameStore = create<GameState>((set, get) => {
         )
         if (existing) {
           const [existingPlayerId] = existing
+          // leaveGame marks a departing player lobbyReady/finalConfirmed so
+          // their absence can't block the group (see leaveGame) - but that
+          // means reconnecting while the room is still on Results would
+          // otherwise route straight past it into the Lobby (usePhaseNavigation
+          // treats lobbyReady as "already clicked Go to lobby"), skipping the
+          // scoreboard for this round entirely. Clear both on the way back in
+          // so they land wherever the phase actually says: Results if it's
+          // still there to see and confirm, the confirm screen if a round's
+          // wrap-up is still going. Harmless to clear when neither applies -
+          // nothing reads them outside those two phases anyway.
+          dbUpdate(ref(db, `games/${roomCode}`), {
+            [`lobbyReady/${existingPlayerId}`]: null,
+            [`finalConfirmations/${existingPlayerId}`]: null,
+          }).catch(() => {})
           saveSession(roomCode, existingPlayerId)
           attachListener(roomCode, existingPlayerId)
           return 'ok'
