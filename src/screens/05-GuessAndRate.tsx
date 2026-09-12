@@ -312,6 +312,7 @@ export function GuessAndRate() {
   )
 
   const hasConfirmed = confirmedPlayerIds.includes(localPlayerId)
+  const allConfirmed = players.length > 0 && confirmedPlayerIds.length >= players.length
   const myUnanswered = songs.filter((s) => s.playerId !== localPlayerId && !isDoneForMe(s)).length
   const needsAnswer = !isOwnSong && !isDoneForMe(song)
 
@@ -589,18 +590,20 @@ export function GuessAndRate() {
               </table>
             </div>
 
-            {/* Host-only, no automatic timer - same pattern as "Start
-                Submitting Songs"/"Byrja leik": the host decides when the
-                room has waited long enough, rather than the app forcing a
-                threshold. Non-host sees who's driving, disabled. */}
-            <button
-              type="button"
-              disabled={!isHost}
-              onClick={finishRound}
-              className="mt-4 w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
-            >
-              {isHost ? 'See Results →' : `Waiting for ${hostPlayer?.name ?? 'the host'} to see results`}
-            </button>
+            {/* Only reachable once EVERY player has confirmed - the host
+                doesn't get to move on while someone's guesses/ratings are
+                still unsettled. No automatic timer either way: the host
+                still clicks it themself once it appears. */}
+            {allConfirmed && (
+              <button
+                type="button"
+                disabled={!isHost}
+                onClick={finishRound}
+                className="mt-4 w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
+              >
+                {isHost ? 'See Results →' : `Waiting for ${hostPlayer?.name ?? 'the host'} to see results`}
+              </button>
+            )}
           </>
         )
       ) : (
