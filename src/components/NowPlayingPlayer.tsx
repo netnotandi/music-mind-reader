@@ -289,6 +289,23 @@ export function NowPlayingPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // If capSeconds turns up on a device that wasn't polling yet - a follower
+  // who just got promoted to host mid-song (host succession reassigns
+  // hostId without the song itself changing) - start polling the song
+  // that's already playing right away, instead of only noticing on the
+  // NEXT song change. Without this, that one song would quietly run to a
+  // natural end (or forever) even though the group is meant to be in short
+  // mode, because startPoll had already returned early (capSeconds was
+  // still null) back when this song's crossfade effect first ran it.
+  // Re-running on a null capSeconds is harmless too - startPoll always
+  // clears any existing interval first.
+  useEffect(() => {
+    const player = playerRef.current
+    if (!player) return
+    startPoll(player)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capSeconds])
+
   // Crossfade whenever the group's current song actually changes.
   useEffect(() => {
     const player = playerRef.current
