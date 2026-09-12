@@ -301,29 +301,44 @@ export const useGameStore = create<GameState>((set, get) => {
       const snap = await dbGet(ref(db, `games/${roomCode}`))
       if (!snap.exists()) return 'not-found'
       const data = snap.val() as RoomRecord
-      // Slots are open only while the room is in the lobby - once a round is
-      // underway, would-be joiners wait for it to finish (phase returns to
-      // 'lobby' between rounds, so joining then still works).
-      if ((data.phase ?? 'lobby') !== 'lobby') {
-        // The one exception: reclaiming an existing seat by name, for
-        // someone whose session was lost mid-round (closed the app,
-        // cleared storage, switched device) and can't just resumeSession()
-        // their way back in. There's no presence system to tell a
-        // genuinely-missing player from one who's simply active on another
-        // tab, so this trusts the name the same way the rest of the game
-        // already trusts the room code alone - fine for a friends-only
-        // room, not a security boundary. A brand new name is still turned
-        // away; reconnecting picks the SAME playerId back up, so their
-        // earlier song/guesses/ratings (all keyed on it) come right back.
+      const phase = data.phase ?? 'lobby'
+
+      // Reclaim an existing seat by name instead of creating a duplicate,
+      // whenever a name match can only mean "this is that player coming
+      // back" rather than two different people who happen to share a
+      // name: always true once a round is under way (a genuinely new
+      // person can't join mid-round at all, so any match there IS a
+      // reconnect - closed the app, cleared storage, switched device,
+      // can't just resumeSession() back in), and also once the room has
+      // completed at least one round, since a "quiet" leave (Results'
+      // Leave Game, or leaving mid-round - see leaveGame) deliberately
+      // keeps a scored row sitting in `players` for exactly this. A
+      // brand-new lobby (no rounds played yet) is left alone - two
+      // different friends both typing "Alex" there should get two
+      // separate seats, not one contested one. There's no presence system
+      // to tell a truly-departed player from one active on another tab,
+      // so this trusts the name the way the rest of the game already
+      // trusts the room code alone - fine for a friends-only room, not a
+      // security boundary. Reclaiming picks the SAME playerId back up, so
+      // whatever's keyed on it (song, guesses, ratings, totalScore) comes
+      // right back.
+      const reclaimEligible = phase !== 'lobby' || (data.roundsCompleted ?? 0) > 0
+      if (reclaimEligible) {
         const existing = Object.entries(data.players ?? {}).find(
           ([, p]) => p.name.trim().toLowerCase() === playerName.trim().toLowerCase()
         )
-        if (!existing) return 'in-progress'
-        const [existingPlayerId] = existing
-        saveSession(roomCode, existingPlayerId)
-        attachListener(roomCode, existingPlayerId)
-        return 'ok'
+        if (existing) {
+          const [existingPlayerId] = existing
+          saveSession(roomCode, existingPlayerId)
+          attachListener(roomCode, existingPlayerId)
+          return 'ok'
+        }
       }
+
+      // Slots are open only while the room is in the lobby - once a round is
+      // underway, a genuinely new joiner waits for it to finish (phase
+      // returns to 'lobby' between rounds, so joining then still works).
+      if (phase !== 'lobby') return 'in-progress'
 
       const playerId = crypto.randomUUID()
       await dbSet(ref(db, `games/${roomCode}/players/${playerId}`), {
@@ -347,25 +362,36 @@ export const useGameStore = create<GameState>((set, get) => {
       return true
     },
 
-    // removeFromRoom (default true) frees this player's seat, which is
-    // right for leaving mid-lobby/mid-game - but on Results, the round is
-    // already over and everyone's row (songs, scores, titles) should stay
-    // visible on everyone else's scoreboard, so that case passes false to
-    // just quietly stop syncing without deleting anything from `players`.
+    // removeFromRoom (default true) asks to free this player's seat - right
+    // for leaving the Lobby, where no round data references them yet. It's
+    // only actually honoured there, though: once a round has started,
+    // other players' guesses, this player's own song/answers, and the
+    // confirm/lobbyReady gates below all reference them by id, so deleting
+    // the row would either orphan that data or (worse) leave a gate no one
+    // can ever satisfy. Mid-round, leaving always keeps the row in place
+    // instead (previously only the Results "Leave Game" did this) - it's
+    // also what lets joinGame's name-based reconnect find them again later
+    // and pick up exactly where they left off, including that same seat.
     leaveGame: (removeFromRoom = true) => {
-      const { roomCode, localPlayerId, hostId, players } = get()
+      const { roomCode, localPlayerId, hostId, players, phase } = get()
       if (roomCode && localPlayerId) {
         const updates: Record<string, unknown> = {}
-        if (removeFromRoom) {
+        if (removeFromRoom && phase === 'lobby') {
           updates[`players/${localPlayerId}`] = null
         } else {
-          // Leaving quietly from Results (kept in the roster): don't let
-          // their absence permanently block finalizeRoundIfReady, which
-          // waits for every current player to call returnToLobby - someone
-          // who has left is never going to click that, so without this the
-          // whole group gets stuck forever on "Waiting for everyone to
-          // head back to the Lobby...".
+          // Don't let their absence permanently block either "everyone
+          // must acknowledge" gate: returning from Results to the Lobby
+          // (finalizeRoundIfReady waits on lobbyReady from every current
+          // player), and confirming final answers at the end of a round
+          // (the "See Results" button waits on finalConfirmations the same
+          // way) - someone who has left is never going to click either
+          // button. Both get wiped clean at the start of the next round
+          // regardless, and reconnecting mid-round to actually submit an
+          // answer clears finalConfirmations again automatically (see
+          // submitGuess/submitRating), so this can't paper over a real
+          // answer with a stale "confirmed".
           updates[`lobbyReady/${localPlayerId}`] = true
+          updates[`finalConfirmations/${localPlayerId}`] = true
         }
         // Handing off hostId happens in the same multi-path update as the
         // rest, either way, so the room is never briefly hostless for other
