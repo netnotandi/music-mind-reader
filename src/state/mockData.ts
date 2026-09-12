@@ -50,6 +50,7 @@ export const CATEGORIES: Category[] = [
   { id: 'fave-solo-artist', name: 'My Favourite Song by a Solo Artist' },
   { id: 'fave-single-year', name: 'My Favourite Song From a Single Year' },
   { id: 'great-cover-song', name: 'A Great Cover Song' },
+  { id: 'who-am-i', name: 'Who Am I' },
 ]
 
 // Notað til að fylla sjálfkrafa út lög fyrir gervi-leikmenn sem "hafa ekki skilað" ennþá.
