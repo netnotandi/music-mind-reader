@@ -294,9 +294,16 @@ export function GuessAndRate() {
 
   const existingGuess = guesses.find((g) => g.songId === song.id && g.guesserId === localPlayerId)
   const existingRating = ratings.find((r) => r.songId === song.id && r.raterId === localPlayerId)
-  const initialAnswer = existingGuess
-    ? { guessedPlayerId: existingGuess.guessedPlayerId, rating: existingRating?.value ?? null }
-    : undefined
+  // A guess can get cleared out from under a rating - guessing the same
+  // player for two songs clears the earlier guess (see the conflict check
+  // in handleSubmit) so a rating can survive alone. Keying this on "either
+  // exists" (not just the guess) means that surviving rating still shows
+  // pre-selected when the player comes back to fix the guess, instead of
+  // silently reverting to unrated.
+  const initialAnswer =
+    existingGuess || existingRating
+      ? { guessedPlayerId: existingGuess?.guessedPlayerId ?? null, rating: existingRating?.value ?? null }
+      : undefined
 
   const unavailableRatings = new Set(
     ratings
