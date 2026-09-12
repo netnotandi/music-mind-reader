@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { MenuOverlay } from './components/MenuOverlay'
+import { RoomCodeBadge } from './components/RoomCodeBadge'
 import { CreateJoin } from './screens/01-CreateJoin'
 import { JoinGame } from './screens/01b-JoinGame'
 import { Lobby } from './screens/02-Lobby'
@@ -104,6 +105,7 @@ function App() {
     <div className="min-h-screen bg-bg text-text">
       <HashRouter>
         <MenuOverlay />
+        <RoomCodeBadge />
         {checkedSession && <AppRoutes />}
       </HashRouter>
     </div>

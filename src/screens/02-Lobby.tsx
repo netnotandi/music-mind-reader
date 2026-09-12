@@ -40,7 +40,7 @@ export function Lobby() {
   const roundStillWrappingUp = phase === 'results'
 
   return (
-    <div className="mx-auto min-h-screen max-w-md px-6 py-8">
+    <div className="mx-auto min-h-screen max-w-md px-6 pb-8 pt-16">
       <h1
         className={`mb-8 text-center text-3xl font-extrabold uppercase tracking-wide ${
           isLight ? 'text-text' : 'bg-gradient-to-r from-blue via-violet to-pink bg-clip-text text-transparent'

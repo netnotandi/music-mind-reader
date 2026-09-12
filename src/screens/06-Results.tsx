@@ -54,7 +54,7 @@ export function Results() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md px-6 py-8">
+    <div className="mx-auto min-h-screen max-w-md px-6 pb-8 pt-16">
       <h1 className="mb-6 text-center text-2xl font-bold text-text">Results</h1>
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">Scoreboard</h2>
