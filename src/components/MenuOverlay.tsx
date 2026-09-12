@@ -16,6 +16,37 @@ const RULES_SECTIONS: { title: string; body: string }[] = [
   },
 ]
 
+const ABOUT_PARAGRAPHS = [
+  'About 25 years ago, a few friends of mine came up with the idea for Music Mind Reader. The game evolved over time, but at its core the question was always the same: how well do you really know your friends?',
+  "Back then, putting together a single game was a project in itself. You had to agree on a theme ahead of time, everyone had to find a song that fit it, and then send it to whoever had drawn the short straw of collecting all the songs and burning them onto a CD. Only then could the group actually get together and play.",
+  "Playing wasn't easy either — every guess and every rating had to be written down on paper, and at the end someone had to tally it all up by hand. We played it a handful of times, and about half of those times we never actually finished doing the math to find out who won.",
+  'This web version makes all of that effortless. My hope is that it can finally reach the audience we always thought it deserved, so other people can enjoy it too.',
+]
+
+function AboutPanel() {
+  return (
+    <div>
+      <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-success">About</h3>
+      <div className="space-y-3 text-sm text-text-secondary">
+        {ABOUT_PARAGRAPHS.map((p) => (
+          <p key={p}>{p}</p>
+        ))}
+        <p>
+          I'm still actively shaping the game. If you spot a bug or have an idea that could make
+          it better, I'd genuinely love to hear it — send me a line at{' '}
+          <a
+            href="mailto:hello@musicmindreader.com"
+            className="underline decoration-dotted underline-offset-2 transition hover:text-text"
+          >
+            hello@musicmindreader.com
+          </a>
+          .
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function SunIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4">
@@ -70,9 +101,11 @@ export function MenuOverlay() {
   const navigate = useNavigate()
   const leaveGame = useGameStore((s) => s.leaveGame)
   const [isOpen, setIsOpen] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
 
   function close() {
     setIsOpen(false)
+    setShowAbout(false)
   }
 
   function goHome() {
@@ -116,6 +149,18 @@ export function MenuOverlay() {
               >
                 Home
               </button>
+              <button
+                type="button"
+                onClick={() => setShowAbout((v) => !v)}
+                aria-pressed={showAbout}
+                className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
+                  showAbout
+                    ? 'border-primary bg-primary-soft text-primary'
+                    : 'border-border bg-surface text-text hover:border-border-strong'
+                }`}
+              >
+                About
+              </button>
               <ThemeModeControl />
 
               <div className="mt-2 sm:mt-auto">
@@ -132,14 +177,18 @@ export function MenuOverlay() {
             </div>
 
             <div className="min-w-0 flex-1 space-y-5 pt-1">
-              {RULES_SECTIONS.map((section) => (
-                <div key={section.title}>
-                  <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-success">
-                    {section.title}
-                  </h3>
-                  <p className="text-sm text-text-secondary">{section.body}</p>
-                </div>
-              ))}
+              {showAbout ? (
+                <AboutPanel />
+              ) : (
+                RULES_SECTIONS.map((section) => (
+                  <div key={section.title}>
+                    <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-success">
+                      {section.title}
+                    </h3>
+                    <p className="text-sm text-text-secondary">{section.body}</p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
