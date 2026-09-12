@@ -304,7 +304,26 @@ export const useGameStore = create<GameState>((set, get) => {
       // Slots are open only while the room is in the lobby - once a round is
       // underway, would-be joiners wait for it to finish (phase returns to
       // 'lobby' between rounds, so joining then still works).
-      if ((data.phase ?? 'lobby') !== 'lobby') return 'in-progress'
+      if ((data.phase ?? 'lobby') !== 'lobby') {
+        // The one exception: reclaiming an existing seat by name, for
+        // someone whose session was lost mid-round (closed the app,
+        // cleared storage, switched device) and can't just resumeSession()
+        // their way back in. There's no presence system to tell a
+        // genuinely-missing player from one who's simply active on another
+        // tab, so this trusts the name the same way the rest of the game
+        // already trusts the room code alone - fine for a friends-only
+        // room, not a security boundary. A brand new name is still turned
+        // away; reconnecting picks the SAME playerId back up, so their
+        // earlier song/guesses/ratings (all keyed on it) come right back.
+        const existing = Object.entries(data.players ?? {}).find(
+          ([, p]) => p.name.trim().toLowerCase() === playerName.trim().toLowerCase()
+        )
+        if (!existing) return 'in-progress'
+        const [existingPlayerId] = existing
+        saveSession(roomCode, existingPlayerId)
+        attachListener(roomCode, existingPlayerId)
+        return 'ok'
+      }
 
       const playerId = crypto.randomUUID()
       await dbSet(ref(db, `games/${roomCode}/players/${playerId}`), {
@@ -332,19 +351,27 @@ export const useGameStore = create<GameState>((set, get) => {
     // right for leaving mid-lobby/mid-game - but on Results, the round is
     // already over and everyone's row (songs, scores, titles) should stay
     // visible on everyone else's scoreboard, so that case passes false to
-    // just quietly stop syncing without deleting anything.
+    // just quietly stop syncing without deleting anything from `players`.
     leaveGame: (removeFromRoom = true) => {
       const { roomCode, localPlayerId, hostId, players } = get()
-      if (roomCode && localPlayerId && removeFromRoom) {
-        // Handing off hostId and removing the player happen in one
-        // multi-path update so the room is never briefly hostless for
-        // other clients' listeners. The successor is whoever else has
-        // been in the room longest (players is joinedAt-ascending) - a
-        // simple, deterministic "next in line" rather than picking at
-        // random.
-        const updates: Record<string, unknown> = {
-          [`players/${localPlayerId}`]: null,
+      if (roomCode && localPlayerId) {
+        const updates: Record<string, unknown> = {}
+        if (removeFromRoom) {
+          updates[`players/${localPlayerId}`] = null
+        } else {
+          // Leaving quietly from Results (kept in the roster): don't let
+          // their absence permanently block finalizeRoundIfReady, which
+          // waits for every current player to call returnToLobby - someone
+          // who has left is never going to click that, so without this the
+          // whole group gets stuck forever on "Waiting for everyone to
+          // head back to the Lobby...".
+          updates[`lobbyReady/${localPlayerId}`] = true
         }
+        // Handing off hostId happens in the same multi-path update as the
+        // rest, either way, so the room is never briefly hostless for other
+        // clients' listeners. The successor is whoever else has been in
+        // the room longest (players is joinedAt-ascending) - a simple,
+        // deterministic "next in line" rather than picking at random.
         if (localPlayerId === hostId) {
           const successor = players.find((p) => p.id !== localPlayerId)
           updates.hostId = successor?.id ?? null
