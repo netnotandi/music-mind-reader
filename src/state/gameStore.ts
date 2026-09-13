@@ -3,6 +3,7 @@ import {
   onValue,
   ref,
   remove as dbRemove,
+  runTransaction,
   serverTimestamp,
   set as dbSet,
   update as dbUpdate,
@@ -254,25 +255,41 @@ function parseRoom(data: RoomRecord) {
 let detachListener: (() => void) | null = null
 
 export const useGameStore = create<GameState>((set, get) => {
-  // Folds this round's scores into each player's totalScore exactly once
-  // (guarded by roundScoresApplied) - called both the moment the first
-  // player heads back to the Lobby (so the leaderboard is already correct
-  // for them, instead of everyone having to wait for the last straggler)
-  // and again, as a no-op-if-already-done fallback, from
-  // finalizeRoundIfReady once every player is ready.
-  function applyRoundScoresIfNeeded() {
-    const { roomCode, players, guesses, ratings, roundScoresApplied } = get()
-    if (!roomCode || roundScoresApplied) return
+  // Folds this round's scores into each player's totalScore exactly once -
+  // called both the moment the first player heads back to the Lobby (so the
+  // leaderboard is already correct for them, instead of everyone having to
+  // wait for the last straggler) and again, as a fallback, from
+  // finalizeRoundIfReady once every player is ready. Several players can
+  // trigger this within the same instant (everyone clicking "Go to Lobby"
+  // at once), so a plain "read roundScoresApplied, then write" guard isn't
+  // enough - two calls can both read it as false before either's write
+  // lands, double- or triple-applying the round's points (seen for real:
+  // three players landed on 3x their actual score). A transaction on the
+  // flag itself makes the claim atomic - only the caller that actually
+  // flips it from falsy to true goes on to compute and write the scores.
+  async function applyRoundScoresIfNeeded() {
+    const { roomCode } = get()
+    if (!roomCode) return
+    let wonClaim = false
+    await runTransaction(ref(db, `games/${roomCode}/roundScoresApplied`), (current) => {
+      if (current) return current
+      wonClaim = true
+      return true
+    })
+    if (!wonClaim) return
+    const { players, guesses, ratings } = get()
     const round = { songs: getCurrentRoundSongs(get()), guesses, ratings }
     const roundScores = computeFinalScores(round)
-    const updates: Record<string, unknown> = { roundScoresApplied: true }
+    const updates: Record<string, unknown> = {}
     for (const player of players) {
       const roundScore = roundScores[player.id] ?? 0
       if (roundScore !== 0) {
         updates[`players/${player.id}/totalScore`] = (player.totalScore ?? 0) + roundScore
       }
     }
-    dbUpdate(ref(db, `games/${roomCode}`), updates)
+    if (Object.keys(updates).length > 0) {
+      dbUpdate(ref(db, `games/${roomCode}`), updates)
+    }
   }
 
   function attachListener(roomCode: string, playerId: string) {
