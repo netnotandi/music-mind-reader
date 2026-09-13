@@ -51,13 +51,14 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   )
   // The full batch fetched from the last API call (see FETCH_BATCH_SIZE in
   // youtube.ts - YouTube charges the same 100 units for it regardless of
-  // size, so it's fetched once and revealed a few at a time from here).
-  // `visibleCount` is how much of it is currently shown; "Show next 3
-  // results" only ever triggers a real API call once this whole batch is
-  // used up.
+  // size, so it's fetched once and a window of RESULTS_PAGE_SIZE is shown
+  // at a time from here). `visibleStart` is that window's offset - "Show
+  // next 3 results" always swaps in the next 3, never grows the on-screen
+  // list past 3, and only triggers a real API call once this whole batch
+  // is used up.
   const [allResults, setAllResults] = useState<YouTubeSearchResult[]>([])
-  const [visibleCount, setVisibleCount] = useState(RESULTS_PAGE_SIZE)
-  const results = allResults.slice(0, visibleCount)
+  const [visibleStart, setVisibleStart] = useState(0)
+  const results = allResults.slice(visibleStart, visibleStart + RESULTS_PAGE_SIZE)
   const [nextPageToken, setNextPageToken] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   // Set when a search came back empty because it actually FAILED (quota
@@ -85,7 +86,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
     const page = await searchYouTubeVideos(searchQuery)
     if (page.results.length > 0) {
       setAllResults(page.results)
-      setVisibleCount(RESULTS_PAGE_SIZE)
+      setVisibleStart(0)
       setNextPageToken(page.nextPageToken)
       setStage('preview')
     } else {
@@ -96,27 +97,28 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
 
   function handleLoadMore() {
     if (loadingMore) return
-    // Reveal more of the batch we already have - free, no API call.
-    if (visibleCount < allResults.length) {
-      setVisibleCount((v) => Math.min(v + RESULTS_PAGE_SIZE, allResults.length))
+    const nextStart = visibleStart + RESULTS_PAGE_SIZE
+    // Slide the window forward within the batch we already have - free, no
+    // API call, and the on-screen count never grows past RESULTS_PAGE_SIZE.
+    if (nextStart < allResults.length) {
+      setVisibleStart(nextStart)
       return
     }
     if (!nextPageToken) return
     setLoadingMore(true)
     searchYouTubeVideos(searchQuery, nextPageToken).then((page) => {
-      // Appends the new page onto what's already on screen (de-duped by
-      // videoId, in case a page overlaps) so "Show next 3" always reveals
-      // the true next 3 - the list only ever grows, never swaps out
-      // candidates the player has already seen. A failure here (e.g. quota
-      // ran out partway through) just leaves the candidates already on
-      // screen as they are - not worth derailing the picker they're
-      // already using.
+      // Appends the new page onto the batch (de-duped by videoId, in case a
+      // page overlaps) so the window can keep sliding forward through it -
+      // only the 3 actually shown ever change, the underlying list is just
+      // bookkeeping. A failure here (e.g. quota ran out partway through)
+      // just leaves the candidates already on screen as they are - not
+      // worth derailing the picker they're already using.
       if (page.results.length > 0 || !page.error) {
         setAllResults((prev) => {
           const seen = new Set(prev.map((r) => r.videoId))
           return [...prev, ...page.results.filter((r) => !seen.has(r.videoId))]
         })
-        setVisibleCount((v) => v + RESULTS_PAGE_SIZE)
+        setVisibleStart(nextStart)
         setNextPageToken(page.nextPageToken)
       }
       setLoadingMore(false)
@@ -134,7 +136,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
     setConfirmedResult(picked)
     setStage('confirmed')
     setAllResults([])
-    setVisibleCount(RESULTS_PAGE_SIZE)
+    setVisibleStart(0)
     setNextPageToken(null)
     setManualLink('')
     setLinkError(null)
@@ -143,7 +145,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   function chooseNewSong() {
     setStage('form')
     setAllResults([])
-    setVisibleCount(RESULTS_PAGE_SIZE)
+    setVisibleStart(0)
     setNextPageToken(null)
     setSearchIssue(null)
   }
@@ -214,7 +216,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
               </button>
             </div>
           ))}
-          {(visibleCount < allResults.length || nextPageToken) && (
+          {(visibleStart + RESULTS_PAGE_SIZE < allResults.length || nextPageToken) && (
             <button
               type="button"
               disabled={loadingMore}
