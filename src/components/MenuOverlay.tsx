@@ -173,6 +173,12 @@ export function MenuOverlay() {
                 >
                   hello@musicmindreader.com
                 </a>
+                <a
+                  href="/privacy.html"
+                  className="mt-1 block text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
+                >
+                  Privacy Policy
+                </a>
               </div>
             </div>
 

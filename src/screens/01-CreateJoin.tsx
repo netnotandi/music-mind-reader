@@ -146,13 +146,6 @@ export function CreateJoin() {
             </div>
           )}
         </div>
-
-        <a
-          href="/privacy.html"
-          className="mt-8 text-center text-xs text-text-muted underline underline-offset-2"
-        >
-          Privacy Policy
-        </a>
       </div>
     </div>
   )
