@@ -1,3 +1,6 @@
+import { get as dbGet, ref, set as dbSet } from 'firebase/database'
+import { db } from '../firebase'
+
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY as string | undefined
 
 export interface YouTubeSearchResult {
@@ -28,6 +31,52 @@ export interface YouTubeSearchPage {
 const FETCH_BATCH_SIZE = 9
 const EMPTY_PAGE: YouTubeSearchPage = { results: [], nextPageToken: null }
 
+// Every room shares the same 10,000-unit daily quota (100 search.list calls
+// - see CLAUDE.md), so the more the game gets played, the sooner a popular
+// night runs out - UNLESS the same handful of well-known songs (which is
+// most of what gets searched for) get served from a cache instead of
+// costing quota again every time someone, in any room, types them in. Only
+// the first page of a query is cached - overwhelmingly the common case,
+// especially now that one page holds FETCH_BATCH_SIZE results.
+const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
+
+interface CachedSearchEntry {
+  results: YouTubeSearchResult[]
+  nextPageToken: string | null
+  fetchedAt: number
+}
+
+// Firebase keys can't contain ".", "#", "$", "[", "]", "/", or start empty -
+// collapse the query down to something safe and stable regardless of
+// spacing/case, so "Rick Astley" and "  rick   astley " hit the same entry.
+function cacheKeyFor(query: string): string {
+  const key = query
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return key.slice(0, 200) || 'blank'
+}
+
+async function readCachedSearch(key: string): Promise<CachedSearchEntry | null> {
+  try {
+    const snap = await dbGet(ref(db, `songSearchCache/${key}`))
+    return snap.exists() ? (snap.val() as CachedSearchEntry) : null
+  } catch {
+    // Most likely: the database rules don't grant access to this path yet
+    // (see the "songSearchCache" note in CLAUDE.md) - fails open, exactly
+    // like a cache miss, so search still works without it.
+    return null
+  }
+}
+
+function writeCachedSearch(key: string, entry: CachedSearchEntry) {
+  // Best-effort - if this write fails (permission denied, offline, ...),
+  // the only consequence is that the next search for this exact query
+  // costs quota again.
+  dbSet(ref(db, `songSearchCache/${key}`), entry).catch(() => {})
+}
+
 // The YouTube API returns snippet titles with HTML entities left in
 // (&#39; &amp; &quot; ...). Decode them so a stored/shown video title reads
 // as plain text - "Rapper's Delight", not "Rapper&#39;s Delight".
@@ -41,9 +90,11 @@ export function decodeHtmlEntities(text: string): string {
 
 // Best-effort matches only - the player still has to confirm one (or fall
 // back to a direct link via extractYouTubeVideoId) rather than anything
-// being submitted silently. A short list rather than a single top match
-// matters most for an ambiguous query (just a title, or just an artist),
-// where the single "best" hit is often not the one they meant - pageToken
+// being submitted silently. Checks songSearchCache first (shared across
+// every room, not just this one) and only calls the real API on a miss or
+// a stale hit - see CACHE_TTL_MS above. A short list rather than a single
+// top match matters most for an ambiguous query (just a title, or just an
+// artist), where the single "best" hit is often not the one they meant - pageToken
 // (from a previous call's nextPageToken) lets the caller ask YouTube for a
 // fresh batch once the current one (see FETCH_BATCH_SIZE) runs out, without
 // starting the search over. Returns an empty page rather than throwing on
@@ -52,6 +103,13 @@ export function decodeHtmlEntities(text: string): string {
 // what's needed; `error` lets the caller tell which kind of failure it was.
 export async function searchYouTubeVideos(query: string, pageToken?: string): Promise<YouTubeSearchPage> {
   if (!API_KEY) return EMPTY_PAGE
+
+  const cacheKey = pageToken ? null : cacheKeyFor(query)
+  const cached = cacheKey ? await readCachedSearch(cacheKey) : null
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return { results: cached.results, nextPageToken: cached.nextPageToken }
+  }
+
   const url = new URL('https://www.googleapis.com/youtube/v3/search')
   url.searchParams.set('part', 'snippet')
   url.searchParams.set('type', 'video')
@@ -70,6 +128,11 @@ export async function searchYouTubeVideos(query: string, pageToken?: string): Pr
       } catch {
         // body wasn't JSON (or empty) - reason stays undefined -> 'other'
       }
+      // The live call failed (quota, most likely) - a stale cached hit for
+      // this exact query beats failing outright. This is exactly when the
+      // cache matters most: quota runs out under heavy/popular use, which
+      // is also when the cache is at its most populated.
+      if (cached) return { results: cached.results, nextPageToken: cached.nextPageToken }
       return { results: [], nextPageToken: null, error: reason === 'quotaExceeded' ? 'quota' : 'other' }
     }
     const data = await res.json()
@@ -84,8 +147,10 @@ export async function searchYouTubeVideos(query: string, pageToken?: string): Pr
       }
     }
     const nextPageToken = typeof data.nextPageToken === 'string' ? data.nextPageToken : null
+    if (cacheKey) writeCachedSearch(cacheKey, { results, nextPageToken, fetchedAt: Date.now() })
     return { results, nextPageToken }
   } catch {
+    if (cached) return { results: cached.results, nextPageToken: cached.nextPageToken }
     return { results: [], nextPageToken: null, error: 'other' }
   }
 }

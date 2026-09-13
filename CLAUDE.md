@@ -145,7 +145,22 @@ Bæta beinni lagaspilun við appið sjálft, í gegnum YouTube — EKKI Spotify 
   - **Kvóti (raunverulegt vandamál, kom upp í alvöru spilun):** `search.list` kostar 100 einingar af 10.000/dag sjálfgefnum kvóta — bara **100 leitir á dag samtals fyrir allan hópinn**, sameiginlegt á einum lykli. Nokkrir spilarar sem leita 1-2x hver klára þetta auðveldlega á 2 umferðum. Þegar kvótinn klárast hættir leit að virka fyrir ALLA samtímis (deilt vandamál, ekki staðbundið).
   - Kóðinn (`src/logic/youtube.ts`) minnkar álagið sjálfkrafa: hver leit sækir núna 9 niðurstöður í EINNI köllun (YouTube rukkar sama verð óháð `maxResults`, allt að 50), og „Show next 3 results" opinberar bara meira af því sem er þegar sótt — engin ný köllun fyrr en allar 9 eru búnar. Það minnkar dæmigerða notkun um allt að 3x.
   - Villuboðin greina núna á milli „ekkert fannst" og „leitin er í raun biluð/kvóti búinn" (`error: 'quota' | 'other'` á `YouTubeSearchPage`) — notandinn sér „Song search has hit its limit for today" í stað villandi „Couldn't find a video for X".
-  - **ÞARF SAMT AÐGERÐ UTAN KÓÐA:** ef þetta kemur ítrekað upp er eina alvöru lausnin að biðja Google um hærri kvóta fyrir verkefnið (Google Cloud Console → APIs & Services → Quotas → YouTube Data API v3 → Queries per day → Edit Quotas/Request increase) — kóðinn getur bara teygt sama kvótann lengra, ekki búið til meiri kvóta.
+  - **Deildur leitar-cache í Firebase** (`songSearchCache/{normaliseruð fyrirspurn}` í `src/logic/youtube.ts`): fyrsta síða hverrar leitar (þ.e. án `pageToken`) er vistuð þar (30 daga TTL) og LESIN ÞVERT Á ÖLL herbergi — ekki bara þitt eigið. Því vinsælli sem leikurinn verður, því fleiri hópar leita að sömu vinsælu lögunum, og því fleiri þeirra fá svar úr cache-inu ókeypis í stað þess að kosta kvóta aftur — þetta er lykilatriðið sem gerir kerfið SKALANLEGT, ekki bara sparar aðeins. Ef lifandi köllun mistekst (kvóti búinn) en gömul (jafnvel útrunnin) cache-færsla er til fyrir nákvæmlega sömu fyrirspurn, er hún notuð í staðinn fyrir að klikka alveg — einmitt þegar cache-ið skiptir mestu máli (undir álagi).
+    - **KREFST BREYTINGAR Á FIREBASE-REGLUM (Realtime Database), UTAN KÓÐA:** staðfest með beinni prófun að núverandi reglur hafna `songSearchCache` (`permission_denied`) því þær ná bara yfir `games/*`. Cache-ið er þar til „off" í praxís (leitin virkar samt eðlilega, bara án cache-ávinnings) þangað til reglunum er breytt. Í Firebase Console → Realtime Database → Rules, bæta `songSearchCache` við sem systurgrein `games`-reglunnar, með sama aðgengi og hún er nú þegar með (ekkert auðkenningarkerfi er í appinu, svo `games` er líklega alveg opið):
+      ```json
+      "songSearchCache": {
+        ".read": true,
+        ".write": true
+      }
+      ```
+      (passa að þetta sé INNAN `"rules": { ... }` hlutans, við hliðina á núverandi `"games"` grein — ekki í staðinn fyrir hana.)
+  - **ÞARF SAMT AÐGERÐ UTAN KÓÐA — hærri kvóti:** cache-ið og batching-ið hér að ofan STRETCHA sama kvótann lengra, en búa ekki til meiri kvóta. Ef leikurinn verður vinsæll þarf raunverulega hærri dagskvóta hjá Google:
+    1. Google Cloud Console (console.cloud.google.com) → veldu rétta verkefnið (sama og YouTube API lykillinn tilheyrir).
+    2. APIs & Services → Enabled APIs → „YouTube Data API v3" → flipinn „Quotas & System Limits" (eða beint: APIs & Services → Quotas, sía á „YouTube Data API v3").
+    3. Finna „Queries per day" — smella á reitinn, „EDIT QUOTAS" (eða „Request higher quota" hnappur).
+    4. Fylla út eyðublaðið: lýsa appinu stuttlega (samkvæmisleikur, party-app, hversu margar fyrirspurnir er ætlast til á dag) og hversu háan kvóta er beðið um — t.d. 50.000-100.000 einingar/dag (500-1000 leitir/dag) er hófleg byrjunarbeiðni.
+    5. Google svarar yfirleitt á nokkrum dögum. Ekki víst að beiðnin sé samþykkt að fullu, en oft fæst einhver hækkun fyrir lögmæt lítil verkefni.
+    - Ódýrari millileikur ef bið eftir svari er löng: nýtt, ALVEG SÉRSTAKT Google Cloud-verkefni (með sínum eigin YouTube API-lykli) fær sinn eigin sjálfstæða 10.000/dag kvóta — ekki „svindl" af hálfu Google (hvert verkefni fær frían grunnkvóta), en krefst þess að skipta um lykil í GitHub Secrets ef/þegar núverandi klárast, sem er handavinna, ekki sjálfvirk lausn.
 - **YouTube IFrame Player API**: notað til að spila valda myndbandið beint í appinu, sýnilegt á skjánum.
 - Söngvaleitin (MusicBrainz, sem áður var rædd fyrir autocomplete) og YouTube-leitin geta unnið saman: MusicBrainz gefur „rétt" nafn á lagi/flytjanda, YouTube-leitin finnur svo myndbands-ID til að spila.
 
