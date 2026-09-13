@@ -79,6 +79,12 @@ interface GameState {
   confirmedPlayerIds: string[]
   roundsCompleted: number
   lobbyReadyPlayerIds: string[]
+  // Guards applyRoundScoresIfNeeded so this round's points are folded into
+  // totalScore exactly once, whether that happens the moment the first
+  // player heads back to the Lobby or later as finalizeRoundIfReady's
+  // fallback. Cleared (null) once finalizeRoundIfReady resets for the next
+  // round.
+  roundScoresApplied: boolean
 
   createGame: (hostName: string) => Promise<string>
   joinGame: (roomCode: string, playerName: string) => Promise<JoinResult>
@@ -189,6 +195,7 @@ interface RoomRecord {
   roundPlaythroughDone?: boolean
   roundsCompleted?: number
   lobbyReady?: Record<string, true>
+  roundScoresApplied?: boolean
   players?: Record<string, { name: string; joinedAt: number; totalScore?: number }>
   songs?: Record<
     string,
@@ -238,6 +245,7 @@ function parseRoom(data: RoomRecord) {
     confirmedPlayerIds: Object.keys(data.finalConfirmations ?? {}),
     roundsCompleted: data.roundsCompleted ?? 0,
     lobbyReadyPlayerIds: Object.keys(data.lobbyReady ?? {}),
+    roundScoresApplied: data.roundScoresApplied ?? false,
   }
 }
 
@@ -246,6 +254,27 @@ function parseRoom(data: RoomRecord) {
 let detachListener: (() => void) | null = null
 
 export const useGameStore = create<GameState>((set, get) => {
+  // Folds this round's scores into each player's totalScore exactly once
+  // (guarded by roundScoresApplied) - called both the moment the first
+  // player heads back to the Lobby (so the leaderboard is already correct
+  // for them, instead of everyone having to wait for the last straggler)
+  // and again, as a no-op-if-already-done fallback, from
+  // finalizeRoundIfReady once every player is ready.
+  function applyRoundScoresIfNeeded() {
+    const { roomCode, players, guesses, ratings, roundScoresApplied } = get()
+    if (!roomCode || roundScoresApplied) return
+    const round = { songs: getCurrentRoundSongs(get()), guesses, ratings }
+    const roundScores = computeFinalScores(round)
+    const updates: Record<string, unknown> = { roundScoresApplied: true }
+    for (const player of players) {
+      const roundScore = roundScores[player.id] ?? 0
+      if (roundScore !== 0) {
+        updates[`players/${player.id}/totalScore`] = (player.totalScore ?? 0) + roundScore
+      }
+    }
+    dbUpdate(ref(db, `games/${roomCode}`), updates)
+  }
+
   function attachListener(roomCode: string, playerId: string) {
     detachListener?.()
     const unsubscribe = onValue(ref(db, `games/${roomCode}`), (snapshot) => {
@@ -275,6 +304,7 @@ export const useGameStore = create<GameState>((set, get) => {
     confirmedPlayerIds: [],
     roundsCompleted: 0,
     lobbyReadyPlayerIds: [],
+    roundScoresApplied: false,
 
     createGame: async (hostName) => {
       const playerId = crypto.randomUUID()
@@ -444,6 +474,7 @@ export const useGameStore = create<GameState>((set, get) => {
         confirmedPlayerIds: [],
         roundsCompleted: 0,
         lobbyReadyPlayerIds: [],
+        roundScoresApplied: false,
       })
     },
 
@@ -609,21 +640,28 @@ export const useGameStore = create<GameState>((set, get) => {
     returnToLobby: () => {
       const { roomCode, localPlayerId } = get()
       if (!roomCode || !localPlayerId) return
+      // Applied here (as soon as the FIRST player heads back), not just in
+      // finalizeRoundIfReady below - so the leaderboard is already correct
+      // the moment this player lands on the Lobby, instead of everyone
+      // having to wait for the last straggler to click through before
+      // anyone's total updates.
+      applyRoundScoresIfNeeded()
       dbUpdate(ref(db, `games/${roomCode}`), { [`lobbyReady/${localPlayerId}`]: true })
     },
 
     // Deliberately re-derives "are we ready" from state rather than trusting
     // a caller's judgment, and writes the exact same result no matter which
     // device's watcher happens to fire it or how many fire it at once - the
-    // computed scores/resets only ever depend on the (by now frozen) round
-    // data, not on each other, so redundant calls converge to one outcome
-    // instead of double-applying anything.
+    // round reset only ever depends on the (by now frozen) round data, not
+    // on each other, so redundant calls converge to one outcome instead of
+    // double-applying anything. Scores themselves are normally already
+    // applied by returnToLobby's early call - applyRoundScoresIfNeeded here
+    // is just a no-op-if-already-done fallback.
     finalizeRoundIfReady: () => {
-      const { roomCode, phase, players, guesses, ratings, roundsCompleted, lobbyReadyPlayerIds } = get()
+      const { roomCode, phase, players, roundsCompleted, lobbyReadyPlayerIds } = get()
       if (!roomCode || phase !== 'results' || players.length === 0) return
       if (lobbyReadyPlayerIds.length < players.length) return
-      const round = { songs: getCurrentRoundSongs(get()), guesses, ratings }
-      const roundScores = computeFinalScores(round)
+      applyRoundScoresIfNeeded()
       const updates: Record<string, unknown> = {
         phase: 'lobby',
         songs: null,
@@ -635,14 +673,9 @@ export const useGameStore = create<GameState>((set, get) => {
         selectedCategoryIds: null,
         finalConfirmations: null,
         lobbyReady: null,
+        roundScoresApplied: null,
         roundsCompleted: roundsCompleted + 1,
         // roundMode is left as-is - it persists as the group's preference.
-      }
-      for (const player of players) {
-        const roundScore = roundScores[player.id] ?? 0
-        if (roundScore !== 0) {
-          updates[`players/${player.id}/totalScore`] = (player.totalScore ?? 0) + roundScore
-        }
       }
       dbUpdate(ref(db, `games/${roomCode}`), updates)
     },

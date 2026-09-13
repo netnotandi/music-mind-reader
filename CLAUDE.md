@@ -122,6 +122,13 @@ Leyft — ef einhver joinar eftir að fyrsta umferð er búin, byrjar hann á n�
 ### Óbreytt
 Sjálf stigaútreikningsrökin í `scoring.ts` fyrir eina umferð breytast ekki — þetta er bara viðbótarlag sem safnar saman niðurstöðum margra umferða ofan á það sem er nú þegar til.
 
+### Staða — útfært
+Ábending úr playtesti: það fór í taugarnar á fólki að þurfa að bíða þangað til BÓKSTAFLEGA allir höfðu ýtt á „Go to Lobby" áður en NOKKUR sá uppfærða stigatölu — jafnvel sá sem var fyrstur að ýta sat og horfði á gömlu töluna þangað til sá síðasti loksins ýtti líka. Lagað með því að skilja að tvennt sem áður gerðist í einu skrefi (`finalizeRoundIfReady`, læst á að ALLIR séu tilbúnir):
+- **`totalScore`-útreikningur og -skrif** (`applyRoundScoresIfNeeded` í `gameStore.ts`) gerist núna strax þegar FYRSTI leikmaðurinn ýtir á „Go to Lobby" (kallað úr `returnToLobby()`), varið af `roundScoresApplied` fána svo það gerist bara einu sinni sama hvort margir ýti nánast samtímis.
+- **Sjálf umferðar-núllstillingin** (`songs`/`guesses`/`ratings`/`songOrder`/`phase`/`roundsCompleted++` o.s.frv.) bíður áfram þangað til ALLIR eru tilbúnir (`finalizeRoundIfReady`), enda þarf sá gögn að haldast óhreyfð fyrir þá sem eru ennþá að skoða Results-skjáinn. `applyRoundScoresIfNeeded` er kallað þar líka, en er þá bara „no-op ef þegar gert" varnarnet.
+
+Niðurstaðan: sá sem ýtir fyrstur sér uppfærða heildarstigatölu sína um leið og hann lendir í lobby-inu, í stað þess að bíða eftir öllum hinum.
+
 
 
 ## Lagaspilun í appinu (viðbót við CLAUDE.md — næsta stóra skref EFTIR að fjölspilun er staðfest í loftinu)
