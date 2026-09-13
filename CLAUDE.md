@@ -142,6 +142,10 @@ Bæta beinni lagaspilun við appið sjálft, í gegnum YouTube — EKKI Spotify 
 
 ### Tæknilegar þarfir
 - **YouTube Data API**: notað til að leita að og finna rétt myndbands-ID fyrir lagið sem einhver skrifar inn (t.d. „Master of Puppets — Metallica" → finnur samsvarandi YouTube video-ID). Þarf ókeypis Google Cloud-verkefni og API-lykil — svipað ferli og Firebase-uppsetningin sem þið eruð nú þegar vön.
+  - **Kvóti (raunverulegt vandamál, kom upp í alvöru spilun):** `search.list` kostar 100 einingar af 10.000/dag sjálfgefnum kvóta — bara **100 leitir á dag samtals fyrir allan hópinn**, sameiginlegt á einum lykli. Nokkrir spilarar sem leita 1-2x hver klára þetta auðveldlega á 2 umferðum. Þegar kvótinn klárast hættir leit að virka fyrir ALLA samtímis (deilt vandamál, ekki staðbundið).
+  - Kóðinn (`src/logic/youtube.ts`) minnkar álagið sjálfkrafa: hver leit sækir núna 9 niðurstöður í EINNI köllun (YouTube rukkar sama verð óháð `maxResults`, allt að 50), og „Show next 3 results" opinberar bara meira af því sem er þegar sótt — engin ný köllun fyrr en allar 9 eru búnar. Það minnkar dæmigerða notkun um allt að 3x.
+  - Villuboðin greina núna á milli „ekkert fannst" og „leitin er í raun biluð/kvóti búinn" (`error: 'quota' | 'other'` á `YouTubeSearchPage`) — notandinn sér „Song search has hit its limit for today" í stað villandi „Couldn't find a video for X".
+  - **ÞARF SAMT AÐGERÐ UTAN KÓÐA:** ef þetta kemur ítrekað upp er eina alvöru lausnin að biðja Google um hærri kvóta fyrir verkefnið (Google Cloud Console → APIs & Services → Quotas → YouTube Data API v3 → Queries per day → Edit Quotas/Request increase) — kóðinn getur bara teygt sama kvótann lengra, ekki búið til meiri kvóta.
 - **YouTube IFrame Player API**: notað til að spila valda myndbandið beint í appinu, sýnilegt á skjánum.
 - Söngvaleitin (MusicBrainz, sem áður var rædd fyrir autocomplete) og YouTube-leitin geta unnið saman: MusicBrainz gefur „rétt" nafn á lagi/flytjanda, YouTube-leitin finnur svo myndbands-ID til að spila.
 

@@ -12,6 +12,11 @@ function describeSong(title: string, artist: string) {
   return [title, artist].filter(Boolean).join(' — ')
 }
 
+// How many search candidates are shown at a time - "Show next 3 results"
+// reveals another batch of this size (see FETCH_BATCH_SIZE in youtube.ts,
+// which fetches several of these pages' worth in one API call).
+const RESULTS_PAGE_SIZE = 3
+
 interface SongFormProps {
   category: Category
   existingSong: { title: string; artist: string } | undefined
@@ -44,9 +49,22 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   const [stage, setStage] = useState<'form' | 'searching' | 'preview' | 'manual-link' | 'confirmed'>(
     existingSong ? 'confirmed' : 'form'
   )
-  const [results, setResults] = useState<YouTubeSearchResult[]>([])
+  // The full batch fetched from the last API call (see FETCH_BATCH_SIZE in
+  // youtube.ts - YouTube charges the same 100 units for it regardless of
+  // size, so it's fetched once and revealed a few at a time from here).
+  // `visibleCount` is how much of it is currently shown; "Show next 3
+  // results" only ever triggers a real API call once this whole batch is
+  // used up.
+  const [allResults, setAllResults] = useState<YouTubeSearchResult[]>([])
+  const [visibleCount, setVisibleCount] = useState(RESULTS_PAGE_SIZE)
+  const results = allResults.slice(0, visibleCount)
   const [nextPageToken, setNextPageToken] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
+  // Set when a search came back empty because it actually FAILED (quota
+  // exhausted, or some other API/network error) rather than genuinely
+  // matching nothing - the manual-link stage says something very different
+  // in that case.
+  const [searchIssue, setSearchIssue] = useState<'quota' | 'other' | null>(null)
   // Separate from `results` (the candidate list) - this is specifically
   // what the player actually picked, so the confirmed view keeps showing
   // it even after `results` is cleared by a later search.
@@ -60,28 +78,43 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
     e.preventDefault()
     if (!searchQuery) return
     setStage('searching')
+    setSearchIssue(null)
     // A query built from just a title or just an artist is inherently
     // ambiguous, so a short list of candidates (rather than a single "best"
     // match) matters most here - the player picks the right one themselves.
     const page = await searchYouTubeVideos(searchQuery)
     if (page.results.length > 0) {
-      setResults(page.results)
+      setAllResults(page.results)
+      setVisibleCount(RESULTS_PAGE_SIZE)
       setNextPageToken(page.nextPageToken)
       setStage('preview')
     } else {
+      setSearchIssue(page.error ?? null)
       setStage('manual-link')
     }
   }
 
-  async function handleLoadMore() {
-    if (!nextPageToken || loadingMore) return
+  function handleLoadMore() {
+    if (loadingMore) return
+    // Reveal more of the batch we already have - free, no API call.
+    if (visibleCount < allResults.length) {
+      setVisibleCount((v) => Math.min(v + RESULTS_PAGE_SIZE, allResults.length))
+      return
+    }
+    if (!nextPageToken) return
     setLoadingMore(true)
-    const page = await searchYouTubeVideos(searchQuery, nextPageToken)
-    // Replaces the current batch rather than appending - never more than
-    // one page of candidates on screen at once.
-    setResults(page.results)
-    setNextPageToken(page.nextPageToken)
-    setLoadingMore(false)
+    searchYouTubeVideos(searchQuery, nextPageToken).then((page) => {
+      // Replaces the current batch rather than appending - never more than
+      // one fetched batch held onto at once. A failure here (e.g. quota ran
+      // out partway through) just leaves the candidates already on screen
+      // as they are - not worth derailing the picker they're already using.
+      if (page.results.length > 0 || !page.error) {
+        setAllResults(page.results)
+        setVisibleCount(RESULTS_PAGE_SIZE)
+        setNextPageToken(page.nextPageToken)
+      }
+      setLoadingMore(false)
+    })
   }
 
   function finish(youtubeVideoId: string, picked: YouTubeSearchResult | null) {
@@ -94,7 +127,8 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
     // reverting to a blank/prefilled form with no visible confirmation.
     setConfirmedResult(picked)
     setStage('confirmed')
-    setResults([])
+    setAllResults([])
+    setVisibleCount(RESULTS_PAGE_SIZE)
     setNextPageToken(null)
     setManualLink('')
     setLinkError(null)
@@ -102,8 +136,10 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
 
   function chooseNewSong() {
     setStage('form')
-    setResults([])
+    setAllResults([])
+    setVisibleCount(RESULTS_PAGE_SIZE)
     setNextPageToken(null)
+    setSearchIssue(null)
   }
 
   function handleManualLinkSubmit(e: React.FormEvent) {
@@ -172,7 +208,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
               </button>
             </div>
           ))}
-          {nextPageToken && (
+          {(visibleCount < allResults.length || nextPageToken) && (
             <button
               type="button"
               disabled={loadingMore}
@@ -193,7 +229,11 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
       ) : stage === 'manual-link' ? (
         <form className="mb-6 flex flex-col gap-3" onSubmit={handleManualLinkSubmit}>
           <p className="text-sm text-text-secondary">
-            {`Couldn't find a YouTube video for "${describeSong(title, artist)}". Paste a direct YouTube link instead.`}
+            {searchIssue === 'quota'
+              ? "Song search has hit its limit for today - paste a direct YouTube link instead (it works exactly the same)."
+              : searchIssue === 'other'
+                ? "Song search isn't working right now - paste a direct YouTube link instead."
+                : `Couldn't find a YouTube video for "${describeSong(title, artist)}". Paste a direct YouTube link instead.`}
           </p>
           <input
             className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"

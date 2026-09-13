@@ -11,9 +11,21 @@ export interface YouTubeSearchPage {
   // Passed back into a follow-up call to fetch the next batch - null once
   // YouTube has no more pages left for this query.
   nextPageToken: string | null
+  // Set when the call failed outright, as opposed to a genuine zero-result
+  // search - the two otherwise look identical (both end up with an empty
+  // `results` array), but the player needs to hear a very different
+  // message ("search is broken right now" vs. "nothing matched that").
+  // 'quota' specifically: search.list costs 100 units against a 10,000/day
+  // default quota, so a handful of people searching a few times each can
+  // burn through it in one party.
+  error?: 'quota' | 'other'
 }
 
-const MAX_SEARCH_RESULTS = 3
+// YouTube charges the same 100 units for this call no matter how many
+// results are requested (up to 50) - so fetching a bigger batch up front is
+// free, and "Show next 3 results" can reveal more of it client-side with NO
+// extra API call, only actually re-querying once the whole batch is used up.
+const FETCH_BATCH_SIZE = 9
 const EMPTY_PAGE: YouTubeSearchPage = { results: [], nextPageToken: null }
 
 // The YouTube API returns snippet titles with HTML entities left in
@@ -32,24 +44,34 @@ export function decodeHtmlEntities(text: string): string {
 // being submitted silently. A short list rather than a single top match
 // matters most for an ambiguous query (just a title, or just an artist),
 // where the single "best" hit is often not the one they meant - pageToken
-// (from a previous call's nextPageToken) lets the player ask for another
-// batch of 3 without starting the search over. Returns an empty page
-// rather than throwing on any failure (missing key, network error, no
-// results) so a broken search never blocks a submission - it just means
-// the manual fallback is what's needed.
+// (from a previous call's nextPageToken) lets the caller ask YouTube for a
+// fresh batch once the current one (see FETCH_BATCH_SIZE) runs out, without
+// starting the search over. Returns an empty page rather than throwing on
+// any failure (missing key, network error, no results, quota) so a broken
+// search never blocks a submission - it just means the manual fallback is
+// what's needed; `error` lets the caller tell which kind of failure it was.
 export async function searchYouTubeVideos(query: string, pageToken?: string): Promise<YouTubeSearchPage> {
   if (!API_KEY) return EMPTY_PAGE
   const url = new URL('https://www.googleapis.com/youtube/v3/search')
   url.searchParams.set('part', 'snippet')
   url.searchParams.set('type', 'video')
-  url.searchParams.set('maxResults', String(MAX_SEARCH_RESULTS))
+  url.searchParams.set('maxResults', String(FETCH_BATCH_SIZE))
   url.searchParams.set('q', query)
   url.searchParams.set('key', API_KEY)
   if (pageToken) url.searchParams.set('pageToken', pageToken)
 
   try {
     const res = await fetch(url.toString())
-    if (!res.ok) return EMPTY_PAGE
+    if (!res.ok) {
+      let reason: string | undefined
+      try {
+        const body = await res.json()
+        reason = body?.error?.errors?.[0]?.reason
+      } catch {
+        // body wasn't JSON (or empty) - reason stays undefined -> 'other'
+      }
+      return { results: [], nextPageToken: null, error: reason === 'quotaExceeded' ? 'quota' : 'other' }
+    }
     const data = await res.json()
     const items = Array.isArray(data.items) ? data.items : []
     const results: YouTubeSearchResult[] = []
@@ -64,7 +86,7 @@ export async function searchYouTubeVideos(query: string, pageToken?: string): Pr
     const nextPageToken = typeof data.nextPageToken === 'string' ? data.nextPageToken : null
     return { results, nextPageToken }
   } catch {
-    return EMPTY_PAGE
+    return { results: [], nextPageToken: null, error: 'other' }
   }
 }
 
