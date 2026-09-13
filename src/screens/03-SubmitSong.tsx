@@ -104,13 +104,19 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
     if (!nextPageToken) return
     setLoadingMore(true)
     searchYouTubeVideos(searchQuery, nextPageToken).then((page) => {
-      // Replaces the current batch rather than appending - never more than
-      // one fetched batch held onto at once. A failure here (e.g. quota ran
-      // out partway through) just leaves the candidates already on screen
-      // as they are - not worth derailing the picker they're already using.
+      // Appends the new page onto what's already on screen (de-duped by
+      // videoId, in case a page overlaps) so "Show next 3" always reveals
+      // the true next 3 - the list only ever grows, never swaps out
+      // candidates the player has already seen. A failure here (e.g. quota
+      // ran out partway through) just leaves the candidates already on
+      // screen as they are - not worth derailing the picker they're
+      // already using.
       if (page.results.length > 0 || !page.error) {
-        setAllResults(page.results)
-        setVisibleCount(RESULTS_PAGE_SIZE)
+        setAllResults((prev) => {
+          const seen = new Set(prev.map((r) => r.videoId))
+          return [...prev, ...page.results.filter((r) => !seen.has(r.videoId))]
+        })
+        setVisibleCount((v) => v + RESULTS_PAGE_SIZE)
         setNextPageToken(page.nextPageToken)
       }
       setLoadingMore(false)
