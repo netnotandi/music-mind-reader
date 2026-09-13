@@ -230,6 +230,8 @@ Hljóðstyrkur: eigin volume-slaufa + 🔊/🔇 toggle undir spilaranum (`setVol
 
 Þekkt: fjar-spilarar eru ekki sekúndu-samstilltir við host (hvert tæki spilar sitt eintak frá 0 þegar lag hleðst) — nóg fyrir „fylgjast með", ekki fyrir nákvæma samspilun.
 
+**Aldursbundin/embed-bönnuð myndbönd** (kom upp í alvöru spilun — handvirkur hlekkur á aldursbundið YouTube-myndband): YouTube leyfir alls ekki að fella slík myndbönd inn (`onError`, kóði 101/150 = embedding disallowed by owner, 100 = fjarlægt/prívat) — ekkert sem appið getur gert til að þvinga þau til að spilast, þetta er hörð YouTube-takmörkun. `onError` er núna meðhöndlað: `videoError` state hylur spilarann aftur með eigin skilaboðum („⚠️ This video can't play here... Tap Skip song" fyrir host, „...Waiting for the host to skip it" fyrir aðra) í stað þess að skilja YouTube-eigin villuskjá (rautt „Sorry, this content is age-restricted") standa óútskýrðan. `advanceGroup()`/tímamælingin fá aldrei atburði fyrir svona lag (hvorki `PLAYING` né `ENDED`), svo eina leiðin áfram er handvirkt „Skip song →" — sem virkar óháð spilarastöðu, þannig hópurinn festist ekki, en þarf samt að vita AÐ hann eigi að ýta á hann, sem er einmitt það sem nýja skilaboðin leysa.
+
 
 ## Lobby og Game Setup aðskilin (viðbót við CLAUDE.md)
 

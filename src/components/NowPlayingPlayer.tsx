@@ -76,6 +76,13 @@ export function NowPlayingPlayer({
   onEndedRef.current = onEnded
 
   const [covered, setCovered] = useState(true)
+  // A video can fail to play here at all - age-restricted or otherwise
+  // blocked from embedding by its owner - in which case YouTube's own
+  // branded error fills the iframe with no way for us to force it to play.
+  // Re-covering the player with our own message at least explains what
+  // happened and what to do about it (the host skips), instead of everyone
+  // just staring at YouTube's unexplained error screen.
+  const [videoError, setVideoError] = useState(false)
   const [volume, setVolumeState] = useState(readStoredVolume)
   // Does this device want to hear the music? The host does by default; a
   // follower doesn't until they turn it on (remembered per device).
@@ -229,6 +236,7 @@ export function NowPlayingPlayer({
             if (cancelled || !player) return
             playerRef.current = player
             playingRef.current = videoId
+            setVideoError(false)
             try {
               if (soundOnRef.current) {
                 player.unMute()
@@ -267,6 +275,14 @@ export function NowPlayingPlayer({
               endedFiredRef.current = true
               onEndedRef.current()
             }
+          },
+          onError: () => {
+            // e.g. 101/150 (embedding disallowed by the video's owner - the
+            // common case for an age-restricted video) or 100 (removed/
+            // private). Nothing to retry - cover the iframe's own error
+            // screen with ours instead.
+            setVideoError(true)
+            setCovered(true)
           },
         },
       })
@@ -314,6 +330,7 @@ export function NowPlayingPlayer({
     playingRef.current = videoId
     capFiredRef.current = false
     endedFiredRef.current = false
+    setVideoError(false)
 
     setCovered(true)
     fadeVolume(player, 0, () => {
@@ -407,6 +424,12 @@ export function NowPlayingPlayer({
         >
           {wrapUp ? (
             <span className="text-xs text-slate-300">All songs played</span>
+          ) : videoError ? (
+            <span className="max-w-[80%] text-center text-xs text-slate-300">
+              ⚠️ This video can't play here (YouTube restriction).
+              <br />
+              {follower ? 'Waiting for the host to skip it.' : 'Tap Skip song below to continue.'}
+            </span>
           ) : videoId === null ? (
             <span className="text-xs text-slate-300">No video for this song</span>
           ) : null}
