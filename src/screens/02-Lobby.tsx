@@ -78,9 +78,16 @@ export function Lobby() {
                   <span className="mr-2 flex-shrink-0 text-text-muted">#{i + 1}</span>
                   <span className="truncate">{player.name}</span>
                 </span>
-                <span className="flex flex-shrink-0 items-center gap-1">
-                  {isPlayerReady(player.id) && <span className="text-xs text-success">connected</span>}
-                  <span className="font-semibold text-success">{(player.totalScore ?? 0).toFixed(1)}</span>
+                <span className="flex flex-shrink-0 items-center gap-3">
+                  {isPlayerReady(player.id) && (
+                    <span className="flex items-center gap-1 text-[11px] text-text-muted">
+                      <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                      connected
+                    </span>
+                  )}
+                  <span className="min-w-[3ch] text-right text-lg font-bold text-success">
+                    {(player.totalScore ?? 0).toFixed(1)}
+                  </span>
                 </span>
               </li>
             ))
