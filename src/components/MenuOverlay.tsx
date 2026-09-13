@@ -179,6 +179,12 @@ export function MenuOverlay() {
                 >
                   Privacy Policy
                 </a>
+                <a
+                  href="/terms.html"
+                  className="mt-1 block text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
+                >
+                  Terms of Service
+                </a>
               </div>
             </div>
 
