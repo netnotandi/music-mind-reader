@@ -72,22 +72,32 @@ export function Lobby() {
           ? ranked.map((player, i) => (
               <li
                 key={player.id}
-                className="flex items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-2 text-text"
+                // Fixed-width columns (not flex+gap) for "connected" and the
+                // score, so both always line up in exactly the same spot
+                // across every row - independent of how long each player's
+                // name is and how many digits their score has (a 1-digit
+                // score no longer lets "connected" drift rightward compared
+                // to a row with a 2-digit score).
+                className="grid grid-cols-[1fr_auto_auto] items-center gap-6 rounded-lg bg-surface-muted px-3 py-2 text-text"
               >
                 <span className="flex min-w-0 items-center">
                   <span className="mr-2 flex-shrink-0 text-text-muted">#{i + 1}</span>
                   <span className="truncate">{player.name}</span>
                 </span>
-                <span className="flex flex-shrink-0 items-center gap-6">
-                  {isPlayerReady(player.id) && (
-                    <span className="flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] text-text-muted">
-                      <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                      connected
-                    </span>
-                  )}
-                  <span className="min-w-[3ch] rounded-md bg-success/15 px-2.5 py-1 text-right text-lg font-bold text-success">
-                    {(player.totalScore ?? 0).toFixed(1)}
-                  </span>
+                {/* Always rendered at the same width, connected or not - so
+                    it never shifts the score column even if this badge is
+                    momentarily absent (e.g. a player not yet marked ready
+                    by everyone else's client). */}
+                <span
+                  className={`flex w-28 items-center justify-end gap-1 rounded-md bg-surface px-2 py-1 text-[11px] text-text-muted ${
+                    isPlayerReady(player.id) ? '' : 'invisible'
+                  }`}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                  connected
+                </span>
+                <span className="w-20 rounded-md bg-success/15 px-2.5 py-1 text-right text-lg font-bold text-success">
+                  {(player.totalScore ?? 0).toFixed(1)}
                 </span>
               </li>
             ))
