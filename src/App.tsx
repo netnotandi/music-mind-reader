@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { InAppBrowserBanner } from './components/InAppBrowserBanner'
 import { MenuOverlay } from './components/MenuOverlay'
 import { RoomCodeBadge } from './components/RoomCodeBadge'
 import { CreateJoin } from './screens/01-CreateJoin'
@@ -104,6 +105,7 @@ function App() {
   return (
     <div className="min-h-screen bg-bg text-text">
       <HashRouter>
+        <InAppBrowserBanner />
         <MenuOverlay />
         <RoomCodeBadge />
         {checkedSession && <AppRoutes />}
