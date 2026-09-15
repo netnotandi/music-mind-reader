@@ -67,7 +67,7 @@ export function GameSetup() {
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary">
           Round length
         </h2>
-        {isHost ? (
+        {isHost && roundsCompleted === 0 ? (
           <>
             <div className="flex gap-2">
               {ROUND_MODES.map((m) => {

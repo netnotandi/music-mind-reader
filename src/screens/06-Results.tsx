@@ -166,7 +166,7 @@ export function Results() {
                 onClick={handleGoToLobby}
                 className="mb-3 w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
               >
-                {hasReturnedToLobby ? '✓ Heading to Lobby — waiting for others' : 'Go to Lobby'}
+                {hasReturnedToLobby ? '✓ Ready for next round — waiting for others' : 'Next Round →'}
               </button>
 
               <button
