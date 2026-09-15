@@ -366,3 +366,36 @@ Einfaldasta og öruggasta útfærslan er líklega sú fyrri: „Triple Down" er 
 - `gameStore.ts` — `submitRating(songId, value)`: finnur flokk lagsins, byggir `valueToSongId` (gildi → lagId) úr `ratings` viðkomandi giskanda fyrir HIN lögin í sama flokki (ekki lagið sem er verið að gefa einkunn núna), keyrir `computeCascade`, og skrifar ALLAR breytingarnar (keðjuna + nýja gildið) í EINA `update()`-köll — annaðhvort allt eða ekkert (ef `computeCascade` skilar `null` er ekkert skrifað, ver gegn tvítekningu ef eitthvað kallar þetta án þess að UI hafi þegar útilokað gildið).
 - `05-GuessAndRate.tsx` / `AnswerForm`: `takenRatings: Map<number, boolean>` (gildi → má cascade-a) í stað gamla `unavailableRatings: Set<number>`. Takkarnir: frjálst gildi = venjulegur stíll; tekið en cascade-anlegt = `border-dashed border-cyan bg-cyan/10 text-cyan` — SÝNILEGA merkt en samt smellanlegt; tekið án pláss = `disabled` + gamli grái stíllinn. Smá skýringartexti fyrir ofan töfluna („Dashed, cyan numbers are already used...") birtist bara þegar a.m.k. eitt gildi er tekið.
 - Prófað: 4 spilarar, gaf gildi 0, síðan 5, síðan reyndi 5 aftur á þriðja laginu — takkinn „5" var sýndur strikóttur/cyan og SMELLANLEGUR (ekki disabled), og eftir Submit hafði annað lagið (sem átti 5) sjálfkrafa lækkað í 4 meðan þriðja lagið fékk 5.
+
+## Villuvöktun — Sentry (viðbót við CLAUDE.md)
+
+### Af hverju
+Kom skýrt í ljós í alvöru spilun/playtesti: nokkrir alvöru production-bögglar (t.d. 3x-tvítekin stigagjöf við samtíma „Go to Lobby" smelli) uppgötvuðust bara af því notandinn sjálfur tók eftir skrýtnum tölum og sagði frá — ekkert kerfi hefði annars vitað af því. Villuvöktun grípur svona hluti sjálfkrafa, óháð því hvort einhver labbi á það og nenni að tilkynna.
+
+### Útfærsla
+- `@sentry/react` bætt við sem dependency.
+- `src/sentry.ts`: `initSentry()` — no-op ef `VITE_SENTRY_DSN` er ekki sett (sama mynstur og `API_KEY`-vörnin í `youtube.ts`), annars `Sentry.init(...)`. Vísvitandi bara villu-vöktun — `tracesSampleRate: 0`, ENGIN Session Replay — appið er nú þegar brennt einu sinni í kvöld af ókeypis-kvóta sem kláraðist (YouTube-leit), svo þetta byrjar íhaldssamt í staðinn fyrir að taka sjálfkrafa þátt í Sentry's eigin kvóta-takmörkuðu eiginleikum.
+- `src/components/ErrorFallback.tsx` + `SentryErrorBoundary` (`Sentry.ErrorBoundary`) vefur `<App />` í `main.tsx` — ef eitthvað hrynur í rendering sér notandinn núna „Something went wrong... Reload" í staðinn fyrir tóman hvítan skjá (sem er versta mögulega bilunin mitt í samkvæmisleik).
+- `VITE_SENTRY_DSN` bætt við `.env.example` og `.github/workflows/deploy.yml` (sama mynstur og hinir `VITE_*` lyklarnir).
+
+### ÞARF AÐGERÐ UTAN KÓÐA — Sentry-verkefni + DSN
+Villuvöktunin er þar til „off" í praxís (appið virkar nákvæmlega eins, bara engin villuskýrsla send) þangað til:
+1. Stofna ókeypis aðgang á sentry.io, nýtt verkefni (velja „React" sem platform).
+2. Afrita DSN-slóðina sem verkefnið gefur (lítur út eins og `https://xxxxx@yyyyy.ingest.sentry.io/zzzzz`).
+3. GitHub repo → Settings → Secrets and variables → Actions → nýtt „Repository secret" með nafninu `VITE_SENTRY_DSN`, gildið er DSN-slóðin.
+4. Næsta push/deploy tekur breytinguna upp sjálfkrafa (sama og hin GitHub Secrets-skrefin).
+
+-------------------------
+Ideas going forward:
+* Létt, valfrjáls notandaauðkenning (t.d. tengt tæki eða Google-reikningi) — grunnur fyrir tölfræði og „crew"-vinahópa
+* Persónuleg tölfræði milli kvölda (flest rétt gisk, hæsta meðaleinkunn, career-titlar, lengsta rétt-gisk-runa)
+* Big-screen/TV-hamur fyrir leikstjóra — Now Playing + stigatafla á stærri skjá meðan símar eru controllers
+* Deilanleg niðurstöðu-mynd eftir leik (Wordle-stíll) til að deila á samfélagsmiðlum
+* i18n / enskt tungumálaval inni í appinu sjálfu (ekki bara markaðsefni)
+* Notkunargögn + villuvöktun (t.d. Sentry) áður en notendahópurinn stækkar
+---------------------------
+
+
+
+
+
