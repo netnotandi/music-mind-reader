@@ -91,6 +91,7 @@ export function CreateJoin() {
               maxLength={MAX_NAME_LENGTH}
               value={name}
               onChange={(e) => setName(e.target.value)}
+              autoComplete="off"
             />
           ) : (
             <div className="rounded-full bg-gradient-to-r from-cyan via-violet to-pink p-[1.5px]">
@@ -100,6 +101,7 @@ export function CreateJoin() {
                 maxLength={MAX_NAME_LENGTH}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                autoComplete="off"
               />
             </div>
           )}

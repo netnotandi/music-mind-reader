@@ -1,5 +1,6 @@
 import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MIN_PLAYERS_TO_START, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 
@@ -13,9 +14,12 @@ export function Lobby() {
   const hostId = useGameStore((s) => s.hostId)
   const localPlayerId = useGameStore((s) => s.localPlayerId)
   const roundsCompleted = useGameStore((s) => s.roundsCompleted)
+  const totalRounds = useGameStore((s) => s.totalRounds)
   const phase = useGameStore((s) => s.phase)
   const lobbyReadyPlayerIds = useGameStore((s) => s.lobbyReadyPlayerIds)
   const startRoundSetup = useGameStore((s) => s.startRoundSetup)
+  const leaveGame = useGameStore((s) => s.leaveGame)
+  const navigate = useNavigate()
 
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
 
@@ -38,6 +42,17 @@ export function Lobby() {
   // in usePhaseNavigation), but the shared room is still mid-transition
   // until finalizeRoundIfReady actually runs.
   const roundStillWrappingUp = phase === 'results'
+  // The pre-committed round count (chosen once at the first Game Setup) has
+  // been fully played - this is the post-game Lobby visit, reached via the
+  // Final Scoretable flow on the last round's Results screen. "Leave Game"
+  // only lives here once that's true; earlier Lobby visits (mid-game) don't
+  // show it at all, matching the host's spec.
+  const gameFinished = roundsCompleted >= totalRounds
+
+  function handleLeave() {
+    leaveGame(false)
+    navigate('/')
+  }
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-8 pt-16">
@@ -139,6 +154,20 @@ export function Lobby() {
         <div className="rounded-xl border border-border bg-surface-muted px-4 py-4 text-center text-text-secondary">
           Waiting for the host to start the game...
         </div>
+      )}
+
+      {gameFinished && (
+        <button
+          type="button"
+          onClick={handleLeave}
+          className={
+            isLight
+              ? 'mt-3 w-full rounded-xl border-[1.5px] border-primary bg-surface px-5 py-3 font-semibold text-primary transition'
+              : 'mt-3 w-full rounded-xl border border-border-strong px-5 py-3 font-semibold text-text transition hover:border-border-strong'
+          }
+        >
+          Leave Game
+        </button>
       )}
     </div>
   )

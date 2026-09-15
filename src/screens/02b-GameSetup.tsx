@@ -3,6 +3,7 @@ import {
   type RoundMode,
   SHORT_MODE_CAP_OPTIONS,
   type ShortModeCapSeconds,
+  TOTAL_ROUNDS_OPTIONS,
   toggleCategorySelection,
   useGameStore,
 } from '../state/gameStore'
@@ -40,9 +41,12 @@ export function GameSetup() {
   const selectedCategoryIds = useGameStore((s) => s.selectedCategoryIds)
   const roundMode = useGameStore((s) => s.roundMode)
   const shortModeCapSeconds = useGameStore((s) => s.shortModeCapSeconds)
+  const totalRounds = useGameStore((s) => s.totalRounds)
+  const roundsCompleted = useGameStore((s) => s.roundsCompleted)
   const chooseCategories = useGameStore((s) => s.chooseCategories)
   const chooseRoundMode = useGameStore((s) => s.chooseRoundMode)
   const chooseShortModeCap = useGameStore((s) => s.chooseShortModeCap)
+  const chooseTotalRounds = useGameStore((s) => s.chooseTotalRounds)
   const startSubmitting = useGameStore((s) => s.startSubmitting)
   const backToLobby = useGameStore((s) => s.backToLobby)
 
@@ -112,6 +116,37 @@ export function GameSetup() {
         ) : (
           <p className="mt-1 text-sm text-text-secondary">
             {activeMode.label} — {blurb}
+          </p>
+        )}
+      </section>
+
+      <section className="mb-8">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary">
+          Number of rounds
+        </h2>
+        {isHost && roundsCompleted === 0 ? (
+          <div className="flex gap-2">
+            {TOTAL_ROUNDS_OPTIONS.map((n) => {
+              const active = n === totalRounds
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => chooseTotalRounds(n)}
+                  className={`flex-1 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition ${
+                    active
+                      ? 'border-primary bg-primary-soft text-primary'
+                      : `border-border text-text-secondary hover:border-border-strong ${isLight ? 'bg-surface' : ''}`
+                  }`}
+                >
+                  {n}
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="mt-1 text-sm text-text-secondary">
+            Playing {totalRounds} round{totalRounds === 1 ? '' : 's'}
           </p>
         )}
       </section>

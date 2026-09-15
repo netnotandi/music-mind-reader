@@ -190,35 +190,58 @@ export interface Title {
   playerId: string
 }
 
+// How many times this player correctly guessed a song's owner, within one
+// round. Shared by computeTitles (single round) and gameStore.ts's
+// applyRoundScoresIfNeeded (folding into the cumulative counter that
+// computeCumulativeTitles reads across every round played).
+export function countCorrectGuesses(round: RoundData, playerId: string): number {
+  const { songs, guesses } = round
+  const songById = new Map(songs.map((s) => [s.id, s]))
+  return guesses.filter((g) => {
+    if (g.guesserId !== playerId) return false
+    const song = songById.get(g.songId)
+    return song !== undefined && g.guessedPlayerId === song.playerId
+  }).length
+}
+
+// The sum of each song this player submitted's average rating, and how many
+// songs that sum covers - kept as a sum/count pair (rather than a single
+// average) so callers accumulating across multiple rounds can combine them
+// correctly before dividing, instead of averaging per-round averages.
+export function ownSongRatingStats(round: RoundData, playerId: string): { sum: number; count: number } {
+  const { songs, ratings } = round
+  const ownSongs = songs.filter((s) => s.playerId === playerId)
+  const sum = ownSongs.reduce((total, s) => total + averageRating(s.id, ratings), 0)
+  return { sum, count: ownSongs.length }
+}
+
+// How many other players correctly guessed this player was behind one of
+// their songs, within one round - feeds both Master of Disguise (fewest)
+// and Most Predictable (most).
+export function countGuessedByOthers(round: RoundData, playerId: string): number {
+  const { songs, guesses } = round
+  const ownSongs = songs.filter((s) => s.playerId === playerId)
+  return ownSongs.reduce((sum, s) => sum + correctGuessers(s, guesses).length, 0)
+}
+
 export function computeTitles(round: RoundData, players: Player[]): Title[] {
-  const { songs, guesses, ratings } = round
+  const { songs } = round
   if (songs.length === 0 || players.length === 0) return []
 
-  const songById = new Map(songs.map((s) => [s.id, s]))
-  const correctGuessCountByGuesser = players.map((player) => {
-    const count = guesses.filter((g) => {
-      if (g.guesserId !== player.id) return false
-      const song = songById.get(g.songId)
-      return song !== undefined && g.guessedPlayerId === song.playerId
-    }).length
-    return { player, count }
-  })
+  const correctGuessCountByGuesser = players.map((player) => ({
+    player,
+    count: countCorrectGuesses(round, player.id),
+  }))
 
-  const avgRatingBySong = new Map(songs.map((s) => [s.id, averageRating(s.id, ratings)]))
   const ownSongAvgByPlayer = players.map((player) => {
-    const ownSongs = songs.filter((s) => s.playerId === player.id)
-    const avg =
-      ownSongs.length === 0
-        ? 0
-        : ownSongs.reduce((sum, s) => sum + (avgRatingBySong.get(s.id) ?? 0), 0) / ownSongs.length
-    return { player, avg }
+    const { sum, count } = ownSongRatingStats(round, player.id)
+    return { player, avg: count === 0 ? 0 : sum / count }
   })
 
-  const correctGuessersCountByPlayer = players.map((player) => {
-    const ownSongs = songs.filter((s) => s.playerId === player.id)
-    const count = ownSongs.reduce((sum, s) => sum + correctGuessers(s, guesses).length, 0)
-    return { player, count }
-  })
+  const correctGuessersCountByPlayer = players.map((player) => ({
+    player,
+    count: countGuessedByOthers(round, player.id),
+  }))
 
   const titles: Title[] = []
 
@@ -261,4 +284,73 @@ export function computeTitles(round: RoundData, players: Player[]): Title[] {
   }
 
   return titles
+}
+
+// Same five titles as computeTitles, but computed from each player's
+// cumulative counters (folded in every round by applyRoundScoresIfNeeded in
+// gameStore.ts) instead of one round's raw songs/guesses/ratings - used for
+// the "Final Scoretable" card deck once every pre-committed round has been
+// played. Same tie-inclusive-extremes philosophy, same zero-guards, per
+// title, as the single-round version above.
+export function computeCumulativeTitles(players: Player[]): Title[] {
+  if (players.length === 0) return []
+  const titles: Title[] = []
+
+  const guessCounts = players.map((player) => ({
+    player,
+    count: player.cumulativeCorrectGuesses ?? 0,
+  }))
+  const maxGuessCount = Math.max(...guessCounts.map((x) => x.count))
+  if (maxGuessCount > 0) {
+    for (const { player, count } of guessCounts) {
+      if (count === maxGuessCount) titles.push({ name: 'Music Mind Reader', playerId: player.id })
+    }
+  }
+
+  const tasteAvgs = players.map((player) => {
+    const sum = player.cumulativeRatingSum ?? 0
+    const count = player.cumulativeOwnedSongCount ?? 0
+    return { player, avg: count === 0 ? 0 : sum / count }
+  })
+  const maxTasteAvg = Math.max(...tasteAvgs.map((x) => x.avg))
+  if (maxTasteAvg > 0) {
+    for (const { player, avg } of tasteAvgs) {
+      if (avg === maxTasteAvg) titles.push({ name: 'Best Taste', playerId: player.id })
+    }
+  }
+
+  const hiddenCounts = players.map((player) => ({
+    player,
+    count: player.cumulativeGuessedByOthersCount ?? 0,
+  }))
+  const minHiddenCount = Math.min(...hiddenCounts.map((x) => x.count))
+  for (const { player, count } of hiddenCounts) {
+    if (count === minHiddenCount) titles.push({ name: 'Master of Disguise', playerId: player.id })
+  }
+
+  const maxPredictableCount = Math.max(...hiddenCounts.map((x) => x.count))
+  if (maxPredictableCount > 0) {
+    for (const { player, count } of hiddenCounts) {
+      if (count === maxPredictableCount) titles.push({ name: 'Most Predictable', playerId: player.id })
+    }
+  }
+
+  const ratedPlayers = tasteAvgs.filter((x) => x.avg > 0)
+  if (ratedPlayers.length > 0) {
+    const minRatedAvg = Math.min(...ratedPlayers.map((x) => x.avg))
+    for (const { player, avg } of ratedPlayers) {
+      if (avg === minRatedAvg) titles.push({ name: 'Musical Criminal', playerId: player.id })
+    }
+  }
+
+  return titles
+}
+
+// The player(s) tied for the single highest cumulative totalScore - the
+// game's overall winner(s), shown as its own card in the Final Scoretable
+// deck alongside the five titles above.
+export function computeOverallWinners(players: Player[]): string[] {
+  if (players.length === 0) return []
+  const maxScore = Math.max(...players.map((p) => p.totalScore ?? 0))
+  return players.filter((p) => (p.totalScore ?? 0) === maxScore).map((p) => p.id)
 }

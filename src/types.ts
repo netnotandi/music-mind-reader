@@ -7,6 +7,13 @@ export interface Player {
   id: string
   name: string
   totalScore?: number
+  // Folded in alongside totalScore (see applyRoundScoresIfNeeded in
+  // gameStore.ts) - never reset between rounds, used to compute the
+  // cumulative "Final Scoretable" award titles across every round played.
+  cumulativeCorrectGuesses?: number
+  cumulativeRatingSum?: number
+  cumulativeOwnedSongCount?: number
+  cumulativeGuessedByOthersCount?: number
 }
 
 export interface Song {

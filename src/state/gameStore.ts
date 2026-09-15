@@ -12,7 +12,12 @@ import { create } from 'zustand'
 import { trackEvent } from '../analytics'
 import { db } from '../firebase'
 import { computeCascade } from '../logic/ratingCascade'
-import { computeFinalScores } from '../logic/scoring'
+import {
+  computeFinalScores,
+  countCorrectGuesses,
+  countGuessedByOthers,
+  ownSongRatingStats,
+} from '../logic/scoring'
 import type { Category, Guess, Player, Rating, Song } from '../types'
 import { CATEGORIES } from './mockData'
 
@@ -59,6 +64,14 @@ export const SHORT_MODE_CAP_OPTIONS = [60, 90, 120] as const
 export type ShortModeCapSeconds = (typeof SHORT_MODE_CAP_OPTIONS)[number]
 export const DEFAULT_SHORT_MODE_CAP_SECONDS: ShortModeCapSeconds = 90
 
+// Chosen once, at the very first Game Setup, alongside roundMode/category -
+// not re-askable on later rounds (see chooseTotalRounds). Persists across
+// rounds the same way roundMode does; unset/older games default to 1 (a
+// single-round game, which was already the game's default length).
+export const TOTAL_ROUNDS_OPTIONS = [1, 2, 3, 4] as const
+export type TotalRounds = (typeof TOTAL_ROUNDS_OPTIONS)[number]
+export const DEFAULT_TOTAL_ROUNDS: TotalRounds = 1
+
 interface GameState {
   roomCode: string | null
   localPlayerId: string | null
@@ -70,6 +83,9 @@ interface GameState {
   roundMode: RoundMode
   // Short mode: how long a song may play before it advances no matter what.
   shortModeCapSeconds: ShortModeCapSeconds
+  // Chosen once at the first Game Setup - how many rounds this game runs
+  // for in total, not how many have been played (see roundsCompleted).
+  totalRounds: TotalRounds
   songs: Song[]
   guesses: Guess[]
   ratings: Rating[]
@@ -102,6 +118,10 @@ interface GameState {
   chooseRoundMode: (mode: RoundMode) => void
   // Host only, from Game Setup: short-mode per-song cap, live-synced.
   chooseShortModeCap: (seconds: ShortModeCapSeconds) => void
+  // Host only, and only meaningful before the first round (roundsCompleted
+  // === 0) - how many rounds this game will run for. Live-synced like the
+  // other Game Setup pickers.
+  chooseTotalRounds: (rounds: TotalRounds) => void
   startSubmitting: () => void
   submitSong: (
     categoryId: string,
@@ -126,6 +146,12 @@ interface GameState {
   // device head to Lobby right away, without waiting for or disturbing
   // anyone still reviewing Results.
   returnToLobby: () => void
+  // For the pre-committed last round's "Final Scoretable" flow: folds this
+  // round's score in early (same idempotent operation returnToLobby below
+  // triggers, just called sooner) so the cumulative award cards about to
+  // be shown already reflect this round's contribution, instead of only
+  // picking it up later once the player actually continues past the cards.
+  applyFinalRoundScores: () => Promise<void>
   // Folds this round's scores into each player's totalScore and wipes the
   // round-specific fields (songs, guesses, ratings, songOrder,
   // currentSongIndex, selectedCategoryIds, confirmations) - but only once
@@ -192,13 +218,25 @@ interface RoomRecord {
   selectedCategoryIds?: string[]
   roundMode?: RoundMode
   shortModeCapSeconds?: number
+  totalRounds?: number
   currentSongIndex?: number
   songOrder?: string[]
   roundPlaythroughDone?: boolean
   roundsCompleted?: number
   lobbyReady?: Record<string, true>
   roundScoresApplied?: boolean
-  players?: Record<string, { name: string; joinedAt: number; totalScore?: number }>
+  players?: Record<
+    string,
+    {
+      name: string
+      joinedAt: number
+      totalScore?: number
+      cumulativeCorrectGuesses?: number
+      cumulativeRatingSum?: number
+      cumulativeOwnedSongCount?: number
+      cumulativeGuessedByOthersCount?: number
+    }
+  >
   songs?: Record<
     string,
     {
@@ -221,7 +259,15 @@ interface RoomRecord {
 function parseRoom(data: RoomRecord) {
   const players: Player[] = Object.entries(data.players ?? {})
     .sort(([, a], [, b]) => (a.joinedAt ?? 0) - (b.joinedAt ?? 0))
-    .map(([id, p]) => ({ id, name: p.name, totalScore: p.totalScore ?? 0 }))
+    .map(([id, p]) => ({
+      id,
+      name: p.name,
+      totalScore: p.totalScore ?? 0,
+      cumulativeCorrectGuesses: p.cumulativeCorrectGuesses ?? 0,
+      cumulativeRatingSum: p.cumulativeRatingSum ?? 0,
+      cumulativeOwnedSongCount: p.cumulativeOwnedSongCount ?? 0,
+      cumulativeGuessedByOthersCount: p.cumulativeGuessedByOthersCount ?? 0,
+    }))
 
   const songs: Song[] = Object.entries(data.songs ?? {}).map(([id, s]) => ({ id, ...s }))
   const guesses: Guess[] = Object.values(data.guesses ?? {})
@@ -238,6 +284,9 @@ function parseRoom(data: RoomRecord) {
     )
       ? (data.shortModeCapSeconds as ShortModeCapSeconds)
       : DEFAULT_SHORT_MODE_CAP_SECONDS,
+    totalRounds: (TOTAL_ROUNDS_OPTIONS as readonly number[]).includes(data.totalRounds ?? -1)
+      ? (data.totalRounds as TotalRounds)
+      : DEFAULT_TOTAL_ROUNDS,
     songs,
     guesses,
     ratings,
@@ -287,6 +336,17 @@ export const useGameStore = create<GameState>((set, get) => {
       if (roundScore !== 0) {
         updates[`players/${player.id}/totalScore`] = (player.totalScore ?? 0) + roundScore
       }
+      // Folded in alongside totalScore, never reset between rounds - the
+      // running totals computeCumulativeTitles reads to build the Final
+      // Scoretable award cards once every pre-committed round is done.
+      const { sum: ratingSum, count: ownedSongCount } = ownSongRatingStats(round, player.id)
+      updates[`players/${player.id}/cumulativeCorrectGuesses`] =
+        (player.cumulativeCorrectGuesses ?? 0) + countCorrectGuesses(round, player.id)
+      updates[`players/${player.id}/cumulativeRatingSum`] = (player.cumulativeRatingSum ?? 0) + ratingSum
+      updates[`players/${player.id}/cumulativeOwnedSongCount`] =
+        (player.cumulativeOwnedSongCount ?? 0) + ownedSongCount
+      updates[`players/${player.id}/cumulativeGuessedByOthersCount`] =
+        (player.cumulativeGuessedByOthersCount ?? 0) + countGuessedByOthers(round, player.id)
     }
     if (Object.keys(updates).length > 0) {
       // Awaited (not fire-and-forget) so a caller that awaits
@@ -317,6 +377,7 @@ export const useGameStore = create<GameState>((set, get) => {
     selectedCategoryIds: [],
     roundMode: 'short',
     shortModeCapSeconds: DEFAULT_SHORT_MODE_CAP_SECONDS,
+    totalRounds: DEFAULT_TOTAL_ROUNDS,
     songs: [],
     guesses: [],
     ratings: [],
@@ -490,6 +551,7 @@ export const useGameStore = create<GameState>((set, get) => {
         selectedCategoryIds: [],
         roundMode: 'short',
         shortModeCapSeconds: DEFAULT_SHORT_MODE_CAP_SECONDS,
+        totalRounds: DEFAULT_TOTAL_ROUNDS,
         songs: [],
         guesses: [],
         ratings: [],
@@ -534,6 +596,12 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode } = get()
       if (!roomCode) return
       dbUpdate(ref(db, `games/${roomCode}`), { shortModeCapSeconds: seconds })
+    },
+
+    chooseTotalRounds: (rounds) => {
+      const { roomCode } = get()
+      if (!roomCode) return
+      dbUpdate(ref(db, `games/${roomCode}`), { totalRounds: rounds })
     },
 
     startSubmitting: () => {
@@ -663,6 +731,8 @@ export const useGameStore = create<GameState>((set, get) => {
       dbUpdate(ref(db, `games/${roomCode}`), { phase: 'results' })
       trackEvent('round_completed')
     },
+
+    applyFinalRoundScores: () => applyRoundScoresIfNeeded(),
 
     returnToLobby: () => {
       const { roomCode, localPlayerId } = get()
