@@ -19,7 +19,7 @@ import type { Player } from '../types'
 const CUMULATIVE_TITLE_META: Record<string, { icon: AwardIconKind; subtitle: string }> = {
   'Music Mind Reader': { icon: 'music-mind-reader', subtitle: 'Most correct guesses' },
   'Best Taste': { icon: 'best-taste', subtitle: 'Highest average rating' },
-  'Master of Disguise': { icon: 'master-of-disguise', subtitle: 'Fewest correct guesses' },
+  'Master of Disguise': { icon: 'master-of-disguise', subtitle: 'Fewest people guessed correctly' },
   'Most Predictable': { icon: 'most-predictable', subtitle: 'Everyone guessed correctly' },
   'Musical Criminal': { icon: 'musical-criminal', subtitle: 'Lowest-rated song' },
 }
