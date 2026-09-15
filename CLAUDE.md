@@ -378,12 +378,25 @@ Kom skýrt í ljós í alvöru spilun/playtesti: nokkrir alvöru production-bög
 - `src/components/ErrorFallback.tsx` + `SentryErrorBoundary` (`Sentry.ErrorBoundary`) vefur `<App />` í `main.tsx` — ef eitthvað hrynur í rendering sér notandinn núna „Something went wrong... Reload" í staðinn fyrir tóman hvítan skjá (sem er versta mögulega bilunin mitt í samkvæmisleik).
 - `VITE_SENTRY_DSN` bætt við `.env.example` og `.github/workflows/deploy.yml` (sama mynstur og hinir `VITE_*` lyklarnir).
 
-### ÞARF AÐGERÐ UTAN KÓÐA — Sentry-verkefni + DSN
-Villuvöktunin er þar til „off" í praxís (appið virkar nákvæmlega eins, bara engin villuskýrsla send) þangað til:
-1. Stofna ókeypis aðgang á sentry.io, nýtt verkefni (velja „React" sem platform).
-2. Afrita DSN-slóðina sem verkefnið gefur (lítur út eins og `https://xxxxx@yyyyy.ingest.sentry.io/zzzzz`).
-3. GitHub repo → Settings → Secrets and variables → Actions → nýtt „Repository secret" með nafninu `VITE_SENTRY_DSN`, gildið er DSN-slóðin.
-4. Næsta push/deploy tekur breytinguna upp sjálfkrafa (sama og hin GitHub Secrets-skrefin).
+### Staða — útfært og staðfest virkt
+`VITE_SENTRY_DSN` GitHub Secret komið inn (Sentry-verkefni „Music Mind Reader" stofnað, org tengt við GitHub repo-ið fyrir stack-trace-samhengi). Staðfest með beinni prófun á lifandi síðunni (tímabundinn `window.__forceCrash` krókur, fjarlægður strax aftur): villa send á lifandi DSN-slóð, Sentry svaraði 200, tölvupóstur barst með fullum stack trace, `environment: production` rétt merkt. Villuvöktunin er raunverulega í gangi, ekki bara uppsett.
+
+Þekkt smáatriði: stack trace sýnir minified fallanöfn (t.d. `Zh`, `pT`) af því engin „source maps" eru uppi hlaðin — lagfæranlegt seinna meir (valfrjálst „Upload Source Maps" skref í Sentry-uppsetningunni) ef það verður til ama, ekki forgangsmál.
+
+## Notkunargögn — GoatCounter funnel-atburðir (viðbót við CLAUDE.md)
+
+### Vandamál sem leyst er
+GoatCounter (`index.html` script-taggið, þegar til frá áður) telur bara hráar síðuhleðslur — af því appið er einnar-síðu app sem skiptir um skjái án endurhleðslu, sér það EKKI muninn á einhverjum sem opnar hlekkinn og fer strax út, og hópi sem spilar heilan leik til enda. Spurningin „eru gestir í alvöru að spila leikinn" var ósvarandi með gömlu uppsetningunni.
+
+### Staða — útfært
+- `src/analytics.ts`: `trackEvent(name)` — kallar `window.goatcounter.count({ path: name, event: true })` ef scriptið er til staðar (no-op annars, t.d. ef auglýsingablokkari lokar á það — greiningar mega aldrei sjálfar brjóta leikinn).
+- Fjórir lykil-atburðir bætt við `gameStore.ts`, hver á sínum eina rétta stað (kallað af einu tæki per raunverulegan atburð, ekki endurtekið á hverju tengdu tæki):
+  - `game_created` — `createGame()` tekst
+  - `game_joined` — `joinGame()` skilar `'ok'` (bæði glænýr spilari og endurtenging)
+  - `round_started` — host ýtir „Start Submitting Songs" (`startSubmitting()`)
+  - `round_completed` — host ýtir „See Results" (`finishRound()`)
+- Sama GoatCounter-þjónusta og var þegar til — engin ný utanaðkomandi þjónusta, ekkert nýtt kvóta-vandamál til að vakta.
+- Skoðað í GoatCounter-mælaborðinu undir „Events" — gefur „funnel": hlutfall gesta sem stofna leik → fá einhvern til að joina → byrja umferð → klára umferð.
 
 -------------------------
 Ideas going forward:

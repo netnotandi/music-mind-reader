@@ -9,6 +9,7 @@ import {
   update as dbUpdate,
 } from 'firebase/database'
 import { create } from 'zustand'
+import { trackEvent } from '../analytics'
 import { db } from '../firebase'
 import { computeCascade } from '../logic/ratingCascade'
 import { computeFinalScores } from '../logic/scoring'
@@ -342,6 +343,7 @@ export const useGameStore = create<GameState>((set, get) => {
       })
       saveSession(roomCode, playerId)
       attachListener(roomCode, playerId)
+      trackEvent('game_created')
       return roomCode
     },
 
@@ -393,6 +395,7 @@ export const useGameStore = create<GameState>((set, get) => {
           }).catch(() => {})
           saveSession(roomCode, existingPlayerId)
           attachListener(roomCode, existingPlayerId)
+          trackEvent('game_joined')
           return 'ok'
         }
       }
@@ -409,6 +412,7 @@ export const useGameStore = create<GameState>((set, get) => {
       })
       saveSession(roomCode, playerId)
       attachListener(roomCode, playerId)
+      trackEvent('game_joined')
       return 'ok'
     },
 
@@ -532,6 +536,7 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode } = get()
       if (!roomCode) return
       dbUpdate(ref(db, `games/${roomCode}`), { phase: 'submit' })
+      trackEvent('round_started')
     },
 
     submitSong: (categoryId, title, artist, youtubeVideoId, youtubeTitle) => {
@@ -652,6 +657,7 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode } = get()
       if (!roomCode) return
       dbUpdate(ref(db, `games/${roomCode}`), { phase: 'results' })
+      trackEvent('round_completed')
     },
 
     returnToLobby: () => {
