@@ -92,6 +92,10 @@ function AppRoutes() {
 }
 
 function App() {
+  // TEMP TEST HOOK - reverted immediately after confirming Sentry receives it
+  if ((window as unknown as { __forceCrash?: boolean }).__forceCrash) {
+    throw new Error('Sentry setup verification - forced test crash')
+  }
   const resumeSession = useGameStore((s) => s.resumeSession)
   const [checkedSession, setCheckedSession] = useState(false)
 
