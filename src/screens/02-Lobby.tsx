@@ -18,6 +18,7 @@ export function Lobby() {
   const phase = useGameStore((s) => s.phase)
   const lobbyReadyPlayerIds = useGameStore((s) => s.lobbyReadyPlayerIds)
   const startRoundSetup = useGameStore((s) => s.startRoundSetup)
+  const startNewGame = useGameStore((s) => s.startNewGame)
   const leaveGame = useGameStore((s) => s.leaveGame)
   const navigate = useNavigate()
 
@@ -141,6 +142,20 @@ export function Lobby() {
         <div className="rounded-xl border border-border bg-surface-muted px-4 py-4 text-center text-text-secondary">
           Waiting for everyone to head back to the Lobby...
         </div>
+      ) : gameFinished ? (
+        isHost ? (
+          <button
+            type="button"
+            onClick={startNewGame}
+            className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
+          >
+            New Game
+          </button>
+        ) : (
+          <div className="rounded-xl border border-border bg-surface-muted px-4 py-4 text-center text-text-secondary">
+            Waiting for the host to start a new game...
+          </div>
+        )
       ) : isHost ? (
         <button
           type="button"

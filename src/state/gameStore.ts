@@ -111,6 +111,12 @@ interface GameState {
   chooseCategories: (categoryIds: string[]) => void
   // Host only: Lobby ("is everyone here?") -> Game Setup (round config).
   startRoundSetup: () => void
+  // Host only, shown in the Lobby once the pre-committed round count has
+  // been fully played: wipes totalScore and every cumulative counter back
+  // to 0 for every player and resets roundsCompleted, so the SAME room
+  // (same code, same players) can play an entirely fresh game rather than
+  // everyone having to leave and re-join a new one.
+  startNewGame: () => void
   // Host only: back out of Game Setup to the Lobby - reopens joining (the
   // join gate is `phase === 'lobby'`); a picked category is left as-is.
   backToLobby: () => void
@@ -578,6 +584,37 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode } = get()
       if (!roomCode) return
       dbUpdate(ref(db, `games/${roomCode}`), { phase: 'setup' })
+    },
+
+    startNewGame: () => {
+      const { roomCode, players } = get()
+      if (!roomCode) return
+      const updates: Record<string, unknown> = {
+        phase: 'lobby',
+        songs: null,
+        guesses: null,
+        ratings: null,
+        songOrder: null,
+        currentSongIndex: 0,
+        roundPlaythroughDone: null,
+        selectedCategoryIds: null,
+        finalConfirmations: null,
+        lobbyReady: null,
+        roundScoresApplied: null,
+        roundsCompleted: 0,
+        // roundMode/shortModeCapSeconds/totalRounds are left as-is - same
+        // "persists as the group's preference" treatment as between
+        // ordinary rounds; the host can still change totalRounds since
+        // Game Setup only locks it once roundsCompleted > 0.
+      }
+      for (const player of players) {
+        updates[`players/${player.id}/totalScore`] = 0
+        updates[`players/${player.id}/cumulativeCorrectGuesses`] = 0
+        updates[`players/${player.id}/cumulativeRatingSum`] = 0
+        updates[`players/${player.id}/cumulativeOwnedSongCount`] = 0
+        updates[`players/${player.id}/cumulativeGuessedByOthersCount`] = 0
+      }
+      dbUpdate(ref(db, `games/${roomCode}`), updates)
     },
 
     backToLobby: () => {
