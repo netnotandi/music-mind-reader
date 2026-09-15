@@ -255,6 +255,23 @@ export function NowPlayingPlayer({
               pendingAudioRef.current = true
               startPoll(player)
               setCovered(false)
+              // Autoplay-with-sound (the host's default) is blocked outright
+              // by some browsers' media policies rather than just muted -
+              // seen for real in DuckDuckGo's browser, where the very first
+              // song of a round loaded but never started until the host
+              // pressed play manually. The crossfade effect below already
+              // nudges every SUBSEQUENT song this way; this is the same
+              // check for the first video the player ever loads.
+              window.setTimeout(() => {
+                try {
+                  const state = player?.getPlayerState()
+                  if (state !== YTns.PlayerState.PLAYING && state !== YTns.PlayerState.BUFFERING) {
+                    player?.playVideo()
+                  }
+                } catch {
+                  // player gone
+                }
+              }, 1200)
             }
           },
           onStateChange: (e) => {

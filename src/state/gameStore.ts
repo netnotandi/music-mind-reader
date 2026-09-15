@@ -289,7 +289,11 @@ export const useGameStore = create<GameState>((set, get) => {
       }
     }
     if (Object.keys(updates).length > 0) {
-      dbUpdate(ref(db, `games/${roomCode}`), updates)
+      // Awaited (not fire-and-forget) so a caller that awaits
+      // applyRoundScoresIfNeeded() - see finalizeRoundIfReady below - can
+      // rely on the score computation having actually finished reading
+      // songs/guesses/ratings before doing anything that might clear them.
+      await dbUpdate(ref(db, `games/${roomCode}`), updates)
     }
   }
 
@@ -679,12 +683,20 @@ export const useGameStore = create<GameState>((set, get) => {
     // on each other, so redundant calls converge to one outcome instead of
     // double-applying anything. Scores themselves are normally already
     // applied by returnToLobby's early call - applyRoundScoresIfNeeded here
-    // is just a no-op-if-already-done fallback.
-    finalizeRoundIfReady: () => {
+    // is just a no-op-if-already-done fallback. MUST be awaited before the
+    // reset below: with a single player (or whenever the last player to
+    // click "Go to Lobby" is also the one completing the ready-set), this
+    // fires in the very same tick as returnToLobby's own early call - if
+    // the reset's songs/guesses/ratings: null landed first, the score
+    // computation would read already-emptied round data and compute
+    // everyone at 0, silently skipping the totalScore write entirely
+    // (reproduced live: Results showed +5, the Lobby right after showed
+    // the total unchanged at 0).
+    finalizeRoundIfReady: async () => {
       const { roomCode, phase, players, roundsCompleted, lobbyReadyPlayerIds } = get()
       if (!roomCode || phase !== 'results' || players.length === 0) return
       if (lobbyReadyPlayerIds.length < players.length) return
-      applyRoundScoresIfNeeded()
+      await applyRoundScoresIfNeeded()
       const updates: Record<string, unknown> = {
         phase: 'lobby',
         songs: null,

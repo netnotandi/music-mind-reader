@@ -129,6 +129,8 @@ Sjálf stigaútreikningsrökin í `scoring.ts` fyrir eina umferð breytast ekki 
 
 Niðurstaðan: sá sem ýtir fyrstur sér uppfærða heildarstigatölu sína um leið og hann lendir í lobby-inu, í stað þess að bíða eftir öllum hinum.
 
+**Böggur sem kom upp í alvöru spilun (fannst og lagað sama kvöld):** einn spilari, Results sýndi „+5 stig" (enginn gat giskað á hann), en Lobby-inn rétt á eftir sýndi 0. Rótin: `finalizeRoundIfReady` kallaði `applyRoundScoresIfNeeded()` án þess að BÍÐA eftir henni áður en hún hélt áfram með sjálfa umferðar-núllstillinguna (`songs`/`guesses`/`ratings: null`). Með einum spilara (eða hvenær sem síðasti spilarinn til að ýta á „Go to Lobby" er sá sami og klárar „allir tilbúnir" skilyrðið) gerast bæði kallið úr `returnToLobby()` OG núllstillingin úr `finalizeRoundIfReady()` nánast samtímis á sama tæki — ef núllstillingin nær að skrifa `null` yfir umferðargögnin ÁÐUR en stigaútreikningurinn nær að lesa þau, reiknast allir með 0 stig og EKKERT skrifast (því `roundScore !== 0` skilyrðið sleppir núll-breytingum). Lagað: `finalizeRoundIfReady` er núna `async` og `await`-ar `applyRoundScoresIfNeeded()` (sem sjálf `await`-ar núna líka sína eigin `totalScore`-skrifun) áður en hún snertir umferðargögnin.
+
 
 
 ## Lagaspilun í appinu (viðbót við CLAUDE.md — næsta stóra skref EFTIR að fjölspilun er staðfest í loftinu)
@@ -253,6 +255,8 @@ Hljóðstyrkur: eigin volume-slaufa + 🔊/🔇 toggle undir spilaranum (`setVol
 Þekkt: fjar-spilarar eru ekki sekúndu-samstilltir við host (hvert tæki spilar sitt eintak frá 0 þegar lag hleðst) — nóg fyrir „fylgjast með", ekki fyrir nákvæma samspilun.
 
 **Aldursbundin/embed-bönnuð myndbönd** (kom upp í alvöru spilun — handvirkur hlekkur á aldursbundið YouTube-myndband): YouTube leyfir alls ekki að fella slík myndbönd inn (`onError`, kóði 101/150 = embedding disallowed by owner, 100 = fjarlægt/prívat) — ekkert sem appið getur gert til að þvinga þau til að spilast, þetta er hörð YouTube-takmörkun. `onError` er núna meðhöndlað: `videoError` state hylur spilarann aftur með eigin skilaboðum („⚠️ This video can't play here... Tap Skip song" fyrir host, „...Waiting for the host to skip it" fyrir aðra) í stað þess að skilja YouTube-eigin villuskjá (rautt „Sorry, this content is age-restricted") standa óútskýrðan. `advanceGroup()`/tímamælingin fá aldrei atburði fyrir svona lag (hvorki `PLAYING` né `ENDED`), svo eina leiðin áfram er handvirkt „Skip song →" — sem virkar óháð spilarastöðu, þannig hópurinn festist ekki, en þarf samt að vita AÐ hann eigi að ýta á hann, sem er einmitt það sem nýja skilaboðin leysa.
+
+**Sjálfvirk spilun blokkeruð af vafra (kom upp í alvöru spilun — DuckDuckGo-vafrinn):** host-tækið er sjálfgefið óþaggað (`soundOn: true`), en sumir vafrar (staðfest: DuckDuckGo) leyfa alls ekki sjálfvirka spilun MEÐ HLJÓÐI yfir höfuð — lagið hlóðst inn en spilaðist aldrei sjálfkrafa, host þurfti að ýta handvirkt á Play. Kross-blendinga-effect-ið (skiptin milli laga) hafði nú þegar svona „nudge" (kallar `playVideo()` handvirkt ef staðan er ekki þegar PLAYING/BUFFERING 1,2 sek eftir hleðslu) fyrir ÖLL lög EFTIR það fyrsta — en `onReady`-höndlarinn fyrir allra FYRSTA lagið sem spilarinn hleður hafði þetta bara fyrir þögguðu (follower) greinina, ekki fyrir host-greinina. Lagað: sama „nudge"-athugun bætt við `onReady` fyrir bæði tilvik, svo fyrsta lagið fái sömu vörn og öll hin.
 
 
 ## Lobby og Game Setup aðskilin (viðbót við CLAUDE.md)
