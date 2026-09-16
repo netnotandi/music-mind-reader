@@ -444,6 +444,31 @@ Ideas going forward:
 * Notkunargögn + villuvöktun (t.d. Sentry) áður en notendahópurinn stækkar
 ---------------------------
 
+## Textaspjall fyrir fjarspilun (viðbót við CLAUDE.md)
+
+### Af hverju
+Ef allir spilarar eru í sama herbergi tala þeir bara saman upphátt — spjall-eiginleiki í appinu væri þar bara truflandi klúður á skjánum. En ef einhver er ekki á staðnum (fjarspilun) þarf hann leið til að vera hluti af stemningunni. Þess vegna er spjallið EKKI alltaf til staðar, heldur skilyrt.
+
+### Virkjun
+Í Game Setup er valkostur „fjarspilun" sem leikstjóri (eða hver sem er) merkir við ef einhver í hópnum er ekki á staðnum. Sé hann virkjaður birtist fljótandi spjall-tákn neðst á skjánum fyrir alla í leiknum. Sé hann EKKI virkjaður er ekkert spjall-tákn til staðar.
+
+### Hegðun táknsins
+- Táknið opnar og lokar spjallinu — sami takki er notaður fyrir bæði (toggle), ekkert sér-lokunartákn.
+- Þegar ný, ólesin skilaboð berast verður táknið RAUTT.
+- Um leið og notandi OPNAR spjallið hreinsast rauða merkið hjá honum (staðfestir að hann hafi séð skilaboðin).
+
+### Umfang og geymsla
+- Hreint TEXTASPJALL — ekki raddspjall/myndspjall. Byggt á sama Firebase Realtime Database-mynstri og annað í leiknum (players/submissions/guesses), t.d. `games/{roomCode}/chat/{messageId}` með sendanda, texta og tímastimpli.
+- Spjallið er bundið við lobby-ið sjálft (sama `roomCode`-tré), ekki einstaka umferð eða lag. Spjallsagan lifir þar til allir eru farnir úr lobbyinu — hverfur ekki á milli umferða eða þegar skipt er um skjái innan sama leiks.
+
+### Staðsetning/UX
+Spjallið opnast sem létt yfirlag (ekki fullur skjár sem tekur yfir), svo það trufli hvorki Now Playing né giskun/einkunnagjöf — í takt við regluna um að tónlistin/framvindan má aldrei stoppa.
+
+### Staða — útfært
+- Gagnalíkan (`gameStore.ts`/`types.ts`): `remotePlayEnabled: boolean` og `chatMessages`/`chatLastRead` á `games/{roomCode}` — `chat/{messageId}` (senderId/senderName/text/timestamp) og `chatLastRead/{playerId}` (tímastimpill síðasta lesturs hvers spilara). `sendChatMessage(text)` sker á `MAX_CHAT_MESSAGE_LENGTH` (500), hunsar tómt/whitespace-only, og skrifar bæði nýja skilaboðið OG sendandans eigin `chatLastRead` í einni `update()` (sendandi telst sjálfur búinn að lesa sitt eigið skilaboð). `markChatRead()` uppfærir bara kallandans eigin `chatLastRead`.
+- **Virkjun**: „Remote play" pillu-valkostur (Off/On) á Game Setup, fyrir NEÐAN „Number of rounds" — ólæst, breytanlegt af HVERJUM SEM ER (ekki bara host) í HVERRI umferð, ólíkt „Round length"/„Number of rounds" sem læsast eftir fyrstu umferð.
+- **`src/components/ChatOverlay.tsx`**: fljótandi tákn (`fixed bottom-4 right-4`, sami stíll og hamborgari/CODE-merkimiði í hinum hornunum) — sjálf-gagnrýnt á `roomCode && remotePlayEnabled`, birtist því hvergi nema fjarspilun sé virkjuð, en þá á ÖLLUM skjám (mounted í `App.tsx` við hlið `MenuOverlay`/`RoomCodeBadge`). Rautt (`border-danger bg-danger`) þegar nýjasta skilaboðið er yngra en notandans eigin `chatLastRead`; hreinsast um leið og hann OPNAR spjallið (`markChatRead()` kallað beint í smell-höndlara, ekki inni í `setIsOpen`-uppfærslufalli — að kalla state-breytandi hliðarverkun þar olli „Cannot update a component while rendering a different component" villu í React, fannst og lagað í þessari yfirferð). Yfirlagið sjálft (`bottom-20 right-4`, `h-96 w-80`) er lítið spjald, ekki fullur skjár — listi með skilaboðum (eigin hægra megin/primary-litur, annarra vinstra megin með nafni fyrir ofan) + textainnslátur.
+- Prófað með Playwright (host + guest, tveir aðskildir `BrowserContext`): tákn ósýnilegt fyrir virkjun, birtist báðum megin um leið og host kveikir á „Remote play", skilaboð frá host birtast hjá guest með rauðu-merki þar til guest opnar spjallið (hreinsast þá), guest svarar í gegnum alvöru UI-innslátt (ekki bara store-köll), host sér svarið og rauða merkið hreinsast þegar hann opnar. Tákn hverfur báðum megin þegar „Remote play" er slökkt aftur.
 
 
 

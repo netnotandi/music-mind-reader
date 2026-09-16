@@ -18,10 +18,15 @@ import {
   countGuessedByOthers,
   ownSongRatingStats,
 } from '../logic/scoring'
-import type { Category, Guess, Player, Rating, Song } from '../types'
+import type { Category, ChatMessage, Guess, Player, Rating, Song } from '../types'
 import { CATEGORIES } from './mockData'
 
 export const MAX_SELECTED_CATEGORIES = 1
+
+// Kept short and forgiving rather than strictly enforced server-side (no
+// auth to enforce anything against anyway) - just enough to stop one
+// message from dominating the small floating chat panel.
+export const MAX_CHAT_MESSAGE_LENGTH = 500
 
 // Slots in the lobby are organic - the host is never asked a player count,
 // the room just grows as people join. This is the only gate on starting a
@@ -86,6 +91,16 @@ interface GameState {
   // Chosen once at the first Game Setup - how many rounds this game runs
   // for in total, not how many have been played (see roundsCompleted).
   totalRounds: TotalRounds
+  // Toggleable on Game Setup by ANYONE (not host-gated, unlike every other
+  // setting there) on any round - not a one-time choice, since who's
+  // playing remotely can change round to round. Governs whether the
+  // floating chat button exists in the room at all.
+  remotePlayEnabled: boolean
+  chatMessages: ChatMessage[]
+  // playerId -> the timestamp of the last message that player has opened
+  // the chat panel to see - compared against the latest message's
+  // timestamp to decide whose chat button should show red.
+  chatLastRead: Record<string, number>
   songs: Song[]
   guesses: Guess[]
   ratings: Rating[]
@@ -139,6 +154,16 @@ interface GameState {
   // === 0) - how many rounds this game will run for. Live-synced like the
   // other Game Setup pickers.
   chooseTotalRounds: (rounds: TotalRounds) => void
+  // From Game Setup, but deliberately NOT gated to the host - anyone can
+  // flip this on/off on any round, since who's joining remotely can change
+  // round to round and the host might not always be the one to notice.
+  setRemotePlayEnabled: (enabled: boolean) => void
+  // Only meaningful while remotePlayEnabled is on. Trimmed/length-capped
+  // client-side; empty messages are dropped rather than sent.
+  sendChatMessage: (text: string) => void
+  // Marks every message sent so far as read by this player - called when
+  // they open the chat panel.
+  markChatRead: () => void
   startSubmitting: () => void
   submitSong: (
     categoryId: string,
@@ -236,6 +261,9 @@ interface RoomRecord {
   roundMode?: RoundMode
   shortModeCapSeconds?: number
   totalRounds?: number
+  remotePlayEnabled?: boolean
+  chat?: Record<string, { senderId: string; senderName: string; text: string; timestamp: number }>
+  chatLastRead?: Record<string, number>
   currentSongIndex?: number
   songOrder?: string[]
   roundPlaythroughDone?: boolean
@@ -289,6 +317,9 @@ function parseRoom(data: RoomRecord) {
   const songs: Song[] = Object.entries(data.songs ?? {}).map(([id, s]) => ({ id, ...s }))
   const guesses: Guess[] = Object.values(data.guesses ?? {})
   const ratings: Rating[] = Object.values(data.ratings ?? {})
+  const chatMessages: ChatMessage[] = Object.entries(data.chat ?? {})
+    .map(([id, m]) => ({ id, ...m }))
+    .sort((a, b) => a.timestamp - b.timestamp)
 
   return {
     hostId: data.hostId ?? null,
@@ -304,6 +335,9 @@ function parseRoom(data: RoomRecord) {
     totalRounds: (TOTAL_ROUNDS_OPTIONS as readonly number[]).includes(data.totalRounds ?? -1)
       ? (data.totalRounds as TotalRounds)
       : DEFAULT_TOTAL_ROUNDS,
+    remotePlayEnabled: data.remotePlayEnabled ?? false,
+    chatMessages,
+    chatLastRead: data.chatLastRead ?? {},
     songs,
     guesses,
     ratings,
@@ -395,6 +429,9 @@ export const useGameStore = create<GameState>((set, get) => {
     roundMode: 'short',
     shortModeCapSeconds: DEFAULT_SHORT_MODE_CAP_SECONDS,
     totalRounds: DEFAULT_TOTAL_ROUNDS,
+    remotePlayEnabled: false,
+    chatMessages: [],
+    chatLastRead: {},
     songs: [],
     guesses: [],
     ratings: [],
@@ -569,6 +606,9 @@ export const useGameStore = create<GameState>((set, get) => {
         roundMode: 'short',
         shortModeCapSeconds: DEFAULT_SHORT_MODE_CAP_SECONDS,
         totalRounds: DEFAULT_TOTAL_ROUNDS,
+        remotePlayEnabled: false,
+        chatMessages: [],
+        chatLastRead: {},
         songs: [],
         guesses: [],
         ratings: [],
@@ -596,6 +636,9 @@ export const useGameStore = create<GameState>((set, get) => {
         roundMode: 'short',
         shortModeCapSeconds: DEFAULT_SHORT_MODE_CAP_SECONDS,
         totalRounds: DEFAULT_TOTAL_ROUNDS,
+        remotePlayEnabled: false,
+        chatMessages: [],
+        chatLastRead: {},
         songs: [],
         guesses: [],
         ratings: [],
@@ -692,6 +735,36 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode } = get()
       if (!roomCode) return
       dbUpdate(ref(db, `games/${roomCode}`), { totalRounds: rounds })
+    },
+
+    setRemotePlayEnabled: (enabled) => {
+      const { roomCode } = get()
+      if (!roomCode) return
+      dbUpdate(ref(db, `games/${roomCode}`), { remotePlayEnabled: enabled })
+    },
+
+    sendChatMessage: (text) => {
+      const { roomCode, localPlayerId, players } = get()
+      if (!roomCode || !localPlayerId) return
+      const trimmed = text.trim().slice(0, MAX_CHAT_MESSAGE_LENGTH)
+      if (!trimmed) return
+      const sender = players.find((p) => p.id === localPlayerId)
+      const messageId = crypto.randomUUID()
+      dbUpdate(ref(db, `games/${roomCode}`), {
+        [`chat/${messageId}`]: {
+          senderId: localPlayerId,
+          senderName: sender?.name ?? 'Unknown',
+          text: trimmed,
+          timestamp: Date.now(),
+        },
+        [`chatLastRead/${localPlayerId}`]: Date.now(),
+      })
+    },
+
+    markChatRead: () => {
+      const { roomCode, localPlayerId } = get()
+      if (!roomCode || !localPlayerId) return
+      dbUpdate(ref(db, `games/${roomCode}`), { [`chatLastRead/${localPlayerId}`]: Date.now() })
     },
 
     startSubmitting: () => {

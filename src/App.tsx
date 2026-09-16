@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { ChatOverlay } from './components/ChatOverlay'
 import { InAppBrowserBanner } from './components/InAppBrowserBanner'
 import { MenuOverlay } from './components/MenuOverlay'
 import { RoomCodeBadge } from './components/RoomCodeBadge'
@@ -130,6 +131,7 @@ function App() {
         <InAppBrowserBanner />
         <MenuOverlay />
         <RoomCodeBadge />
+        <ChatOverlay />
         {checkedSession && <AppRoutes />}
       </HashRouter>
     </div>

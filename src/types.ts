@@ -39,3 +39,15 @@ export interface Rating {
   raterId: string
   value: number // 0 to (songs in the category - 2), set per round
 }
+
+// Only exists in the room at all while remotePlayEnabled is on (see the
+// "Textaspjall fyrir fjarspilun" spec) - scoped to the whole lobby
+// (`games/{roomCode}/chat`), not per-round, so history survives round
+// resets and only disappears when the room itself does.
+export interface ChatMessage {
+  id: string
+  senderId: string
+  senderName: string
+  text: string
+  timestamp: number
+}

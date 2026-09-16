@@ -43,10 +43,12 @@ export function GameSetup() {
   const shortModeCapSeconds = useGameStore((s) => s.shortModeCapSeconds)
   const totalRounds = useGameStore((s) => s.totalRounds)
   const roundsCompleted = useGameStore((s) => s.roundsCompleted)
+  const remotePlayEnabled = useGameStore((s) => s.remotePlayEnabled)
   const chooseCategories = useGameStore((s) => s.chooseCategories)
   const chooseRoundMode = useGameStore((s) => s.chooseRoundMode)
   const chooseShortModeCap = useGameStore((s) => s.chooseShortModeCap)
   const chooseTotalRounds = useGameStore((s) => s.chooseTotalRounds)
+  const setRemotePlayEnabled = useGameStore((s) => s.setRemotePlayEnabled)
   const startSubmitting = useGameStore((s) => s.startSubmitting)
   const backToLobby = useGameStore((s) => s.backToLobby)
 
@@ -149,6 +151,38 @@ export function GameSetup() {
             Playing {totalRounds} round{totalRounds === 1 ? '' : 's'}
           </p>
         )}
+      </section>
+
+      <section className="mb-8">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary">
+          Remote play
+        </h2>
+        <div className="flex gap-2">
+          {[
+            { value: false, label: 'Off' },
+            { value: true, label: 'On' },
+          ].map(({ value, label }) => {
+            const active = value === remotePlayEnabled
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setRemotePlayEnabled(value)}
+                className={`flex-1 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition ${
+                  active
+                    ? 'border-primary bg-primary-soft text-primary'
+                    : `border-border text-text-secondary hover:border-border-strong ${isLight ? 'bg-surface' : ''}`
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+        <p className="mt-2 text-xs text-text-muted">
+          Turn this on if someone in the group isn't physically here - a floating chat icon will
+          appear for everyone so they can stay part of it.
+        </p>
       </section>
 
       <section>
