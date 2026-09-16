@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { loadYouTubeIframeApi } from '../logic/youtube'
+import { isValidYouTubeVideoId, loadYouTubeIframeApi } from '../logic/youtube'
 
 interface NowPlayingPlayerProps {
   // The group's current song's video id, or null when it has no stored
@@ -47,13 +47,21 @@ function readStoredVolume(): number {
 // Every device renders one; only the host's drives progression and plays
 // with sound by default.
 export function NowPlayingPlayer({
-  videoId,
+  videoId: rawVideoId,
   capSeconds,
   onCap,
   onEnded,
   wrapUp,
   follower,
 }: NowPlayingPlayerProps) {
+  // A malformed id (seen for real in production - a stray edge case
+  // upstream, or old data) must never reach the IFrame Player API: it
+  // throws an uncaught "Invalid video id" exception rather than a
+  // catchable onError event, breaking playback outright instead of just
+  // that one song. Treated the same as the age-restricted/removed case
+  // below - the host skips it - rather than "no video for this song",
+  // since there WAS one, it just can't be played.
+  const videoId = rawVideoId !== null && isValidYouTubeVideoId(rawVideoId) ? rawVideoId : null
   const wrapperRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<YT.Player | null>(null)
   const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -219,7 +227,13 @@ export function NowPlayingPlayer({
     loadYouTubeIframeApi().then((YTns) => {
       if (cancelled) return
       player = new YTns.Player(host, {
-        videoId: videoId ?? undefined,
+        // Omitted entirely (not `videoId: undefined`) when there's nothing
+        // to play - passing the key at all, even with an undefined value,
+        // behaves differently in YouTube's IFrame API than the key being
+        // absent (confirmed live: `videoId: undefined` alone was enough to
+        // trigger the same "Invalid video id" exception this whole fix is
+        // for, independent of any actual bad id).
+        ...(videoId ? { videoId } : {}),
         playerVars: {
           autoplay: 1,
           playsinline: 1,
@@ -236,22 +250,29 @@ export function NowPlayingPlayer({
             if (cancelled || !player) return
             playerRef.current = player
             playingRef.current = videoId
-            setVideoError(false)
-            try {
-              if (soundOnRef.current) {
-                player.unMute()
-              } else {
-                player.mute()
-                // a gesture-less muted load can land paused - nudge it
-                player.playVideo()
-              }
-            } catch {
-              // ignore
-            }
+            setVideoError(rawVideoId !== null && videoId === null)
             if (import.meta.env.DEV) {
               ;(window as unknown as { __mmrPlayer?: YT.Player }).__mmrPlayer = player
             }
             if (videoId) {
+              // Only touch mute/playback state when a video is actually
+              // loaded - calling these with nothing cued (no video for this
+              // song, or a malformed id sanitized away above) throws an
+              // uncaught, unpromised-catchable exception deep inside
+              // YouTube's own widget script (confirmed live: reproduced the
+              // exact "Invalid video id" Sentry report this way) - the
+              // try/catch here only guards a *synchronous* throw, not that.
+              try {
+                if (soundOnRef.current) {
+                  player.unMute()
+                } else {
+                  player.mute()
+                  // a gesture-less muted load can land paused - nudge it
+                  player.playVideo()
+                }
+              } catch {
+                // ignore
+              }
               pendingAudioRef.current = true
               startPoll(player)
               setCovered(false)
@@ -347,7 +368,10 @@ export function NowPlayingPlayer({
     playingRef.current = videoId
     capFiredRef.current = false
     endedFiredRef.current = false
-    setVideoError(false)
+    // A raw id that got sanitized away (malformed) reads as "can't play
+    // this", same as an age-restricted video - a genuine null (no video
+    // for this song at all) or a valid id clears it.
+    setVideoError(rawVideoId !== null && videoId === null)
 
     setCovered(true)
     fadeVolume(player, 0, () => {
@@ -380,7 +404,7 @@ export function NowPlayingPlayer({
         // leave the overlay up with its caption
       }
     })
-  }, [videoId])
+  }, [videoId, rawVideoId])
 
   function persistSoundOn(on: boolean) {
     try {

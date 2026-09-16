@@ -209,3 +209,15 @@ export function extractYouTubeVideoId(input: string): string | null {
   if (/^[\w-]{11}$/.test(trimmed)) return trimmed
   return null
 }
+
+// A real YouTube video ID is always exactly 11 characters from this
+// alphabet - checked right before handing a stored videoId to the IFrame
+// Player API (NowPlayingPlayer.tsx), since the API itself throws an
+// uncaught "Invalid video id" exception (seen for real in production,
+// breaking playback for everyone) rather than a catchable onError event for
+// a malformed one. Whatever produced the bad value (a stray edge case in
+// the manual-link fallback, old data, ...) doesn't matter here - this is
+// the last line of defense before it reaches YouTube's own code.
+export function isValidYouTubeVideoId(id: string): boolean {
+  return /^[\w-]{11}$/.test(id)
+}
