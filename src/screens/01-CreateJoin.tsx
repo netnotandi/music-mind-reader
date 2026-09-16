@@ -86,22 +86,24 @@ export function CreateJoin() {
           )}
           {isLight ? (
             <input
+              type="search"
               className="w-full rounded-full border border-border-strong bg-surface px-5 py-3 text-center text-sm text-text placeholder:text-placeholder"
               placeholder="Enter your name"
               maxLength={MAX_NAME_LENGTH}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              autoComplete="new-password"
+              autoComplete="off"
             />
           ) : (
             <div className="rounded-full bg-gradient-to-r from-cyan via-violet to-pink p-[1.5px]">
               <input
+                type="search"
                 className="w-full rounded-full bg-surface px-5 py-3 text-center text-sm text-text placeholder:text-text-muted"
                 placeholder="Enter your name"
                 maxLength={MAX_NAME_LENGTH}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                autoComplete="new-password"
+                autoComplete="off"
               />
             </div>
           )}

@@ -98,12 +98,12 @@ export function ChatOverlay() {
 
           <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-border p-2">
             <input
-              type="text"
+              type="search"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Message..."
               className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-border-strong focus:outline-none"
-              autoComplete="new-password"
+              autoComplete="off"
             />
             <button
               type="submit"

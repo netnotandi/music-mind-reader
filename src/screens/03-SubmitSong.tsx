@@ -244,6 +244,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
                 : `Couldn't find a YouTube video for "${describeSong(title, artist)}". Paste a direct YouTube link instead.`}
           </p>
           <input
+            type="search"
             className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
             placeholder="https://youtube.com/watch?v=..."
             value={manualLink}
@@ -251,7 +252,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
               setManualLink(e.target.value)
               setLinkError(null)
             }}
-            autoComplete="new-password"
+            autoComplete="off"
           />
           {linkError && <p className="text-sm text-danger">{linkError}</p>}
           <button
@@ -272,18 +273,20 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
         <form className="mb-6 flex flex-col gap-3" onSubmit={handleSearch}>
           <p className="text-xs text-text-muted">Enter the title, the artist, or both.</p>
           <input
+            type="search"
             className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
             placeholder="Song title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            autoComplete="new-password"
+            autoComplete="off"
           />
           <input
+            type="search"
             className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
             placeholder="Artist"
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
-            autoComplete="new-password"
+            autoComplete="off"
           />
           <button
             type="submit"
