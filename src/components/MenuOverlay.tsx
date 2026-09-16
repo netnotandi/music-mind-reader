@@ -23,6 +23,50 @@ const ABOUT_PARAGRAPHS = [
   'This web version makes all of that effortless. My hope is that it can finally reach the audience we always thought it deserved, so other people can enjoy it too.',
 ]
 
+// Host-only, reachable from any screen (the menu is globally mounted) - for
+// exactly the situation that prompted this: a stray/duplicate row (someone
+// double-joined) or a player who's genuinely gone and isn't coming back,
+// with no way to tidy that up otherwise. Uses the same kickPlayer action
+// regardless of where in the game this is - safe to fully remove a row
+// pre-first-round, otherwise just marks it out of the way (see
+// kickPlayer in gameStore.ts).
+function PlayersPanel() {
+  const players = useGameStore((s) => s.players)
+  const hostId = useGameStore((s) => s.hostId)
+  const kickPlayer = useGameStore((s) => s.kickPlayer)
+
+  return (
+    <div>
+      <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-success">Players</h3>
+      <p className="mb-3 text-xs text-text-muted">
+        Remove a duplicate or a player who's left for good. This can't be undone.
+      </p>
+      <ul className="space-y-2">
+        {players.map((player) => (
+          <li
+            key={player.id}
+            className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+          >
+            <span className="truncate text-sm text-text">
+              {player.name}
+              {player.id === hostId && <span className="ml-1 text-xs text-text-muted">(host)</span>}
+            </span>
+            {player.id !== hostId && (
+              <button
+                type="button"
+                onClick={() => kickPlayer(player.id)}
+                className="flex-shrink-0 rounded-md border border-danger/40 px-2 py-1 text-xs font-semibold text-danger transition hover:border-danger"
+              >
+                Kick
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function AboutPanel() {
   return (
     <div>
@@ -100,12 +144,16 @@ function ThemeModeControl() {
 export function MenuOverlay() {
   const navigate = useNavigate()
   const leaveGame = useGameStore((s) => s.leaveGame)
+  const roomCode = useGameStore((s) => s.roomCode)
+  const hostId = useGameStore((s) => s.hostId)
+  const localPlayerId = useGameStore((s) => s.localPlayerId)
+  const isHost = roomCode !== null && localPlayerId !== null && localPlayerId === hostId
   const [isOpen, setIsOpen] = useState(false)
-  const [showAbout, setShowAbout] = useState(false)
+  const [panel, setPanel] = useState<'rules' | 'about' | 'players'>('rules')
 
   function close() {
     setIsOpen(false)
-    setShowAbout(false)
+    setPanel('rules')
   }
 
   function goHome() {
@@ -151,16 +199,30 @@ export function MenuOverlay() {
               </button>
               <button
                 type="button"
-                onClick={() => setShowAbout((v) => !v)}
-                aria-pressed={showAbout}
+                onClick={() => setPanel((p) => (p === 'about' ? 'rules' : 'about'))}
+                aria-pressed={panel === 'about'}
                 className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
-                  showAbout
+                  panel === 'about'
                     ? 'border-primary bg-primary-soft text-primary'
                     : 'border-border bg-surface text-text hover:border-border-strong'
                 }`}
               >
                 About
               </button>
+              {isHost && (
+                <button
+                  type="button"
+                  onClick={() => setPanel((p) => (p === 'players' ? 'rules' : 'players'))}
+                  aria-pressed={panel === 'players'}
+                  className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
+                    panel === 'players'
+                      ? 'border-primary bg-primary-soft text-primary'
+                      : 'border-border bg-surface text-text hover:border-border-strong'
+                  }`}
+                >
+                  Players
+                </button>
+              )}
               <ThemeModeControl />
 
               <div className="mt-2 sm:mt-auto">
@@ -189,8 +251,10 @@ export function MenuOverlay() {
             </div>
 
             <div className="min-w-0 flex-1 space-y-5 pt-1">
-              {showAbout ? (
+              {panel === 'about' ? (
                 <AboutPanel />
+              ) : panel === 'players' ? (
+                <PlayersPanel />
               ) : (
                 RULES_SECTIONS.map((section) => (
                   <div key={section.title}>

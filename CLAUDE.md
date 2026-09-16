@@ -415,6 +415,20 @@ Host velur fyrirfram, í fyrstu Game Setup (samhliða umferðarlengd og flokki),
 - **`06-Results.tsx`**: `isLastRound = roundsCompleted + 1 >= totalRounds`. Ný staðbundin `showingFinalCards` staða (sama mynstur og `wrapUpEditing` í `05-GuessAndRate.tsx` — hrein UI-staða, engin ný samstillt fasi/flögg þarf). Titill sem enginn á rétt á er einfaldlega sleppt úr spjaldastokknum.
 - **`02-Lobby.tsx`**: nýr „Leave Game" hnappur, sýnilegur bara þegar `roundsCompleted >= totalRounds`.
 - **`02b-GameSetup.tsx`**: nýr „Number of rounds" pillu-veljari (1–4), bara gagnvirkur fyrir host ÁÐUR en fyrsta umferð er spiluð (`roundsCompleted === 0`) — annars bara texti („Playing X rounds").
+- **„New Game" í Lobby**: þegar leikurinn er búinn (`roundsCompleted >= totalRounds`) kemur „New Game" hnappur (host) í staðinn fyrir „Set up round" — `startNewGame()` núllstillir `totalScore` og öll fjögur uppsöfnuðu teljarana á öllum leikmönnum, og `roundsCompleted` í 0 (sama herbergi/kóði/spilarar haldast). Af því `roundsCompleted` fer í 0, verða „Round length" og „Number of rounds" reitirnir sjálfkrafa gagnvirkir aftur á Game Setup — engin sérstök viðbótarrökfræði þarf fyrir það.
+
+## Kick spilara (viðbót við CLAUDE.md)
+
+### Vandamálið
+Kom upp í alvöru spilun: tveir spilarar fóru úr leiknum í miðjum klíðum (líklega með því að loka bara flipanum/appinu, ekki með Home-takkanum) — appið hefur ekkert „presence"-kerfi til að taka eftir svoleiðis (sjá „Host-arftaki" kaflann), svo hópurinn sat fastur og beið eftir giski/einkunn/staðfestingu sem aldrei kom, og engin leið var til að laga það handvirkt.
+
+Sér-tilvik af sama meiði: einhver getur ýtt á „til baka" í vafranum og lent aftur á join-forminu meðan hann er ennþá í herberginu (nafnasamsvörun grípur þetta ekki í allra fyrsta lobby-inu, sjá „Reconnect með sama nafni"), og ef hann nær að skrá sig inn aftur með ÖÐRU nafni áður en `usePhaseNavigation` nær að ýta honum til baka í rétta phase, endar hann með TVÆR raðir í sama leik.
+
+### Staða — útfært
+- **`kickPlayer(playerId)`** (host-only, `gameStore.ts`) — aðgengilegt hvenær sem er í leiknum, ekki bara í Lobby. ALLTAF full fjarlæging úr `players` (öfugt við `leaveGame`s hljóðláta mið-leiks-leið sem heldur röðinni eftir) — af ásettu ráði: sum skilyrði annars staðar (t.d. „hafa allir skilað lagi?" í `03-SubmitSong.tsx`) eru reiknuð beint út frá `players.length`, svo bara að merkja einhvern „tilbúinn" (`lobbyReady`/`finalConfirmations`) leysir EKKI þá stöðu — bara að fækka í listanum gerir það. Staðfest með beinni prófun: „Start Guessing" fór úr óvirkum í virkan um leið og kickað var á þann sem vantaði lag.
+- **„Players" flipi í hamborgara-valmyndinni** (`MenuOverlay.tsx`), bara sýnilegur fyrir host, listar alla spilara með „Kick" hnappi (nema hostinn sjálfan) — aðgengilegt frá ÖLLUM skjám samtímis, ekki bara Lobby, af því valmyndin er alltaf til staðar.
+- **`useKickedWatcher`** (`App.tsx`) — nýr watcher: ef þetta tæki á enn `localPlayerId` en finnur sjálft sig ekki lengur í `players`-fylkinu (kickað, eða fjarlægt á annan hátt), keyrir `handleRemovedFromRoom()` (sama staðbundna núllstilling og `leaveGame` gerir, en SKRIFAR EKKERT til baka í herbergi sem tækið á ekki lengur heima í) og siglir heim á forsíðuna sjálfkrafa.
+- Ekki reynt að þétta „til baka í vafra" glugga bilsins sjálfan (hætta á brothættri lagfæringu fyrir lítinn ávinning) — „kick" er staðgengillinn: hvað sem gerist, getur host núna hreinsað upp svona tilvik strax.
 
 -------------------------
 Ideas going forward:

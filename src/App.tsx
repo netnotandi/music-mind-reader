@@ -48,6 +48,27 @@ function usePhaseNavigation() {
   }, [roomCode, phase, localPlayerId, lobbyReadyPlayerIds, location.pathname, navigate])
 }
 
+// Notices when this device's own player row has disappeared from the room
+// (kicked by the host via the menu's Players panel, most likely) and sends
+// it back to Home instead of leaving it stuck showing a room it's no
+// longer part of. `players.length > 0` guards against the brief window
+// right after creating/joining a room, before the first real snapshot -
+// carrying this device's own just-written row - has arrived.
+function useKickedWatcher() {
+  const navigate = useNavigate()
+  const roomCode = useGameStore((s) => s.roomCode)
+  const localPlayerId = useGameStore((s) => s.localPlayerId)
+  const players = useGameStore((s) => s.players)
+  const handleRemovedFromRoom = useGameStore((s) => s.handleRemovedFromRoom)
+
+  useEffect(() => {
+    if (!roomCode || !localPlayerId || players.length === 0) return
+    if (players.some((p) => p.id === localPlayerId)) return
+    handleRemovedFromRoom()
+    navigate('/')
+  }, [roomCode, localPlayerId, players, handleRemovedFromRoom, navigate])
+}
+
 // Always mounted (regardless of which screen is showing), since the player
 // who completes the "everyone's ready" set is often not the one still on
 // Results - they've likely already left for Lobby themselves.
@@ -76,6 +97,7 @@ function JoinRedirect() {
 function AppRoutes() {
   usePhaseNavigation()
   useFinalizeRoundWatcher()
+  useKickedWatcher()
 
   return (
     <Routes>

@@ -108,6 +108,17 @@ interface GameState {
   joinGame: (roomCode: string, playerName: string) => Promise<JoinResult>
   resumeSession: () => Promise<boolean>
   leaveGame: (removeFromRoom?: boolean) => void
+  // Host only, from anywhere in the game (the hamburger menu's Players
+  // panel) - for a stray/duplicate row or someone who's genuinely gone and
+  // isn't coming back. Applies the exact same "safe to fully delete" vs.
+  // "keep the row, just don't let them block the group" rule leaveGame
+  // already uses for a self-initiated quiet leave.
+  kickPlayer: (playerId: string) => void
+  // Client-side only cleanup for a device that discovers its own player row
+  // is gone from the room (kicked, or removed some other way) - same local
+  // reset leaveGame does, but never writes anything back to a room this
+  // device no longer belongs to. See the watcher in App.tsx.
+  handleRemovedFromRoom: () => void
   chooseCategories: (categoryIds: string[]) => void
   // Host only: Lobby ("is everyone here?") -> Game Setup (round config).
   startRoundSetup: () => void
@@ -569,6 +580,48 @@ export const useGameStore = create<GameState>((set, get) => {
         lobbyReadyPlayerIds: [],
         roundScoresApplied: false,
       })
+    },
+
+    handleRemovedFromRoom: () => {
+      detachListener?.()
+      detachListener = null
+      clearSession()
+      set({
+        roomCode: null,
+        localPlayerId: null,
+        hostId: null,
+        phase: 'lobby',
+        players: [],
+        selectedCategoryIds: [],
+        roundMode: 'short',
+        shortModeCapSeconds: DEFAULT_SHORT_MODE_CAP_SECONDS,
+        totalRounds: DEFAULT_TOTAL_ROUNDS,
+        songs: [],
+        guesses: [],
+        ratings: [],
+        currentSongIndex: 0,
+        songOrder: [],
+        roundPlaythroughDone: false,
+        confirmedPlayerIds: [],
+        roundsCompleted: 0,
+        lobbyReadyPlayerIds: [],
+        roundScoresApplied: false,
+      })
+    },
+
+    // Deliberately always a full removal, unlike leaveGame's own quiet
+    // (row-preserving) mid-game path - a few gates elsewhere (e.g.
+    // SubmitSong's "has everyone submitted?" count) are computed straight
+    // from `players.length`, so just marking someone lobbyReady/confirmed
+    // doesn't unblock those: only actually shrinking the player list does.
+    // This is also exactly why kicking exists (a deliberate host action for
+    // "this person isn't part of this game"), unlike a graceful self-leave
+    // where preserving their row's history for the rest of the group
+    // matters more than it does here.
+    kickPlayer: (playerId) => {
+      const { roomCode, localPlayerId, hostId } = get()
+      if (!roomCode || localPlayerId !== hostId || playerId === hostId) return
+      dbUpdate(ref(db, `games/${roomCode}`), { [`players/${playerId}`]: null }).catch(() => {})
     },
 
     // Live-synced so the whole group watches the host pick categories for
