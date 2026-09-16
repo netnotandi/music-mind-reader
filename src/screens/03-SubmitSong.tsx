@@ -251,6 +251,7 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
               setManualLink(e.target.value)
               setLinkError(null)
             }}
+            autoComplete="new-password"
           />
           {linkError && <p className="text-sm text-danger">{linkError}</p>}
           <button
@@ -275,14 +276,14 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
             placeholder="Song title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            autoComplete="off"
+            autoComplete="new-password"
           />
           <input
             className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
             placeholder="Artist"
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
-            autoComplete="off"
+            autoComplete="new-password"
           />
           <button
             type="submit"
