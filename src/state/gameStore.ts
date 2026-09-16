@@ -945,7 +945,17 @@ export const useGameStore = create<GameState>((set, get) => {
         roundsCompleted: roundsCompleted + 1,
         // roundMode is left as-is - it persists as the group's preference.
       }
-      dbUpdate(ref(db, `games/${roomCode}`), updates)
+      // Every player's device calls this once it sees readyCount reach
+      // playerCount (see useFinalizeRoundWatcher in App.tsx), so several of
+      // these writes to the same games/{roomCode} path can land within the
+      // same instant - Firebase's client SDK then rejects whichever one it
+      // locally supersedes with Error("set"), even though one of the
+      // redundant writes still lands and the room ends up in the right
+      // state either way. Caught here for the same reason leaveGame/
+      // kickPlayer already catch their own best-effort writes below -
+      // otherwise it surfaces as an unhandled rejection (seen for real in
+      // Sentry, JAVASCRIPT-REACT-2).
+      dbUpdate(ref(db, `games/${roomCode}`), updates).catch(() => {})
     },
 
     devSubmitSongAs: (playerId, categoryId, title, artist) => {
