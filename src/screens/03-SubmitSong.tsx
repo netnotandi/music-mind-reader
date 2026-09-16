@@ -275,12 +275,14 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
             placeholder="Song title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            autoComplete="off"
           />
           <input
             className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
             placeholder="Artist"
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
+            autoComplete="off"
           />
           <button
             type="submit"
