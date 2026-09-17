@@ -209,6 +209,21 @@ export function CreateJoin() {
           </div>
         )}
       </div>
+
+      <div className="mt-10 flex justify-center gap-4 pb-2">
+        <a
+          href="/privacy.html"
+          className="text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
+        >
+          Privacy Policy
+        </a>
+        <a
+          href="/terms.html"
+          className="text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
+        >
+          Terms of Service
+        </a>
+      </div>
     </div>
   )
 }
