@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { accentColorFor } from '../logic/accentColors'
 import { songLabel } from '../logic/songLabel'
 import { useThemeStore } from '../state/themeStore'
@@ -15,9 +16,13 @@ interface SongCardProps {
   // (the "environment" around the song) turns pink so it reads at a glance
   // as "you're not done with this one" - see the round-mode straggler flow.
   needsAnswer?: boolean
+  // Optional slot for a small corner control (e.g. SaveSongButton) - kept as
+  // a plain ReactNode rather than a dedicated prop so this presentational
+  // card stays agnostic to what the action actually does.
+  action?: ReactNode
 }
 
-export function SongCard({ title, artist, youtubeTitle, index, total, needsAnswer = false }: SongCardProps) {
+export function SongCard({ title, artist, youtubeTitle, index, total, needsAnswer = false, action }: SongCardProps) {
   const resolvedTheme = useThemeStore((s) => s.resolvedTheme)
   const accent = accentColorFor(index, resolvedTheme)
 
@@ -28,7 +33,8 @@ export function SongCard({ title, artist, youtubeTitle, index, total, needsAnswe
   const { primary, secondary } = songLabel({ title, artist, youtubeTitle })
 
   return (
-    <div className={`rounded-2xl border-2 p-6 text-center ${border} ${bg}`}>
+    <div className={`relative rounded-2xl border-2 p-6 text-center ${border} ${bg}`}>
+      {action && <div className="absolute right-3 top-3">{action}</div>}
       <p className={`mb-3 text-sm font-semibold ${label}`}>
         Song {index + 1} of {total}
       </p>

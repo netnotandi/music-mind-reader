@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { NowPlayingPlayer } from '../components/NowPlayingPlayer'
+import { SaveSongButton } from '../components/SaveSongButton'
 import { SongCard } from '../components/SongCard'
 import { hasCascadeRoom } from '../logic/ratingCascade'
 import { songLabel } from '../logic/songLabel'
@@ -459,6 +460,7 @@ export function GuessAndRate() {
                 index={viewIndex}
                 total={songs.length}
                 needsAnswer={needsAnswer}
+                action={!isOwnSong ? <SaveSongButton song={song} /> : undefined}
               />
             </div>
 
@@ -650,6 +652,7 @@ export function GuessAndRate() {
               index={viewIndex}
               total={songs.length}
               needsAnswer={needsAnswer}
+              action={!isOwnSong ? <SaveSongButton song={song} /> : undefined}
             />
           </div>
 

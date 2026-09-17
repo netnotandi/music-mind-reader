@@ -13,6 +13,7 @@ import {
   remove as dbRemove,
   runTransaction,
   serverTimestamp,
+  set as dbSet,
   update as dbUpdate,
 } from 'firebase/database'
 import { create } from 'zustand'
@@ -94,6 +95,15 @@ interface UserState {
   retryProfileLoad: () => Promise<void>
   signOutUser: () => Promise<void>
   clearError: () => void
+  // Saves a song (anyone's, never your own - the caller enforces that) into
+  // your own private list for the given category. Deliberately throws on
+  // failure rather than setting a global busy/error field - this is a
+  // per-invocation action owned by the calling button's own local UI state
+  // (see SaveSongButton.tsx), not a global auth-flow concern.
+  saveSongToList: (
+    categoryId: string,
+    song: { title: string; artist: string; youtubeVideoId?: string; youtubeTitle?: string | null }
+  ) => Promise<void>
 }
 
 // Module-level, mirroring gameStore.ts's detachListener pattern - initAuth
@@ -109,8 +119,18 @@ async function loadProfile(uid: string, requestId: number, set: (partial: Partia
   try {
     const snap = await dbGet(ref(db, `users/${uid}`))
     if (requestId !== authRequestId) return
-    if (snap.exists()) {
-      set({ status: 'ready', profile: snap.val() as UserProfile, error: null })
+    // Checked narrowly (not snap.exists() on the whole node, and not a
+    // blind cast of snap.val()) - users/{uid}/lists can now exist as a
+    // sibling of the profile fields, so a user with saved songs but no
+    // completed profile must not be mistaken for "ready", and the profile
+    // object must not accidentally carry the whole lists blob along with it.
+    if (snap.child('name').exists()) {
+      const val = snap.val()
+      set({
+        status: 'ready',
+        profile: { name: val.name, nameKey: val.nameKey, discriminator: val.discriminator, createdAt: val.createdAt },
+        error: null,
+      })
     } else {
       // Brand-new account - true for both a first-time Google sign-in and a
       // fresh email/password sign-up, neither of which hands us a
@@ -266,4 +286,20 @@ export const useUserStore = create<UserState>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  saveSongToList: async (categoryId, song) => {
+    const uid = get().uid
+    if (!uid) return
+    // The video id (always a URL-safe 11-char string) doubles as free
+    // de-duplication - re-saving the same song just refreshes the entry
+    // instead of creating a second one. Falls back to a random id for the
+    // rare song with no video at all.
+    const songKey = song.youtubeVideoId || crypto.randomUUID()
+    const entry: Record<string, unknown> = { title: song.title, artist: song.artist, savedAt: serverTimestamp() }
+    // RTDB has no `undefined` - the SDK throws if a value is ever literally
+    // undefined, so optional fields are conditionally omitted, never set.
+    if (song.youtubeVideoId) entry.youtubeVideoId = song.youtubeVideoId
+    if (song.youtubeTitle) entry.youtubeTitle = song.youtubeTitle
+    await dbSet(ref(db, `users/${uid}/lists/${categoryId}/${songKey}`), entry)
+  },
 }))
