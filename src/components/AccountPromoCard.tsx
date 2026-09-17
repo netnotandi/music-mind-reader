@@ -41,8 +41,8 @@ export function AccountPromoCard() {
 
       <h3 className="mb-1 text-lg font-bold text-text">Save your name for next time</h3>
       <p className="mb-4 text-sm text-text-secondary">
-        Create a free account so your name is remembered automatically. Friends, stats and saved
-        songs are coming soon.
+        Create a free account so your name is remembered automatically, and you can save songs
+        you hear to your own lists. Friends and stats are coming soon.
       </p>
 
       <button

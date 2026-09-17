@@ -68,8 +68,8 @@ function SignedOutView() {
     <div>
       <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-success">Account</h3>
       <p className="mb-3 text-xs text-text-muted">
-        Optional — you can play without an account. Signing in just remembers your name between
-        games.
+        Optional — you can play without an account. Signing in remembers your name between games
+        and lets you save songs you hear to your own lists.
       </p>
 
       <button
