@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app'
+import { getAuth } from 'firebase/auth'
 import { getDatabase } from 'firebase/database'
 
 const firebaseConfig = {
@@ -13,3 +14,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 export const db = getDatabase(app)
+// Default persistence is browserLocalPersistence (IndexedDB) - the session
+// survives reloads/tab closes on its own, so unlike mmr_session/mmr_theme_mode
+// nothing about auth needs manual localStorage handling.
+export const auth = getAuth(app)

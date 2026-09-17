@@ -470,6 +470,48 @@ Spjallið opnast sem létt yfirlag (ekki fullur skjár sem tekur yfir), svo þa�
 - **`src/components/ChatOverlay.tsx`**: fljótandi tákn (`fixed bottom-4 right-4`, sami stíll og hamborgari/CODE-merkimiði í hinum hornunum) — sjálf-gagnrýnt á `roomCode && remotePlayEnabled`, birtist því hvergi nema fjarspilun sé virkjuð, en þá á ÖLLUM skjám (mounted í `App.tsx` við hlið `MenuOverlay`/`RoomCodeBadge`). Rautt (`border-danger bg-danger`) þegar nýjasta skilaboðið er yngra en notandans eigin `chatLastRead`; hreinsast um leið og hann OPNAR spjallið (`markChatRead()` kallað beint í smell-höndlara, ekki inni í `setIsOpen`-uppfærslufalli — að kalla state-breytandi hliðarverkun þar olli „Cannot update a component while rendering a different component" villu í React, fannst og lagað í þessari yfirferð). Yfirlagið sjálft (`bottom-20 right-4`, `h-96 w-80`) er lítið spjald, ekki fullur skjár — listi með skilaboðum (eigin hægra megin/primary-litur, annarra vinstra megin með nafni fyrir ofan) + textainnslátur.
 - Prófað með Playwright (host + guest, tveir aðskildir `BrowserContext`): tákn ósýnilegt fyrir virkjun, birtist báðum megin um leið og host kveikir á „Remote play", skilaboð frá host birtast hjá guest með rauðu-merki þar til guest opnar spjallið (hreinsast þá), guest svarar í gegnum alvöru UI-innslátt (ekki bara store-köll), host sér svarið og rauða merkið hreinsast þegar hann opnar. Tákn hverfur báðum megin þegar „Remote play" er slökkt aftur.
 
+## Notendaaðgangur, vinir, einkalistar og tölfræði (viðbót við CLAUDE.md)
+
+### Af hverju
+Leikurinn er í dag algjörlega nafnlaus/session-based — fólk skrifar bara nafn og joinar herbergi með kóða, engin varanleg auðkenning milli leikja. Notendaaðgangur er grunnstoðin sem eftirfarandi virkni hvílir á: vinir, einkalistar, tölfræði yfir ferilinn, og (síðar) að "remove ads"-kaup fylgi notandanum milli tækja í staðinn fyrir að vera bundið einu tæki/vafra.
+
+Útfært með Firebase Authentication ofan á núverandi Firebase-uppsetningu.
+
+### Auðkenni: nafn + auðkennisnúmer
+Hver notandi fær, við skráningu, stutt auðkennisnúmer sem fylgir nafninu sjálfkrafa — t.d. „Jón Þór #4821" (svipað og Discord gerir það). Ástæðan: birt nöfn eru ekki einstök (fleiri en einn getur heitið sama nafni), svo hrein nafnaleit ein og sér gæti skilað mörgum, óljósum niðurstöðum. Með auðkennisnúmerinu til hliðar er alltaf hægt að finna nákvæmlega réttan notanda, jafnvel þótt nafnaleitin sjálf sé einföld og frjáls.
+
+### Vinir
+Notandi getur leitað að öðrum notendum eftir nafni (með auðkennisnúmerið til að greina í sundur ef fleiri en einn passar) og bætt þeim við sem vinum.
+
+### Einkalistar — einn per flokk
+Hver notandi getur átt sinn eigin, EINKA lista af lögum fyrir hvern flokk sem er til í leiknum (Guilty pleasure, Lag fyrir ræktina, o.s.frv.). Þegar notandi er að skila lagi í umferð þar sem flokkurinn passar við einn af listunum hans, birtast lögin úr þeim lista sem flýtileið til hliðar við handvirku YouTube-leitina — notandinn þarf ekki að muna/leita að góðum lögum upp á nýtt í hvert skipti.
+
+Listarnir eru EINKAMÁL — vinir sjá þá ekki. Þetta er mikilvægt af tveimur ástæðum: annars vegar venjuleg persónuvernd, hins vegar af því sýnilegir listar gætu lekið upplýsingum um hvaða lag einhver er líklegur til að velja í næstu umferð, sem grefur undan sjálfri kjarnahugmynd leiksins (að giska á óþekktan eiganda).
+
+### „+" flýtileið í Now Playing — bjarga lagi sem heyrist í leiknum
+Í ramma Now Playing-skjásins er lítill + takki. Ef notandi heyrir gott lag (frá einhverjum öðrum) á meðan á umferð stendur getur hann ýtt á + til að vista það sjálfkrafa í sinn EIGIN lista fyrir þann flokk sem er í gangi þá stundina — engin auka-spurning um hvaða lista, bara beint í réttan lista út frá virkri umferð.
+
+Þetta er algjörlega óhætt gagnvart privacy-reglunni um að eigendur laga séu ekki afhjúpaðir fyrr en á Results-skjánum: + takkinn vistar eingöngu sjálft lagið (titil/flytjanda/YouTube-ID), ALDREI hver átti það — notandinn er bara að bjarga laginu fyrir sjálfan sig, ekki að læra neitt um eigandann.
+
+Á eigin lagi (því sem notandinn sjálfur skilaði inn þessa umferð) er + takkinn falinn — netagagnslaust að bjarga eigin lagi til sjálfs sín, og appið veit hvaða lag er hans eigið þá umferð.
+
+### Tölfræði yfir ferilinn
+Notandi fær yfirlit yfir eigin sögu í leiknum — t.d. flest rétt gisk, hæsta meðaleinkunn, career-titlar (Music Mind Reader, Best Taste, o.s.frv.) og lengsta rétt-gisk-runu, safnað yfir öll skipti sem hann hefur spilað, ekki bara eina umferð/leik.
+
+### Frestað — stjórnun á listum (seinni tíma verkefni)
+Skjár þar sem notandi getur skoðað alla sína lista í heild, eytt lögum úr þeim, eða fært lag milli lista — EKKI hannað ennþá, meðvitað frestað. Kjarnavirknin (vista sjálfkrafa, birta sem flýtileið eftir flokk, + í Now Playing) er það sem skiptir máli fyrst; endurröðun/eyðing er hrein pólering sem hægt er að bæta við hvenær sem er án þess að hafa áhrif á neitt annað sem er lýst hér að ofan.
+
+### Staða — útfært (Áfangi 1: innskráning + prófíll — vinir/einkalistar/tölfræði enn eftir)
+Fyrsti áfangi af þessu er kominn í loftið: Firebase Authentication (bæði Google og tölvupóstur+lykilorð, staðfest val) og opinber prófíll með „Nafn #1234" auðkennisnúmeri, í anda Discord. Innskráning er algjörlega valfrjáls og hefur engin áhrif á núverandi nafnlausa flæðið — `gameStore.ts`, `crypto.randomUUID()`-auðkennið og `mmr_session` eru öll ósnert.
+
+- **Gagnalíkan** — tvær nýjar greinar í Firebase, systur við `games`/`songSearchCache`: `users/{uid}` (`name`, `nameKey`, `discriminator`, `createdAt`) og `usernames/{nameKey}/{discriminator} -> uid` (einkvæmnis-vísitala). `users/{uid}` er heimslesanlegt (þarf að vera fyrir vina-leit síðar) en bara eigandi má skrifa — tölvupóstfang er ALDREI geymt þar, bara í Firebase Auth sjálfu.
+- **Auðkennisnúmer-úthlutun** (`claimDisplayName` í `src/state/userStore.ts`): allt að 8 tilraunir af handahófskenndu 4-stafa númeri, hvert `runTransaction`-varið svo tvítekning sé útilokuð (`current === null ? uid : undefined`); mistakist allar 8 (þúsundir nota nú þegar sama nafn) fær notandi skilaboð um að velja annað nafn.
+- **`src/state/userStore.ts`** (nýtt) — hrein Zustand-búð, ENGIN persist-middleware (Firebase Auth geymir sitt session sjálft í IndexedDB). `initAuth()` er kallað einu sinni úr `App.tsx` (verndað `authInitialized`-fáni gegn React 19 StrictMode tvíkalli), tengist `onAuthStateChanged` út líftíma síðunnar. Staða: `loading` → `signed-out` | (`needs-profile` ef `users/{uid}` er ekki til, sem grípur bæði fyrstu Google-innskráningu OG nýja tölvupóstsskráningu) → `ready`, eða `profile-error` ef lestur mistekst (ólíkt `songSearchCache` er þetta EKKI falið hljóðlega — notandi þarf að vita að reglurnar gætu vantað).
+- **`src/components/AccountPanel.tsx`** (nýtt) — nýr „Account" flipi í hamborgaravalmyndinni (`MenuOverlay.tsx`), ekki host-læstur, virkur á ÖLLUM skjám þ.m.t. allra fyrsta skjánum. Google-hnappur + tölvupóstur/lykilorð-form (sign in/sign up togglað), „Forgot password?" hlekkur, nafnaval-skref fyrir nýja notendur, og prófíl-yfirlit (`Nafn #1234` + sign out) fyrir innskráða.
+- **`src/screens/01-CreateJoin.tsx`** — nafnareiturinn fyllist sjálfkrafa út frá prófílnafni EF innskráður og reiturinn er tómur — alltaf breytanlegt eftir á, aldrei krafa.
+- **Handvirk Firebase Console skref sem VORU nauðsynleg** (ekkert í kóða/GitHub Secrets, `authDomain` var þegar til staðar): Authentication → Sign-in method → kveikt á Email/Password og Google; Authentication → Settings → Authorized domains → `musicmindreader.com` bætt við (var bara `.firebaseapp.com`/`.web.app` sjálfgefið); Realtime Database → Rules → `users`/`usernames` greinarnar bættar við sem systur `games`/`songSearchCache`.
+- **Staðfest með lifandi Playwright-prófun** gegn alvöru dev Firebase-verkefninu (14/14 próf grænt): nýskráning → nafnaval → `Nafn #1234` birtist rétt → lifir af endurhleðslu → sign out → sign in aftur skilar sama nafni/númeri; tveir notendur með sama nafni fá tvö ólík númer (staðfest bæði í UI og með beinni REST-fyrirspurn á `usernames`); óinnskráð skrif á `users/{annar-uid}` hafnað af reglunum (401 Permission denied); nafnlausa flæðið (stofna/joina leik) algjörlega óbreytt; nafnareitur forfyllist en er áfram breytanlegur. Google OAuth-gluggasamþykktarflæðið sjálft var EKKI sjálfvirkt prófað (ekki raunhæft), bara handvirkt af notanda.
+- **Forsíðan (`01-CreateJoin.tsx`) endurhönnuð** eftir mockup-um frá notanda, bara sýnileg fyrir ÓinnskráðA: „Sign in" texti efst hægra megin (á móti hamborgaranum, sama horn og `RoomCodeBadge` notar síðar þegar herbergi er til) og nýtt kynningarspjald (`src/components/AccountPromoCard.tsx`) fyrir neðan Join Game hnappinn — bæði opna hamborgaravalmyndina beint á Account-flipann í gegnum nýja, örsmáa `src/state/uiStore.ts` (`pendingMenuPanel`) svo `MenuOverlay` þurfi ekki að afhjúpa sitt innra `isOpen`/`panel` state. Á breiðari skjám (`md:` og upp) raðast spjaldið við hliðina á aðal-dálkinum í stað fyrir neðan (sami stíll og mockup-in sýndu fyrir vafra vs. síma). Nafnareiturinn fékk líka mann-tákn og vinstrijafnaðan texta (í stað miðjujafnaðs) til að passa við mockup-in. Textinn á spjaldinu er vísvitandi aðlagaður að því sem er í raun til NÚNA („Friends, stats and saved songs are coming soon") frekar en mockup-textann sem lofaði þeim eiginleikum strax — forðast að selja notendum eitthvað sem er ekki komið.
 
 
 

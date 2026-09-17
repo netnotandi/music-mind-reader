@@ -1,7 +1,9 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AccountPanel } from './AccountPanel'
 import { useGameStore } from '../state/gameStore'
 import { type ThemeMode, useThemeStore } from '../state/themeStore'
+import { useUiStore } from '../state/uiStore'
 
 const RULES_SECTIONS: { title: string; body: string }[] = [
   {
@@ -149,7 +151,19 @@ export function MenuOverlay() {
   const localPlayerId = useGameStore((s) => s.localPlayerId)
   const isHost = roomCode !== null && localPlayerId !== null && localPlayerId === hostId
   const [isOpen, setIsOpen] = useState(false)
-  const [panel, setPanel] = useState<'rules' | 'about' | 'players'>('rules')
+  const [panel, setPanel] = useState<'rules' | 'about' | 'players' | 'account'>('rules')
+  const pendingMenuPanel = useUiStore((s) => s.pendingMenuPanel)
+  const clearPendingMenuPanel = useUiStore((s) => s.clearPendingMenuPanel)
+
+  // Lets external buttons (the CreateJoin "Sign in" link, the account promo
+  // card) open this menu straight to the Account panel, without lifting
+  // isOpen/panel out of this component.
+  useEffect(() => {
+    if (!pendingMenuPanel) return
+    setIsOpen(true)
+    setPanel(pendingMenuPanel)
+    clearPendingMenuPanel()
+  }, [pendingMenuPanel, clearPendingMenuPanel])
 
   function close() {
     setIsOpen(false)
@@ -209,6 +223,18 @@ export function MenuOverlay() {
               >
                 About
               </button>
+              <button
+                type="button"
+                onClick={() => setPanel((p) => (p === 'account' ? 'rules' : 'account'))}
+                aria-pressed={panel === 'account'}
+                className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
+                  panel === 'account'
+                    ? 'border-primary bg-primary-soft text-primary'
+                    : 'border-border bg-surface text-text hover:border-border-strong'
+                }`}
+              >
+                Account
+              </button>
               {isHost && (
                 <button
                   type="button"
@@ -255,6 +281,8 @@ export function MenuOverlay() {
                 <AboutPanel />
               ) : panel === 'players' ? (
                 <PlayersPanel />
+              ) : panel === 'account' ? (
+                <AccountPanel />
               ) : (
                 RULES_SECTIONS.map((section) => (
                   <div key={section.title}>
