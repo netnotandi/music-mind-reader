@@ -22,7 +22,7 @@ export function AccountPromoCard() {
   if (status !== 'signed-out') return null
 
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-border bg-surface/60 p-6 text-center backdrop-blur">
+    <div className="w-full max-w-sm text-center md:rounded-2xl md:border md:border-border md:bg-surface/60 md:p-6 md:backdrop-blur">
       <div
         className={
           isLight
