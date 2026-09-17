@@ -1,8 +1,18 @@
 import type { Category } from '../types'
 
+// Curated down from an earlier 50-category list (2026-09-17) - cut anything
+// that was really just "what's your favorite/the best X" trivia with no
+// personal angle (My All-Time Favourite, The Best Song From the 90s, My
+// Favourite Song by a Solo Artist, ...), and consolidated a few pairs that
+// asked near-identical questions (e.g. "Questionable Decisions" folded into
+// "Minor Crime", "Wake Me From a Coma" folded into "Gets Me Going"/"Party
+// Starter"). A handful of the "favorite X" prompts were kept but reworded to
+// force an opinion/twist instead of a flat favorite, which is what actually
+// makes a category interesting for this game (see "Everyone Hates but I
+// Love" for the pattern) - e.g. "My Favourite Song From a Movie" became "A
+// Song That's Better Than the Movie It's From".
 export const CATEGORIES: Category[] = [
   { id: 'guilty-pleasure', name: 'My Guilty Pleasure' },
-  { id: 'all-time-favourite', name: 'My All-Time Favourite' },
   { id: 'teenage-years', name: 'A Song From My Teenage Years' },
   { id: 'nobody-expects', name: 'A Song Nobody Expects Me to Like' },
   { id: 'karaoke-song', name: 'My Karaoke Song' },
@@ -11,8 +21,7 @@ export const CATEGORIES: Category[] = [
   { id: 'party-starter', name: 'The Perfect Party Starter' },
   { id: 'road-trip', name: 'The Ultimate Road Trip Song' },
   { id: 'closing-song', name: 'The Perfect Closing Song' },
-  { id: 'best-90s', name: 'The Best Song From the 90s' },
-  { id: 'best-icelandic', name: 'The Best Icelandic Song' },
+  { id: 'defend-icelandic-song', name: "The Icelandic Song You'd Defend to the Death" },
   { id: 'underrated', name: 'An Underrated Masterpiece' },
   { id: 'describes-someone', name: 'A Song That Describes Someone Here' },
   { id: 'main-character', name: 'My Main Character Song' },
@@ -23,7 +32,6 @@ export const CATEGORIES: Category[] = [
   { id: 'everyone-hates-i-love', name: 'A Song Everyone Hates but I Love' },
   { id: 'everyone-loves-i-hate', name: 'A Song Everyone Loves but I Hate' },
   { id: 'artist-ill-defend', name: "An Artist I'll Defend Forever" },
-  { id: 'didnt-deserve-to-flop', name: "A Song That Didn't Deserve to Flop" },
   { id: 'aged-well', name: 'A Song That Aged Surprisingly Well' },
   { id: 'aged-badly', name: 'A Song That Aged Badly' },
   { id: 'embarrassed-every-word', name: "A Song I'm Embarrassed to Know Every Word To" },
@@ -35,20 +43,14 @@ export const CATEGORIES: Category[] = [
   { id: 'during-the-apocalypse', name: 'A Song to Play During the Apocalypse' },
   { id: 'confuse-everyone-party', name: 'A Song to Confuse Everyone at a Party' },
   { id: 'worst-wedding-song', name: 'The Worst Possible Wedding Song' },
-  { id: 'would-ruin-the-mood', name: 'A Song That Would Ruin the Mood' },
   { id: 'minor-crime-soundtrack', name: 'A Song to Play While Committing a Minor Crime' },
   { id: 'matches-my-delusion', name: 'A Song That Matches My Delusion' },
-  { id: 'questionable-decisions', name: 'A Song for Making Questionable Decisions' },
   { id: 'describes-friend-group', name: 'A Song That Describes This Friend Group' },
-  { id: 'wake-me-from-a-coma', name: 'A Song That Would Wake Me From a Coma' },
   { id: 'biggest-red-flag', name: 'My Biggest Red-Flag Song' },
   { id: 'celebrity-song', name: 'A Surprisingly Good Celebrity Song' },
-  { id: 'fave-another-country', name: 'My Favourite Song From Another Country' },
-  { id: 'fave-past-decade', name: 'My Favourite Song From a Past Decade' },
-  { id: 'fave-another-language', name: 'My Favourite Song in Another Language' },
-  { id: 'fave-from-a-movie', name: 'My Favourite Song From a Movie' },
-  { id: 'fave-solo-artist', name: 'My Favourite Song by a Solo Artist' },
-  { id: 'fave-single-year', name: 'My Favourite Song From a Single Year' },
+  { id: 'love-in-unknown-language', name: "A Song I Love in a Language I Don't Speak" },
+  { id: 'better-than-the-movie', name: "A Song That's Better Than the Movie It's From" },
+  { id: 'everywhere-turned-18', name: 'The Song That Was Everywhere the Year You Turned 18' },
   { id: 'great-cover-song', name: 'A Great Cover Song' },
   { id: 'who-am-i', name: 'Who Am I' },
 ]

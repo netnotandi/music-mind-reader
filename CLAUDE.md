@@ -30,6 +30,8 @@ Leikstjóri velur 1–2 af þessum flokkum í Lobby-skjánum fyrir ALLAN hópinn
 
 Raunverulegi listinn (ensku, flatur — ekki grúppaður í UI-inu) er í `src/state/mockData.ts` (`CATEGORIES`).
 
+**Endurskoðað 2026-09-17** (áður en einkalistar-fídusinn er byggður ofan á flokka-ID-in, sjá "Notendaaðgangur..." kaflann): fækkað úr 50 í 41 flokk. Tekið út: hreinar „hvað er uppáhalds/besta X-ið þitt" spurningar sem gáfu enga innsýn í manneskjuna (My All-Time Favourite, The Best Song From the 90s, My Favourite Song by a Solo Artist, o.fl.), og sameinuð pör sem spurðu í raun sömu spurningu tvisvar (t.d. „Wake Me From a Coma" inn í „Gets Me Going"/„Party Starter"). Nokkrir „favorite X" flokkar héldu sæti en fengu nýtt orðalag sem krefst skoðunar/andstæðu í staðinn fyrir flatt „uppáhalds" (sama trix og gerir „A Song Everyone Hates but I Love" áhugaverðan) — t.d. „My Favourite Song From a Movie" varð „A Song That's Better Than the Movie It's From".
+
 ## Stigagjöf (samræmt)
 - Rétt ágiskun á eiganda lags: **+3 stig**
 - Eigandi fær MEÐALTAL (ekki summu) einkunna frá öðrum, á skalanum 0–5
