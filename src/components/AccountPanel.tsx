@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MyListsPanel } from './MyListsPanel'
 import { MAX_NAME_LENGTH } from '../state/gameStore'
 import { auth } from '../firebase'
 import { useUserStore } from '../state/userStore'
@@ -181,10 +182,26 @@ function NeedsProfileView() {
   )
 }
 
+const ACCOUNT_SUB_TABS = [
+  { id: 'lists', label: 'My Lists' },
+  { id: 'friends', label: 'Friends' },
+  { id: 'stats', label: 'Stats' },
+] as const
+type AccountSubTab = (typeof ACCOUNT_SUB_TABS)[number]['id']
+
+function FriendsPanel() {
+  return <p className="text-sm text-text-muted">Friends are coming soon.</p>
+}
+
+function StatsPanel() {
+  return <p className="text-sm text-text-muted">Lifetime stats are coming soon.</p>
+}
+
 function ReadyView() {
   const profile = useUserStore((s) => s.profile)
   const email = useUserStore((s) => s.email)
   const signOutUser = useUserStore((s) => s.signOutUser)
+  const [subTab, setSubTab] = useState<AccountSubTab>('lists')
 
   return (
     <div>
@@ -193,15 +210,39 @@ function ReadyView() {
         <span className="font-semibold text-text">{profile?.name}</span>{' '}
         <span className="text-text-muted">#{profile?.discriminator}</span>
       </p>
-      {email && <p className="mb-4 text-xs text-text-muted">{email}</p>}
+      {email && <p className="mb-3 text-xs text-text-muted">{email}</p>}
 
       <button
         type="button"
         onClick={signOutUser}
-        className="rounded-md border border-danger/40 px-3 py-1.5 text-xs font-semibold text-danger transition hover:border-danger"
+        className="mb-4 rounded-md border border-danger/40 px-3 py-1.5 text-xs font-semibold text-danger transition hover:border-danger"
       >
         Sign out
       </button>
+
+      <div className="mb-4 flex gap-2" role="tablist">
+        {ACCOUNT_SUB_TABS.map(({ id, label }) => {
+          const active = subTab === id
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setSubTab(id)}
+              className={`flex-1 rounded-lg border-2 px-2 py-2 text-xs font-semibold transition ${
+                active
+                  ? 'border-primary bg-primary-soft text-primary'
+                  : 'border-border text-text-secondary hover:border-border-strong'
+              }`}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
+      {subTab === 'lists' ? <MyListsPanel /> : subTab === 'friends' ? <FriendsPanel /> : <StatsPanel />}
     </div>
   )
 }

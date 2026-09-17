@@ -18,13 +18,6 @@ const RULES_SECTIONS: { title: string; body: string }[] = [
   },
 ]
 
-const ABOUT_PARAGRAPHS = [
-  'About 25 years ago, a few friends of mine came up with the idea for Music Mind Reader. The game evolved over time, but at its core the question was always the same: how well do you really know your friends?',
-  "Back then, putting together a single game was a project in itself. You had to agree on a theme ahead of time, everyone had to find a song that fit it, and then send it to whoever had drawn the short straw of collecting all the songs and burning them onto a CD. Only then could the group actually get together and play.",
-  "Playing wasn't easy either — every guess and every rating had to be written down on paper, and at the end someone had to tally it all up by hand. We played it a handful of times, and about half of those times we never actually finished doing the math to find out who won.",
-  'This web version makes all of that effortless. My hope is that it can finally reach the audience we always thought it deserved, so other people can enjoy it too.',
-]
-
 // Host-only, reachable from any screen (the menu is globally mounted) - for
 // exactly the situation that prompted this: a stray/duplicate row (someone
 // double-joined) or a player who's genuinely gone and isn't coming back,
@@ -65,30 +58,6 @@ function PlayersPanel() {
           </li>
         ))}
       </ul>
-    </div>
-  )
-}
-
-function AboutPanel() {
-  return (
-    <div>
-      <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-success">About</h3>
-      <div className="space-y-3 text-sm text-text-secondary">
-        {ABOUT_PARAGRAPHS.map((p) => (
-          <p key={p}>{p}</p>
-        ))}
-        <p>
-          I'm still actively shaping the game. If you spot a bug or have an idea that could make
-          it better, I'd genuinely love to hear it — send me a line at{' '}
-          <a
-            href="mailto:hello@musicmindreader.com"
-            className="underline decoration-dotted underline-offset-2 transition hover:text-text"
-          >
-            hello@musicmindreader.com
-          </a>
-          .
-        </p>
-      </div>
     </div>
   )
 }
@@ -151,7 +120,8 @@ export function MenuOverlay() {
   const localPlayerId = useGameStore((s) => s.localPlayerId)
   const isHost = roomCode !== null && localPlayerId !== null && localPlayerId === hostId
   const [isOpen, setIsOpen] = useState(false)
-  const [panel, setPanel] = useState<'rules' | 'about' | 'players' | 'account'>('rules')
+  const [panel, setPanel] = useState<'rules' | 'players' | 'account'>('rules')
+  const [confirmingLeave, setConfirmingLeave] = useState(false)
   const pendingMenuPanel = useUiStore((s) => s.pendingMenuPanel)
   const clearPendingMenuPanel = useUiStore((s) => s.clearPendingMenuPanel)
 
@@ -168,9 +138,10 @@ export function MenuOverlay() {
   function close() {
     setIsOpen(false)
     setPanel('rules')
+    setConfirmingLeave(false)
   }
 
-  function goHome() {
+  function handleConfirmedLeave() {
     leaveGame()
     close()
     navigate('/')
@@ -206,25 +177,6 @@ export function MenuOverlay() {
             <div className="flex flex-shrink-0 flex-col gap-3 pr-8 pt-1 sm:w-40 sm:pr-0">
               <button
                 type="button"
-                onClick={goHome}
-                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-left font-medium text-text transition hover:border-border-strong"
-              >
-                Home
-              </button>
-              <button
-                type="button"
-                onClick={() => setPanel((p) => (p === 'about' ? 'rules' : 'about'))}
-                aria-pressed={panel === 'about'}
-                className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
-                  panel === 'about'
-                    ? 'border-primary bg-primary-soft text-primary'
-                    : 'border-border bg-surface text-text hover:border-border-strong'
-                }`}
-              >
-                About
-              </button>
-              <button
-                type="button"
                 onClick={() => setPanel((p) => (p === 'account' ? 'rules' : 'account'))}
                 aria-pressed={panel === 'account'}
                 className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
@@ -235,6 +187,22 @@ export function MenuOverlay() {
               >
                 Account
               </button>
+              <button
+                type="button"
+                onClick={() => setPanel('rules')}
+                aria-pressed={panel === 'rules'}
+                className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
+                  panel === 'rules'
+                    ? 'border-primary bg-primary-soft text-primary'
+                    : 'border-border bg-surface text-text hover:border-border-strong'
+                }`}
+              >
+                How to Play
+              </button>
+              <ThemeModeControl />
+
+              {(isHost || roomCode !== null) && <div className="h-px bg-divider" />}
+
               {isHost && (
                 <button
                   type="button"
@@ -249,7 +217,34 @@ export function MenuOverlay() {
                   Players
                 </button>
               )}
-              <ThemeModeControl />
+
+              {roomCode !== null &&
+                (confirmingLeave ? (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleConfirmedLeave}
+                      className="flex-1 rounded-xl border border-danger bg-danger px-3 py-3 text-sm font-semibold text-white transition hover:brightness-110"
+                    >
+                      Yes, leave
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingLeave(false)}
+                      className="flex-1 rounded-xl border border-border px-3 py-3 text-sm text-text-secondary transition hover:border-border-strong"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingLeave(true)}
+                    className="w-full rounded-xl border border-danger bg-danger/10 px-4 py-3 text-left font-medium text-danger transition hover:bg-danger/20"
+                  >
+                    Leave Game
+                  </button>
+                ))}
 
               <div className="mt-2 sm:mt-auto">
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-success">
@@ -260,6 +255,12 @@ export function MenuOverlay() {
                   className="text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
                 >
                   hello@musicmindreader.com
+                </a>
+                <a
+                  href="/about.html"
+                  className="mt-1 block text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
+                >
+                  Our Story
                 </a>
                 <a
                   href="/privacy.html"
@@ -277,9 +278,7 @@ export function MenuOverlay() {
             </div>
 
             <div className="min-w-0 flex-1 space-y-5 pt-1">
-              {panel === 'about' ? (
-                <AboutPanel />
-              ) : panel === 'players' ? (
+              {panel === 'players' ? (
                 <PlayersPanel />
               ) : panel === 'account' ? (
                 <AccountPanel />

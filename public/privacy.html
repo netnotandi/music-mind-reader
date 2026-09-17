@@ -61,12 +61,28 @@
        <a href="https://www.musicmindreader.com">musicmindreader.com</a>. This page explains what
        information the app handles and how.</p>
 
-    <h2>No accounts, no sign-in</h2>
-    <p>There is no login system. When you create or join a game, the app generates a random player ID
-       and stores it, together with the name you type in, in your browser's local storage
+    <h2>Playing without an account</h2>
+    <p>You never need an account to play. When you create or join a game, the app generates a random
+       player ID and stores it, together with the name you type in, in your browser's local storage
        (<code>localStorage</code>) on your own device. This is only used to recognise your device if you
        reconnect to the same game (e.g. after a dropped connection), and is never sent anywhere except to
        the game session you're playing in.</p>
+
+    <h2>Optional accounts</h2>
+    <p>You can optionally create a free account (via Google sign-in, or an email address and password)
+       so your name is remembered between games and you can save songs you hear to your own private
+       lists. This is handled by Firebase Authentication (provided by Google). Creating an account
+       stores your display name and a short discriminator number (e.g. "Alex #0421") — this is visible
+       to other players so they can tell apart people with the same name; your email address itself is
+       never shown to anyone else. If you use Google sign-in, Google's own privacy policy also applies
+       to that sign-in step — see
+       <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</p>
+
+    <h2>Saved song lists</h2>
+    <p>If you're signed in, you can save a song someone else submitted into your own private list for
+       a category of your choosing. These lists are private — visible only to you, never to other
+       players, both for ordinary privacy and because a visible list could hint at what you might
+       submit in a future round. Saving a song never records who originally submitted it.</p>
 
     <h2>What data is stored, and where</h2>
     <p>While a game is in progress, the following is stored in a shared real-time database (Firebase
@@ -81,6 +97,9 @@
        other players in that same room, which is the entire point of the game — it is not used for any
        purpose outside of running that game session, and it is not sold or shared with third parties for
        advertising or any other purpose.</p>
+    <p>If you create an account, your profile (display name and discriminator) and your saved song
+       lists are also stored in the same database, scoped to your account rather than to one game, and
+       are not shared with third parties either.</p>
 
     <h2>YouTube playback</h2>
     <p>To play submitted songs, the app searches for a matching video using the YouTube Data API and
