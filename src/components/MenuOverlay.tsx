@@ -223,7 +223,7 @@ export function MenuOverlay() {
               edges) - below that, sidebar and content take turns occupying
               this same space (mobilePanelOpen), drill-down style, rather
               than stacking (which just pushed content below the fold). */}
-          <div className="relative flex max-h-full w-full max-w-2xl flex-col gap-6 overflow-y-auto rounded-2xl border border-border bg-bg p-6 sm:flex-row sm:gap-8">
+          <div className="relative flex max-h-full w-full max-w-2xl flex-col gap-6 overflow-y-auto rounded-2xl border border-border bg-bg p-6 sm:max-h-[85vh] sm:min-h-[32rem] sm:max-w-4xl sm:flex-row sm:gap-8 sm:p-8">
             <button
               type="button"
               onClick={close}
