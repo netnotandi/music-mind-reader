@@ -107,7 +107,7 @@ export function CreateJoin() {
         </button>
       )}
 
-      <div className="relative isolate z-10 flex flex-col items-center gap-10 md:flex-row md:items-start md:justify-center">
+      <div className="relative isolate z-10 flex flex-col items-center gap-10 md:flex-row md:items-end md:justify-center">
         <div className="flex w-full max-w-md flex-col">
           <div className="relative flex h-52 items-center justify-center">
             {!isLight && <div className="absolute h-56 w-56 rounded-full bg-violet/30 blur-3xl" />}
@@ -204,7 +204,7 @@ export function CreateJoin() {
         </div>
 
         {authStatus === 'signed-out' && (
-          <div className="flex w-full max-w-md justify-center md:mt-24 md:max-w-sm md:justify-start">
+          <div className="flex w-full max-w-md justify-center md:max-w-sm md:justify-start">
             <AccountPromoCard />
           </div>
         )}
