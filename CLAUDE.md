@@ -439,6 +439,10 @@ Sér-tilvik af sama meiði: einhver getur ýtt á „til baka" í vafranum og le
 ### Staða — útfært (uppfært: sýnilegt öllum, ekki bara host)
 „Players" flipinn er núna sýnilegur ÖLLUM spilurum í herberginu (var áður host-læstur bæði á flipanum sjálfum og innihaldinu) — undirbúningur fyrir „bæta við vin" hnapp á hverja röð þegar vina-fídusinn kemur (sjá „Notendaaðgangur..." kaflann). „Kick" hnappurinn sjálfur er samt ENN bara sýnilegur host — ekki bara að `kickPlayer` hafni öðrum kalli (það gerði hann þegar áður), heldur er sjálfur hnappurinn faldur fyrir alla nema host, svo aðrir sjái ekki takka sem lítur út fyrir að virka en gerir í raun ekkert.
 
+### Staða — útfært (símaútgáfan af valmyndinni — drill-down í stað þess að skruna niður)
+Á síma stóðu valmöguleikarnir (Account/How to Play/Players/o.s.frv.) og innihaldið hvort á sínum stað í `flex-col`, svo að velja eitthvað bætti bara efni FYRIR NEÐAN takkana — þurfti að skruna niður til að sjá það. Lagað (`MenuOverlay.tsx`): nýtt `mobilePanelOpen` state — á síma sýnir valmyndin annað hvort takkalistann EÐA valda innihaldið, aldrei bæði (CSS-stýrt með `hidden`/`sm:flex`/`sm:block`, ekkert breytt á breiðari skjám þar sem bæði eru alltaf sýnileg samtímis eins og áður). Að velja Account/How to Play/Players opnar innihaldið beint og sýnir nýjan „← Back" hnapp (bara sýnilegur á síma, `sm:hidden`) sem fer til baka í listann. Sömu leið notuð fyrir utanaðkomandi opnun (CreateJoin's „Sign in"/„CREATE ACCOUNT" í gegnum `uiStore`) svo hún opni beint á innihaldið, ekki bara listann. Privacy Policy/Terms of Service tekin út úr Contact-blokkinni í valmyndinni (voru tvítekin) — lifa núna bara sem fótfesta á forsíðunni.
+Staðfest með lifandi Playwright-prófun (4/4 grænt).
+
 -------------------------
 Ideas going forward:
 * Létt, valfrjáls notandaauðkenning (t.d. tengt tæki eða Google-reikningi) — grunnur fyrir tölfræði og „crew"-vinahópa

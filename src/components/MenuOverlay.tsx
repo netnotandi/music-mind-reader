@@ -122,6 +122,14 @@ export function MenuOverlay() {
   const [isOpen, setIsOpen] = useState(false)
   const [panel, setPanel] = useState<'rules' | 'players' | 'account'>('rules')
   const [confirmingLeave, setConfirmingLeave] = useState(false)
+  // Phone widths stack the sidebar and content instead of showing both side
+  // by side (see the layout comment below) - without this, picking an
+  // option just adds a second screen's worth of content below the buttons
+  // instead of replacing them, so tapping anything meant scrolling down to
+  // see it. This drives a drill-down instead: pick an option -> that
+  // option's content takes over -> a "Back" button returns to the list.
+  // Irrelevant at sm: and up, where both are always shown together.
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false)
   const pendingMenuPanel = useUiStore((s) => s.pendingMenuPanel)
   const clearPendingMenuPanel = useUiStore((s) => s.clearPendingMenuPanel)
 
@@ -132,6 +140,7 @@ export function MenuOverlay() {
     if (!pendingMenuPanel) return
     setIsOpen(true)
     setPanel(pendingMenuPanel)
+    setMobilePanelOpen(true)
     clearPendingMenuPanel()
   }, [pendingMenuPanel, clearPendingMenuPanel])
 
@@ -139,6 +148,12 @@ export function MenuOverlay() {
     setIsOpen(false)
     setPanel('rules')
     setConfirmingLeave(false)
+    setMobilePanelOpen(false)
+  }
+
+  function openPanel(target: 'rules' | 'players' | 'account') {
+    setPanel(target)
+    setMobilePanelOpen(true)
   }
 
   function handleConfirmedLeave() {
@@ -160,10 +175,12 @@ export function MenuOverlay() {
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6 py-10">
-          {/* Stacked on narrow (phone) screens - the side-by-side layout
-              only fits once there's room for a real sidebar alongside
-              readable paragraph text (confirmed by testing at 390px wide,
-              where the two-column version overflowed off both edges). */}
+          {/* Side-by-side only fits once there's room for a real sidebar
+              alongside readable paragraph text (confirmed by testing at
+              390px wide, where the two-column version overflowed off both
+              edges) - below that, sidebar and content take turns occupying
+              this same space (mobilePanelOpen), drill-down style, rather
+              than stacking (which just pushed content below the fold). */}
           <div className="relative flex max-h-full w-full max-w-2xl flex-col gap-6 overflow-y-auto rounded-2xl border border-border bg-bg p-6 sm:flex-row sm:gap-8">
             <button
               type="button"
@@ -174,10 +191,14 @@ export function MenuOverlay() {
               ✕
             </button>
 
-            <div className="flex flex-shrink-0 flex-col gap-3 pr-8 pt-1 sm:w-40 sm:pr-0">
+            <div
+              className={`flex-shrink-0 flex-col gap-3 pr-8 pt-1 sm:flex sm:w-40 sm:pr-0 ${
+                mobilePanelOpen ? 'hidden' : 'flex'
+              }`}
+            >
               <button
                 type="button"
-                onClick={() => setPanel((p) => (p === 'account' ? 'rules' : 'account'))}
+                onClick={() => openPanel('account')}
                 aria-pressed={panel === 'account'}
                 className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
                   panel === 'account'
@@ -189,7 +210,7 @@ export function MenuOverlay() {
               </button>
               <button
                 type="button"
-                onClick={() => setPanel('rules')}
+                onClick={() => openPanel('rules')}
                 aria-pressed={panel === 'rules'}
                 className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
                   panel === 'rules'
@@ -206,7 +227,7 @@ export function MenuOverlay() {
               {roomCode !== null && (
                 <button
                   type="button"
-                  onClick={() => setPanel((p) => (p === 'players' ? 'rules' : 'players'))}
+                  onClick={() => openPanel('players')}
                   aria-pressed={panel === 'players'}
                   className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
                     panel === 'players'
@@ -262,22 +283,19 @@ export function MenuOverlay() {
                 >
                   Our Story
                 </a>
-                <a
-                  href="/privacy.html"
-                  className="mt-1 block text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
-                >
-                  Privacy Policy
-                </a>
-                <a
-                  href="/terms.html"
-                  className="mt-1 block text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
-                >
-                  Terms of Service
-                </a>
               </div>
             </div>
 
-            <div className="min-w-0 flex-1 space-y-5 pt-1">
+            <div
+              className={`min-w-0 flex-1 space-y-5 pt-1 sm:block ${mobilePanelOpen ? 'block' : 'hidden'}`}
+            >
+              <button
+                type="button"
+                onClick={() => setMobilePanelOpen(false)}
+                className="mb-1 flex items-center gap-1 text-sm text-text-secondary transition hover:text-text sm:hidden"
+              >
+                ← Back
+              </button>
               {panel === 'players' ? (
                 <PlayersPanel />
               ) : panel === 'account' ? (
