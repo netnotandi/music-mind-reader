@@ -20,13 +20,20 @@ const RULES_SECTIONS: { title: string; body: string }[] = [
   },
 ]
 
-// Add friend/Pending/Friends badge shown next to a player's own row, driven
-// entirely by that row's player.uid (absent for anonymous players - see
-// Player.uid's comment in types.ts) - independent of the Kick button/host
-// status alongside it.
+// Add friend/Pending/Accept/Friends control shown next to a player's own
+// row, driven entirely by that row's player.uid (absent for anonymous
+// players - see Player.uid's comment in types.ts) - independent of the Kick
+// button/host status alongside it. A pending request shows differently
+// depending on which side sent it: the sender just sees "Pending" (nothing
+// to do but wait), but the recipient gets an "Accept" button right here
+// instead of a passive badge - otherwise the only way to act on it was a
+// separate trip to Account -> Friends, which read as if nothing could be
+// done from this screen at all.
 function AddFriendControl({ uid }: { uid: string }) {
   const friendships = useFriendsStore((s) => s.friendships)
+  const myUid = useUserStore((s) => s.uid)
   const sendFriendRequest = useFriendsStore((s) => s.sendFriendRequest)
+  const acceptFriendRequest = useFriendsStore((s) => s.acceptFriendRequest)
   const friendship = friendships[uid]
 
   if (!friendship) {
@@ -41,6 +48,17 @@ function AddFriendControl({ uid }: { uid: string }) {
     )
   }
   if (friendship.status === 'pending') {
+    if (friendship.requestedBy !== myUid) {
+      return (
+        <button
+          type="button"
+          onClick={() => acceptFriendRequest(uid)}
+          className="flex-shrink-0 rounded-md border border-success/40 px-2 py-1 text-xs font-semibold text-success transition hover:border-success"
+        >
+          Accept
+        </button>
+      )
+    }
     return <span className="flex-shrink-0 text-xs font-medium text-text-muted">Pending</span>
   }
   return <span className="flex-shrink-0 text-xs font-medium text-success">Friends</span>
