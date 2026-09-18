@@ -218,8 +218,13 @@ function ReadyView({ subTabOpen, onSubTabOpenChange }: ReadyViewProps) {
   }
 
   return (
-    <div>
-      <div className={`sm:block ${subTabOpen ? 'hidden' : 'block'}`}>
+    <div className="sm:flex sm:gap-6">
+      {/* Left column on desktop (sm: and up) - a nested sidebar, same idea as
+          MenuOverlay's own Account/How to Play/Players list, one level in.
+          On mobile this same block IS the "level 2" screen (see subTabOpen
+          above it in the tree), so it still needs to fully hide once a
+          sub-tab is opened there. */}
+      <div className={`sm:block sm:w-36 sm:flex-shrink-0 ${subTabOpen ? 'hidden' : 'block'}`}>
         <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-success">Account</h3>
         <p className="mb-1 text-sm">
           <span className="font-semibold text-text">{profile?.name}</span>{' '}
@@ -227,15 +232,7 @@ function ReadyView({ subTabOpen, onSubTabOpenChange }: ReadyViewProps) {
         </p>
         {email && <p className="mb-3 text-xs text-text-muted">{email}</p>}
 
-        <button
-          type="button"
-          onClick={signOutUser}
-          className="mb-4 rounded-md border border-danger/40 px-3 py-1.5 text-xs font-semibold text-danger transition hover:border-danger"
-        >
-          Sign out
-        </button>
-
-        <div className="flex gap-2" role="tablist">
+        <div className="flex gap-2 sm:flex-col" role="tablist">
           {ACCOUNT_SUB_TABS.map(({ id, label }) => {
             const active = subTab === id
             return (
@@ -245,7 +242,7 @@ function ReadyView({ subTabOpen, onSubTabOpenChange }: ReadyViewProps) {
                 role="tab"
                 aria-selected={active}
                 onClick={() => openSubTab(id)}
-                className={`flex-1 rounded-lg border-2 px-2 py-2 text-xs font-semibold transition ${
+                className={`flex-1 rounded-lg border-2 px-2 py-2 text-xs font-semibold transition sm:flex-none sm:text-left ${
                   active
                     ? 'border-primary bg-primary-soft text-primary'
                     : 'border-border text-text-secondary hover:border-border-strong'
@@ -256,9 +253,17 @@ function ReadyView({ subTabOpen, onSubTabOpenChange }: ReadyViewProps) {
             )
           })}
         </div>
+
+        <button
+          type="button"
+          onClick={signOutUser}
+          className="mt-4 rounded-md border border-danger/40 px-3 py-1.5 text-xs font-semibold text-danger transition hover:border-danger"
+        >
+          Sign out
+        </button>
       </div>
 
-      <div className={`sm:mt-4 sm:block ${subTabOpen ? 'block' : 'hidden'}`}>
+      <div className={`sm:block sm:min-w-0 sm:flex-1 ${subTabOpen ? 'block' : 'hidden'}`}>
         <button
           type="button"
           onClick={() => onSubTabOpenChange(false)}
