@@ -432,9 +432,12 @@ Sér-tilvik af sama meiði: einhver getur ýtt á „til baka" í vafranum og le
 
 ### Staða — útfært
 - **`kickPlayer(playerId)`** (host-only, `gameStore.ts`) — aðgengilegt hvenær sem er í leiknum, ekki bara í Lobby. ALLTAF full fjarlæging úr `players` (öfugt við `leaveGame`s hljóðláta mið-leiks-leið sem heldur röðinni eftir) — af ásettu ráði: sum skilyrði annars staðar (t.d. „hafa allir skilað lagi?" í `03-SubmitSong.tsx`) eru reiknuð beint út frá `players.length`, svo bara að merkja einhvern „tilbúinn" (`lobbyReady`/`finalConfirmations`) leysir EKKI þá stöðu — bara að fækka í listanum gerir það. Staðfest með beinni prófun: „Start Guessing" fór úr óvirkum í virkan um leið og kickað var á þann sem vantaði lag.
-- **„Players" flipi í hamborgara-valmyndinni** (`MenuOverlay.tsx`), bara sýnilegur fyrir host, listar alla spilara með „Kick" hnappi (nema hostinn sjálfan) — aðgengilegt frá ÖLLUM skjám samtímis, ekki bara Lobby, af því valmyndin er alltaf til staðar.
+- **„Players" flipi í hamborgara-valmyndinni** (`MenuOverlay.tsx`), listar alla spilara — aðgengilegt frá ÖLLUM skjám samtímis, ekki bara Lobby, af því valmyndin er alltaf til staðar.
 - **`useKickedWatcher`** (`App.tsx`) — nýr watcher: ef þetta tæki á enn `localPlayerId` en finnur sjálft sig ekki lengur í `players`-fylkinu (kickað, eða fjarlægt á annan hátt), keyrir `handleRemovedFromRoom()` (sama staðbundna núllstilling og `leaveGame` gerir, en SKRIFAR EKKERT til baka í herbergi sem tækið á ekki lengur heima í) og siglir heim á forsíðuna sjálfkrafa.
 - Ekki reynt að þétta „til baka í vafra" glugga bilsins sjálfan (hætta á brothættri lagfæringu fyrir lítinn ávinning) — „kick" er staðgengillinn: hvað sem gerist, getur host núna hreinsað upp svona tilvik strax.
+
+### Staða — útfært (uppfært: sýnilegt öllum, ekki bara host)
+„Players" flipinn er núna sýnilegur ÖLLUM spilurum í herberginu (var áður host-læstur bæði á flipanum sjálfum og innihaldinu) — undirbúningur fyrir „bæta við vin" hnapp á hverja röð þegar vina-fídusinn kemur (sjá „Notendaaðgangur..." kaflann). „Kick" hnappurinn sjálfur er samt ENN bara sýnilegur host — ekki bara að `kickPlayer` hafni öðrum kalli (það gerði hann þegar áður), heldur er sjálfur hnappurinn faldur fyrir alla nema host, svo aðrir sjái ekki takka sem lítur út fyrir að virka en gerir í raun ekkert.
 
 -------------------------
 Ideas going forward:

@@ -18,24 +18,27 @@ const RULES_SECTIONS: { title: string; body: string }[] = [
   },
 ]
 
-// Host-only, reachable from any screen (the menu is globally mounted) - for
-// exactly the situation that prompted this: a stray/duplicate row (someone
-// double-joined) or a player who's genuinely gone and isn't coming back,
-// with no way to tidy that up otherwise. Uses the same kickPlayer action
-// regardless of where in the game this is - safe to fully remove a row
-// pre-first-round, otherwise just marks it out of the way (see
-// kickPlayer in gameStore.ts).
+// Visible to every player in the room, not just the host - so everyone can
+// see who's in the game (and, once friends exist, add one from here). Only
+// the host sees "Kick" buttons at all: kickPlayer itself already refuses
+// non-host callers (gameStore.ts), but showing a clickable-looking button
+// that quietly does nothing for everyone else would be confusing, so the
+// button is hidden rather than just relying on the action's own guard.
 function PlayersPanel() {
   const players = useGameStore((s) => s.players)
   const hostId = useGameStore((s) => s.hostId)
+  const localPlayerId = useGameStore((s) => s.localPlayerId)
   const kickPlayer = useGameStore((s) => s.kickPlayer)
+  const isHost = localPlayerId !== null && localPlayerId === hostId
 
   return (
     <div>
       <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-success">Players</h3>
-      <p className="mb-3 text-xs text-text-muted">
-        Remove a duplicate or a player who's left for good. This can't be undone.
-      </p>
+      {isHost && (
+        <p className="mb-3 text-xs text-text-muted">
+          Remove a duplicate or a player who's left for good. This can't be undone.
+        </p>
+      )}
       <ul className="space-y-2">
         {players.map((player) => (
           <li
@@ -46,7 +49,7 @@ function PlayersPanel() {
               {player.name}
               {player.id === hostId && <span className="ml-1 text-xs text-text-muted">(host)</span>}
             </span>
-            {player.id !== hostId && (
+            {isHost && player.id !== hostId && (
               <button
                 type="button"
                 onClick={() => kickPlayer(player.id)}
@@ -116,9 +119,6 @@ export function MenuOverlay() {
   const navigate = useNavigate()
   const leaveGame = useGameStore((s) => s.leaveGame)
   const roomCode = useGameStore((s) => s.roomCode)
-  const hostId = useGameStore((s) => s.hostId)
-  const localPlayerId = useGameStore((s) => s.localPlayerId)
-  const isHost = roomCode !== null && localPlayerId !== null && localPlayerId === hostId
   const [isOpen, setIsOpen] = useState(false)
   const [panel, setPanel] = useState<'rules' | 'players' | 'account'>('rules')
   const [confirmingLeave, setConfirmingLeave] = useState(false)
@@ -201,9 +201,9 @@ export function MenuOverlay() {
               </button>
               <ThemeModeControl />
 
-              {(isHost || roomCode !== null) && <div className="h-px bg-divider" />}
+              {roomCode !== null && <div className="h-px bg-divider" />}
 
-              {isHost && (
+              {roomCode !== null && (
                 <button
                   type="button"
                   onClick={() => setPanel((p) => (p === 'players' ? 'rules' : 'players'))}

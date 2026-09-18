@@ -210,7 +210,7 @@ export function CreateJoin() {
         )}
       </div>
 
-      <div className="mt-10 flex justify-center gap-4 pb-2">
+      <div className="mt-auto flex justify-center gap-4 pt-10">
         <a
           href="/privacy.html"
           className="text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
