@@ -547,5 +547,49 @@ Fyrsti áfangi af þessu er kominn í loftið: Firebase Authentication (bæði G
 - **Böggur sem kom upp í alvöru spilun sama kvöld:** „Couldn't save — try again" á lagi fundið með YouTube-leit. Rótin: `title`/`artist` á `Song` eru það sem var VÉLRITAÐ í leitina — oft autt eða bara brot af texta (sjá `songLabel.ts`), því raunverulega birta nafnið kemur úr `youtubeTitle` þegar leitarniðurstaða er valin. Reglurnar sem settar voru upp kröfðust þess samt að `title`/`artist` væru EKKI tómir strengir (`length > 0`), sem hafnaði nákvæmlega svona lögum. Lagað (Firebase Console, `.validate` á `title`/`artist` undir `lists/$categoryId/$songKey`): tekið `&& newData.val().length > 0` út, bara `isString() && length <= 200` eftir standandi — tómur `title`/`artist` er í lagi svo lengi sem `youtubeTitle` ber alvöru nafnið, alveg eins og restin af appinu meðhöndlar þetta nú þegar. Staðfest með beinni prófun: sama tilvik (tómur artist + youtubeTitle) vistast núna rétt.
 - Frestað áfram: að SÝNA/nota vistuðu listana (flýtileið við innsendingu, skjár til að skoða/eyða/færa milli lista) og tölfræðin — sér verkefni.
 
+### Staða — útfært (vinir — beiðni + samþykki, online/offline, „Add friend" úr Players)
+Fyrsta helmingnum af „Vinir" kaflanum hér að ofan er lokið: leitað er að vin eftir nafni+númeri undir Account → Friends, beiðnin þarf GAGNKVÆMT samþykki (ekki einhliða „follow"), og vinalistinn skiptist í Online/Offline. Að auki, eftir ábendingu frá notanda um mockup: hægt er líka að senda vinabeiðni beint úr núverandi „Players" flipanum í leiknum (sjá „Kick spilara" kaflann) — ekki sér „+" takki í Lobby eins og upphaflega var lýst.
+
+- **Gagnalíkan** — tvær nýjar systur-greinar við `users`/`usernames`/`games`/`songSearchCache`:
+  ```
+  friendships/{uid}/{otherUid} -> { status: 'pending' | 'accepted', requestedBy: uid, createdAt: number }
+  presence/{uid}/{connectionId} -> true
+  ```
+  **Speglað, ekki deilt** — vinasamband milli A og B er geymt TVISVAR, á `friendships/A/B` OG `friendships/B/A`, alltaf skrifað saman í einni gagnaskrifun (`update()` með mörgum slóðum í einu, allt-eða-ekkert). Valið gagngert framyfir eitt sameiginlegt `friendships/{pairKey}` skjal: sameiginlegt skjal þyrfti `.orderByChild()`-fyrirspurn til að finna „öll mín vinasambönd", og staðfest er (sjá `users`-lekann að ofan) að staka-barns `.read`-reglur heimila EKKI fyrirspurnir á söfn — sami veikleikaflokkur og `users`-lekinn. Speglaða hönnunin þarf enga fyrirspurn yfir höfuð: „öll mín vinasambönd" er einn flatur lestur á `friendships/{minUid}`.
+  - Af hverju A má yfirhöfuð skrifa inn í B's eigin undirtré: Firebase-reglur leyfa það EF reglan nefnir hitt UID-ið beint á þeim stað (`$otherUid` í `.write`-skilyrðinu), ekki bara `$uid` eitt og sér — staðfest með sjálfstæðri reglu-yfirferð áður en kóðinn var skrifaður.
+  - `presence` notar `push()`-lykil-undirhnút per tengingu (ekki einn boolean), sama mynstur og allar aðrar „online núna" lausnir í Firebase — þannig lokar það á eitt flipa af tveimur ekki að merkja mann offline.
+  - Nafn/númer vinar er EKKI af-normaliserað inn í vinasambands-færsluna — `users/{otherUid}/name`/`discriminator` eru nú þegar opinberlega lesanleg (frá Áfanga 1), svo `FriendsPanel`/`PlayersPanel` gera litla lifandi uppflettingu í staðinn fyrir að eiga á hættu úrelt afrit.
+- **RTDB-reglur** (nýjar systur-greinar, sömu birtingar-aðferð og allar aðrar reglubreytingar: Playground → publish → REST-próf):
+  ```json
+  "friendships": {
+    "$uid": {
+      ".read": "auth != null && auth.uid === $uid",
+      "$otherUid": {
+        ".write": "auth != null && $uid !== $otherUid && (auth.uid === $uid || auth.uid === $otherUid)",
+        ".validate": "newData.hasChildren(['status', 'requestedBy', 'createdAt'])",
+        "status": {
+          ".validate": "(!data.exists() && newData.val() === 'pending') || newData.val() === data.val() || (data.val() === 'pending' && newData.val() === 'accepted' && data.parent().child('requestedBy').val() !== auth.uid)"
+        },
+        "requestedBy": { ".validate": "data.exists() ? newData.val() === data.val() : newData.val() === auth.uid" },
+        "createdAt": { ".validate": "data.exists() ? newData.val() === data.val() : newData.val() === now" },
+        "$other": { ".validate": false }
+      }
+    }
+  },
+  "presence": {
+    "$uid": {
+      ".read": true,
+      "$connId": { ".write": "auth != null && auth.uid === $uid" }
+    }
+  }
+  ```
+  - `$uid !== $otherUid` bannar að biðja sjálfan sig um vináttu. `requestedBy`/`createdAt` eru „write-once" (má bara skrifa í fyrsta sinn, aldrei breyta síðar) — kemur í veg fyrir að falsa hver bað hvern eða falsa tímastimpilinn. `$other: false` hafnar hvaða auka-reit sem er. `remove()` (afþakka/hætta við/hætta vinskap) sleppur alveg við `.validate`-athuganir (Firebase-regla), svo það virkar alltaf óháð þessu öllu.
+  - **Alvöru öryggisgalli fannst og lagaður EFTIR fyrstu birtingu, með sjálfvirkri Playwright-prófun:** upprunalega `status`-reglan notaði `data.child('requestedBy')` — en á `status`-reitnum sjálfum vísar `data` í GILDI ÞESS REITS (t.d. strengurinn `"pending"`), ekki foreldra-hlutinn, svo `data.child('requestedBy')` var alltaf `null`. Þar með varð `null !== auth.uid` alltaf satt, og skilyrðið sem átti að banna þeim sem bað um vináttu að samþykkja sína EIGIN beiðni gerði ekkert — staðfest með beinni REST-tilraun að A gat skrifað `status: 'accepted'` á sína eigin sendu beiðni. Lagað með `data.parent().child('requestedBy')` (fer upp í foreldrahlutinn fyrst) — REST-próf eftir lagfæringu staðfesti bæði að sjálf-samþykki er núna hafnað (401) OG að lögmætt samþykki frá móttakanda virkar áfram eðlilega.
+- **`src/state/friendsStore.ts`** (nýtt) — `friendships` (flatur lestur/`onValue` á `friendships/{minUid}`) og `onlineUids` í Zustand, `initFriends()` kallað einu sinni úr `App.tsx` (sama `initAuth()`/`resumeSession()` mynstur), tengist/aftengist `friendships`- og `presence`-hlustendum sjálfkrafa við inn-/útskráningu. `sendFriendRequest`/`acceptFriendRequest`/`removeFriendship` skrifa ALLTAF báðar spegluðu afritin í einni `update()`-köllun. Eigin `registerMyPresence()` notar staðlaða `.info/connected` + `push()` + `onDisconnect()` rununa.
+- **`src/components/FriendsPanel.tsx`** (nýtt, undir Account → Friends): leitarform (nafn + 4 stafa númer, notar `normalizeNameKey()`/`usernames`-vísitöluna sem er þegar til), „Requests" hluti (móttekin beiðni, Accept/Decline), „Sent" lína (útsend beiðni sem beðið er eftir), og sjálfur vinalistinn skiptur í **Online** (grænn punktur)/**Offline**, hvor um sig með „Remove".
+- **`Player.uid?: string`** (`types.ts`) — nýr, valfrjáls reitur á hverri leikmanns-röð í herbergi, settur af `createGame`/`joinGame` (`gameStore.ts`) EINGÖNGU ef viðkomandi er innskráður á því augnabliki (`useUserStore.getState().uid`) — aldrei bætt við eftir á, aldrei til staðar fyrir nafnlausa spilara. Þetta er fyrsta tengingin milli herbergis-auðkennis (`crypto.randomUUID()`) og reikningsauðkennis (Firebase Auth uid), sem voru að öðru leyti tvö algjörlega aðskilin kerfi.
+- **„Players" flipinn** (`MenuOverlay.tsx`) fékk nýjan `AddFriendControl` fyrir hverja ÖÐRU röð (aldrei sína eigin, athugað bæði með `localPlayerId` og `uid`): `player.uid` vantar (nafnlaus) → ekkert birtist; `uid` er til en engin vinasamband-færsla → **„Add friend"** hnappur; `status: 'pending'` → **„Pending"** merki; `status: 'accepted'` → **„Friends"** merki. Alveg óháð host-stöðu/Kick-hnappnum sem er við hliðina.
+- **Staðfest með lifandi Playwright-prófun** (tvö alvöru innskráð próf-reikningar): senda beiðni → sést sem „incoming" hjá móttakanda og „outgoing" hjá sendanda (bæði spegluðu afritin staðfest með beinni REST-lestri) → sjálf-samþykki hafnað (401, staðfestir öryggislagfæringuna) → alvöru samþykki frá móttakanda virkar (bæði afrit fara í `accepted`) → presence-staða sést rétt hjá vininum → hætt við vinskap fjarlægir bæði afritin → ný beiðni eftir það virkar hreint → „Add friend" í Players-flipanum (alvöru UI-smellur, ekki bara store-köll) flettir yfir í „Pending" og sést samstundis sem móttekin beiðni hjá hinum leikmanninum.
+
 
 

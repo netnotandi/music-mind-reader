@@ -1,9 +1,11 @@
 import { type ReactElement, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AccountPanel } from './AccountPanel'
+import { useFriendsStore } from '../state/friendsStore'
 import { useGameStore } from '../state/gameStore'
 import { type ThemeMode, useThemeStore } from '../state/themeStore'
 import { useUiStore } from '../state/uiStore'
+import { useUserStore } from '../state/userStore'
 
 const RULES_SECTIONS: { title: string; body: string }[] = [
   {
@@ -18,17 +20,44 @@ const RULES_SECTIONS: { title: string; body: string }[] = [
   },
 ]
 
+// Add friend/Pending/Friends badge shown next to a player's own row, driven
+// entirely by that row's player.uid (absent for anonymous players - see
+// Player.uid's comment in types.ts) - independent of the Kick button/host
+// status alongside it.
+function AddFriendControl({ uid }: { uid: string }) {
+  const friendships = useFriendsStore((s) => s.friendships)
+  const sendFriendRequest = useFriendsStore((s) => s.sendFriendRequest)
+  const friendship = friendships[uid]
+
+  if (!friendship) {
+    return (
+      <button
+        type="button"
+        onClick={() => sendFriendRequest(uid)}
+        className="flex-shrink-0 rounded-md border border-primary/40 px-2 py-1 text-xs font-semibold text-primary transition hover:border-primary"
+      >
+        Add friend
+      </button>
+    )
+  }
+  if (friendship.status === 'pending') {
+    return <span className="flex-shrink-0 text-xs font-medium text-text-muted">Pending</span>
+  }
+  return <span className="flex-shrink-0 text-xs font-medium text-success">Friends</span>
+}
+
 // Visible to every player in the room, not just the host - so everyone can
-// see who's in the game (and, once friends exist, add one from here). Only
-// the host sees "Kick" buttons at all: kickPlayer itself already refuses
-// non-host callers (gameStore.ts), but showing a clickable-looking button
-// that quietly does nothing for everyone else would be confusing, so the
-// button is hidden rather than just relying on the action's own guard.
+// see who's in the game and add a friend from here. Only the host sees
+// "Kick" buttons at all: kickPlayer itself already refuses non-host callers
+// (gameStore.ts), but showing a clickable-looking button that quietly does
+// nothing for everyone else would be confusing, so the button is hidden
+// rather than just relying on the action's own guard.
 function PlayersPanel() {
   const players = useGameStore((s) => s.players)
   const hostId = useGameStore((s) => s.hostId)
   const localPlayerId = useGameStore((s) => s.localPlayerId)
   const kickPlayer = useGameStore((s) => s.kickPlayer)
+  const myUid = useUserStore((s) => s.uid)
   const isHost = localPlayerId !== null && localPlayerId === hostId
 
   return (
@@ -40,26 +69,32 @@ function PlayersPanel() {
         </p>
       )}
       <ul className="space-y-2">
-        {players.map((player) => (
-          <li
-            key={player.id}
-            className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
-          >
-            <span className="truncate text-sm text-text">
-              {player.name}
-              {player.id === hostId && <span className="ml-1 text-xs text-text-muted">(host)</span>}
-            </span>
-            {isHost && player.id !== hostId && (
-              <button
-                type="button"
-                onClick={() => kickPlayer(player.id)}
-                className="flex-shrink-0 rounded-md border border-danger/40 px-2 py-1 text-xs font-semibold text-danger transition hover:border-danger"
-              >
-                Kick
-              </button>
-            )}
-          </li>
-        ))}
+        {players.map((player) => {
+          const isSelf = player.id === localPlayerId || (myUid !== null && player.uid === myUid)
+          return (
+            <li
+              key={player.id}
+              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+            >
+              <span className="truncate text-sm text-text">
+                {player.name}
+                {player.id === hostId && <span className="ml-1 text-xs text-text-muted">(host)</span>}
+              </span>
+              <div className="flex flex-shrink-0 items-center gap-2">
+                {!isSelf && player.uid && <AddFriendControl uid={player.uid} />}
+                {isHost && player.id !== hostId && (
+                  <button
+                    type="button"
+                    onClick={() => kickPlayer(player.id)}
+                    className="flex-shrink-0 rounded-md border border-danger/40 px-2 py-1 text-xs font-semibold text-danger transition hover:border-danger"
+                  >
+                    Kick
+                  </button>
+                )}
+              </div>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

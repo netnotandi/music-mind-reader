@@ -11,6 +11,7 @@ import { GameSetup } from './screens/02b-GameSetup'
 import { SubmitSong } from './screens/03-SubmitSong'
 import { GuessAndRate } from './screens/05-GuessAndRate'
 import { Results } from './screens/06-Results'
+import { useFriendsStore } from './state/friendsStore'
 import { useGameStore } from './state/gameStore'
 import { useUserStore } from './state/userStore'
 
@@ -118,12 +119,14 @@ function AppRoutes() {
 function App() {
   const resumeSession = useGameStore((s) => s.resumeSession)
   const initAuth = useUserStore((s) => s.initAuth)
+  const initFriends = useFriendsStore((s) => s.initFriends)
   const [checkedSession, setCheckedSession] = useState(false)
 
   useEffect(() => {
-    // Auth is orthogonal to game routing/session - fire-and-forget, never
-    // gates rendering the way checkedSession below does.
+    // Auth/friends are orthogonal to game routing/session - fire-and-forget,
+    // never gates rendering the way checkedSession below does.
     initAuth()
+    initFriends()
     resumeSession().finally(() => setCheckedSession(true))
     // Only ever needs to run once, on first load - resumeSession reads
     // whatever's in localStorage at that moment.

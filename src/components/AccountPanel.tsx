@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FriendsPanel } from './FriendsPanel'
 import { MyListsPanel } from './MyListsPanel'
 import { MAX_NAME_LENGTH } from '../state/gameStore'
 import { auth } from '../firebase'
@@ -188,10 +189,6 @@ const ACCOUNT_SUB_TABS = [
   { id: 'stats', label: 'Stats' },
 ] as const
 type AccountSubTab = (typeof ACCOUNT_SUB_TABS)[number]['id']
-
-function FriendsPanel() {
-  return <p className="text-sm text-text-muted">Friends are coming soon.</p>
-}
 
 function StatsPanel() {
   return <p className="text-sm text-text-muted">Lifetime stats are coming soon.</p>

@@ -20,6 +20,7 @@ import {
 } from '../logic/scoring'
 import type { Category, ChatMessage, Guess, Player, Rating, Song } from '../types'
 import { CATEGORIES } from './mockData'
+import { useUserStore } from './userStore'
 
 export const MAX_SELECTED_CATEGORIES = 1
 
@@ -274,6 +275,7 @@ interface RoomRecord {
     string,
     {
       name: string
+      uid?: string
       joinedAt: number
       totalScore?: number
       cumulativeCorrectGuesses?: number
@@ -307,6 +309,7 @@ function parseRoom(data: RoomRecord) {
     .map(([id, p]) => ({
       id,
       name: p.name,
+      uid: p.uid,
       totalScore: p.totalScore ?? 0,
       cumulativeCorrectGuesses: p.cumulativeCorrectGuesses ?? 0,
       cumulativeRatingSum: p.cumulativeRatingSum ?? 0,
@@ -449,6 +452,10 @@ export const useGameStore = create<GameState>((set, get) => {
       while ((await dbGet(ref(db, `games/${roomCode}`))).exists()) {
         roomCode = generateRoomCode()
       }
+      // Only attached if signed in at this exact moment - anonymous hosts
+      // get no uid field at all, never retroactively added (see PlayersPanel
+      // in MenuOverlay.tsx, which uses this to offer "Add friend").
+      const hostUid = useUserStore.getState().uid
       // No category yet - the host picks it in the Lobby, the same way
       // every round after the first already works.
       await dbSet(ref(db, `games/${roomCode}`), {
@@ -458,7 +465,9 @@ export const useGameStore = create<GameState>((set, get) => {
         selectedCategoryIds: [],
         currentSongIndex: 0,
         songOrder: [],
-        players: { [playerId]: { name: hostName, joinedAt: serverTimestamp() } },
+        players: {
+          [playerId]: { name: hostName, joinedAt: serverTimestamp(), ...(hostUid ? { uid: hostUid } : {}) },
+        },
       })
       saveSession(roomCode, playerId)
       attachListener(roomCode, playerId)
@@ -525,9 +534,11 @@ export const useGameStore = create<GameState>((set, get) => {
       if (phase !== 'lobby') return 'in-progress'
 
       const playerId = crypto.randomUUID()
+      const joinerUid = useUserStore.getState().uid
       await dbSet(ref(db, `games/${roomCode}/players/${playerId}`), {
         name: playerName,
         joinedAt: serverTimestamp(),
+        ...(joinerUid ? { uid: joinerUid } : {}),
       })
       saveSession(roomCode, playerId)
       attachListener(roomCode, playerId)

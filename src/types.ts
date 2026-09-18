@@ -6,6 +6,11 @@ export interface Category {
 export interface Player {
   id: string
   name: string
+  // Set only if this player was signed in (Firebase Auth uid) at the moment
+  // they created/joined the room - lets other clients in the same room
+  // offer "Add friend" on their row (see PlayersPanel in MenuOverlay.tsx).
+  // Absent entirely for anonymous players, never retroactively backfilled.
+  uid?: string
   totalScore?: number
   // Folded in alongside totalScore (see applyRoundScoresIfNeeded in
   // gameStore.ts) - never reset between rounds, used to compute the
