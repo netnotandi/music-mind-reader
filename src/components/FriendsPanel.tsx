@@ -10,18 +10,28 @@ const inputClasses =
 // One-off lookup per row rather than denormalizing name/discriminator into
 // the friendship record itself - users/{uid}/name and .../discriminator are
 // already public-read (from the accounts phase), so this always shows the
-// friend's current name rather than a copy that could go stale.
+// friend's current name rather than a copy that could go stale. Reads those
+// two fields individually rather than the whole users/{uid} node - lists/
+// createdAt on that node are owner-only, and Firebase denies a parent-level
+// read unless every descendant is readable, so fetching the whole node for
+// someone else's uid was silently permission-denied (stuck "Loading…"
+// forever, since nothing caught the rejected promise).
 function useOtherProfile(uid: string) {
   const [profile, setProfile] = useState<{ name: string; discriminator: string } | null>(null)
 
   useEffect(() => {
     let cancelled = false
     setProfile(null)
-    dbGet(ref(db, `users/${uid}`)).then((snap) => {
-      if (cancelled) return
-      const val = snap.val() as { name: string; discriminator: string } | null
-      if (val) setProfile({ name: val.name, discriminator: val.discriminator })
-    })
+    Promise.all([dbGet(ref(db, `users/${uid}/name`)), dbGet(ref(db, `users/${uid}/discriminator`))])
+      .then(([nameSnap, discSnap]) => {
+        if (cancelled) return
+        const name = nameSnap.val() as string | null
+        const discriminator = discSnap.val() as string | null
+        if (name && discriminator) setProfile({ name, discriminator })
+      })
+      .catch(() => {
+        // Leave profile null - row keeps showing "Loading…" rather than crashing.
+      })
     return () => {
       cancelled = true
     }
@@ -75,7 +85,7 @@ function OutgoingRequestRow({ uid, onCancel }: { uid: string; onCancel: () => vo
   return (
     <li className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2">
       <span className="min-w-0 truncate text-sm text-text-secondary">
-        <ProfileLabel uid={uid} /> <span className="text-xs text-text-muted">· sent</span>
+        <ProfileLabel uid={uid} /> <span className="text-xs text-text-muted">· pending</span>
       </span>
       <button type="button" onClick={onCancel} className="flex-shrink-0 text-xs text-text-muted hover:text-text">
         Cancel
