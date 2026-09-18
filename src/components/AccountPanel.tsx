@@ -197,52 +197,77 @@ function StatsPanel() {
   return <p className="text-sm text-text-muted">Lifetime stats are coming soon.</p>
 }
 
-function ReadyView() {
+interface ReadyViewProps {
+  // Owned by MenuOverlay, not local state here - it needs to know when
+  // Account has drilled a level deeper so it can hide its OWN "Back" button
+  // (level 1 <-> 2) while this component's "Back" (level 2 <-> 3) is the
+  // only one that should show, rather than stacking both at once.
+  subTabOpen: boolean
+  onSubTabOpenChange: (open: boolean) => void
+}
+
+function ReadyView({ subTabOpen, onSubTabOpenChange }: ReadyViewProps) {
   const profile = useUserStore((s) => s.profile)
   const email = useUserStore((s) => s.email)
   const signOutUser = useUserStore((s) => s.signOutUser)
   const [subTab, setSubTab] = useState<AccountSubTab>('lists')
 
+  function openSubTab(id: AccountSubTab) {
+    setSubTab(id)
+    onSubTabOpenChange(true)
+  }
+
   return (
     <div>
-      <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-success">Account</h3>
-      <p className="mb-1 text-sm">
-        <span className="font-semibold text-text">{profile?.name}</span>{' '}
-        <span className="text-text-muted">#{profile?.discriminator}</span>
-      </p>
-      {email && <p className="mb-3 text-xs text-text-muted">{email}</p>}
+      <div className={`sm:block ${subTabOpen ? 'hidden' : 'block'}`}>
+        <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-success">Account</h3>
+        <p className="mb-1 text-sm">
+          <span className="font-semibold text-text">{profile?.name}</span>{' '}
+          <span className="text-text-muted">#{profile?.discriminator}</span>
+        </p>
+        {email && <p className="mb-3 text-xs text-text-muted">{email}</p>}
 
-      <button
-        type="button"
-        onClick={signOutUser}
-        className="mb-4 rounded-md border border-danger/40 px-3 py-1.5 text-xs font-semibold text-danger transition hover:border-danger"
-      >
-        Sign out
-      </button>
+        <button
+          type="button"
+          onClick={signOutUser}
+          className="mb-4 rounded-md border border-danger/40 px-3 py-1.5 text-xs font-semibold text-danger transition hover:border-danger"
+        >
+          Sign out
+        </button>
 
-      <div className="mb-4 flex gap-2" role="tablist">
-        {ACCOUNT_SUB_TABS.map(({ id, label }) => {
-          const active = subTab === id
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setSubTab(id)}
-              className={`flex-1 rounded-lg border-2 px-2 py-2 text-xs font-semibold transition ${
-                active
-                  ? 'border-primary bg-primary-soft text-primary'
-                  : 'border-border text-text-secondary hover:border-border-strong'
-              }`}
-            >
-              {label}
-            </button>
-          )
-        })}
+        <div className="flex gap-2" role="tablist">
+          {ACCOUNT_SUB_TABS.map(({ id, label }) => {
+            const active = subTab === id
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => openSubTab(id)}
+                className={`flex-1 rounded-lg border-2 px-2 py-2 text-xs font-semibold transition ${
+                  active
+                    ? 'border-primary bg-primary-soft text-primary'
+                    : 'border-border text-text-secondary hover:border-border-strong'
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
-      {subTab === 'lists' ? <MyListsPanel /> : subTab === 'friends' ? <FriendsPanel /> : <StatsPanel />}
+      <div className={`sm:mt-4 sm:block ${subTabOpen ? 'block' : 'hidden'}`}>
+        <button
+          type="button"
+          onClick={() => onSubTabOpenChange(false)}
+          className="mb-3 flex items-center gap-1 text-sm text-text-secondary transition hover:text-text sm:hidden"
+        >
+          ← Back
+        </button>
+        {subTab === 'lists' ? <MyListsPanel /> : subTab === 'friends' ? <FriendsPanel /> : <StatsPanel />}
+      </div>
     </div>
   )
 }
@@ -280,14 +305,16 @@ function ProfileErrorView() {
 // (including the very first CreateJoin screen) since MenuOverlay is mounted
 // globally and this panel isn't host- or room-gated. Signing in is entirely
 // optional and orthogonal to playing - see the "signed-out" copy below.
-export function AccountPanel() {
+// subTabOpen/onSubTabOpenChange are only meaningful for the signed-in
+// (ReadyView) case - see that component's own comment.
+export function AccountPanel({ subTabOpen, onSubTabOpenChange }: ReadyViewProps) {
   const status = useUserStore((s) => s.status)
 
   if (status === 'loading') {
     return <p className="text-sm text-text-muted">Checking…</p>
   }
   if (status === 'needs-profile') return <NeedsProfileView />
-  if (status === 'ready') return <ReadyView />
+  if (status === 'ready') return <ReadyView subTabOpen={subTabOpen} onSubTabOpenChange={onSubTabOpenChange} />
   if (status === 'profile-error') return <ProfileErrorView />
   return <SignedOutView />
 }

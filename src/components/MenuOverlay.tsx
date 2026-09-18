@@ -130,6 +130,11 @@ export function MenuOverlay() {
   // option's content takes over -> a "Back" button returns to the list.
   // Irrelevant at sm: and up, where both are always shown together.
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false)
+  // Lifted out of AccountPanel itself (rather than local state there) so
+  // this component can hide its OWN "Back" button whenever Account has
+  // drilled a level deeper (Friends/My Lists/Stats content) - otherwise two
+  // stacked "Back" buttons show at once, one per level, which is confusing.
+  const [accountSubTabOpen, setAccountSubTabOpen] = useState(false)
   const pendingMenuPanel = useUiStore((s) => s.pendingMenuPanel)
   const clearPendingMenuPanel = useUiStore((s) => s.clearPendingMenuPanel)
 
@@ -149,11 +154,13 @@ export function MenuOverlay() {
     setPanel('rules')
     setConfirmingLeave(false)
     setMobilePanelOpen(false)
+    setAccountSubTabOpen(false)
   }
 
   function openPanel(target: 'rules' | 'players' | 'account') {
     setPanel(target)
     setMobilePanelOpen(true)
+    setAccountSubTabOpen(false)
   }
 
   function handleConfirmedLeave() {
@@ -289,17 +296,19 @@ export function MenuOverlay() {
             <div
               className={`min-w-0 flex-1 space-y-5 pt-1 sm:block ${mobilePanelOpen ? 'block' : 'hidden'}`}
             >
-              <button
-                type="button"
-                onClick={() => setMobilePanelOpen(false)}
-                className="mb-1 flex items-center gap-1 text-sm text-text-secondary transition hover:text-text sm:hidden"
-              >
-                ← Back
-              </button>
+              {!(panel === 'account' && accountSubTabOpen) && (
+                <button
+                  type="button"
+                  onClick={() => setMobilePanelOpen(false)}
+                  className="mb-1 flex items-center gap-1 text-sm text-text-secondary transition hover:text-text sm:hidden"
+                >
+                  ← Back
+                </button>
+              )}
               {panel === 'players' ? (
                 <PlayersPanel />
               ) : panel === 'account' ? (
-                <AccountPanel />
+                <AccountPanel subTabOpen={accountSubTabOpen} onSubTabOpenChange={setAccountSubTabOpen} />
               ) : (
                 RULES_SECTIONS.map((section) => (
                   <div key={section.title}>
