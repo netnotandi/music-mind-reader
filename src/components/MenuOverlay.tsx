@@ -252,7 +252,7 @@ export function MenuOverlay() {
             </button>
 
             <div
-              className={`flex-shrink-0 flex-col gap-3 pr-8 pt-1 sm:flex sm:w-40 sm:pr-0 ${
+              className={`flex-shrink-0 flex-col gap-3 pr-8 pt-8 sm:flex sm:w-40 sm:pr-0 ${
                 mobilePanelOpen ? 'hidden' : 'flex'
               }`}
             >
@@ -341,7 +341,7 @@ export function MenuOverlay() {
             </div>
 
             <div
-              className={`min-w-0 flex-1 space-y-5 pt-1 sm:block ${mobilePanelOpen ? 'block' : 'hidden'}`}
+              className={`min-w-0 flex-1 space-y-5 pt-8 sm:block ${mobilePanelOpen ? 'block' : 'hidden'}`}
             >
               {!(panel === 'account' && accountSubTabOpen) && (
                 <button
