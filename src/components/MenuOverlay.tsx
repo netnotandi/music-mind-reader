@@ -327,7 +327,7 @@ export function MenuOverlay() {
                   </button>
                 ))}
 
-              <div className="mt-2 sm:mt-auto">
+              <div className="mt-4 sm:mt-auto">
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-success">
                   Contact
                 </p>
@@ -336,12 +336,6 @@ export function MenuOverlay() {
                   className="text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
                 >
                   hello@musicmindreader.com
-                </a>
-                <a
-                  href="/about.html"
-                  className="mt-1 block text-[11px] text-text-secondary underline decoration-dotted underline-offset-2 transition hover:text-text"
-                >
-                  Our Story
                 </a>
               </div>
             </div>
