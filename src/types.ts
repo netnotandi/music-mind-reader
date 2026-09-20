@@ -55,4 +55,9 @@ export interface ChatMessage {
   senderName: string
   text: string
   timestamp: number
+  // emoji -> set of playerIds who reacted with it (value is always `true`,
+  // just a presence marker - same shape RTDB uses for sets elsewhere in this
+  // app, e.g. lobbyReady/finalConfirmations). Absent entirely on messages
+  // nobody has reacted to yet.
+  reactions?: Record<string, Record<string, true>>
 }

@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../state/gameStore'
 
+// A short, fixed set rather than a full picker - fits the panel's small
+// footprint and covers the common reactions (congrats, laughing, love,
+// celebrating) without needing a search/scroll UI.
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉']
+
 // Only exists at all while the host (or anyone - not host-gated, see Game
 // Setup) has turned on "remote play" for this room, per the "Textaspjall
 // fyrir fjarspilun" spec: if everyone's in the same room they just talk out
@@ -15,9 +20,13 @@ export function ChatOverlay() {
   const chatLastRead = useGameStore((s) => s.chatLastRead)
   const sendChatMessage = useGameStore((s) => s.sendChatMessage)
   const markChatRead = useGameStore((s) => s.markChatRead)
+  const toggleChatReaction = useGameStore((s) => s.toggleChatReaction)
 
   const [isOpen, setIsOpen] = useState(false)
   const [draft, setDraft] = useState('')
+  // Which message's emoji picker is currently open, if any - only one at a
+  // time, so opening a different message's picker just replaces this.
+  const [pickerForMessageId, setPickerForMessageId] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
 
   const lastMessage = chatMessages[chatMessages.length - 1]
@@ -80,6 +89,14 @@ export function ChatOverlay() {
             ) : (
               chatMessages.map((msg) => {
                 const isMine = msg.senderId === localPlayerId
+                const pickerOpen = pickerForMessageId === msg.id
+                // Only emojis someone has actually reacted with - a reaction
+                // fully undone (toggled off by everyone) leaves an empty
+                // {} behind rather than deleting the key, so this filters
+                // those back out instead of showing a "0" badge.
+                const reactionEntries = Object.entries(msg.reactions ?? {}).filter(
+                  ([, uids]) => Object.keys(uids).length > 0
+                )
                 return (
                   <div key={msg.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                     {!isMine && <span className="mb-0.5 text-[11px] text-text-muted">{msg.senderName}</span>}
@@ -90,6 +107,52 @@ export function ChatOverlay() {
                     >
                       {msg.text}
                     </span>
+                    <div className={`mt-1 flex flex-wrap items-center gap-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                      {reactionEntries.map(([emoji, uids]) => {
+                        const count = Object.keys(uids).length
+                        const reactedByMe = !!localPlayerId && !!uids[localPlayerId]
+                        return (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => toggleChatReaction(msg.id, emoji)}
+                            className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs transition ${
+                              reactedByMe
+                                ? 'border-primary bg-primary-soft text-primary'
+                                : 'border-border bg-surface-muted text-text-secondary hover:border-border-strong'
+                            }`}
+                          >
+                            <span>{emoji}</span>
+                            <span>{count}</span>
+                          </button>
+                        )
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => setPickerForMessageId(pickerOpen ? null : msg.id)}
+                        aria-label="Add reaction"
+                        className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-full border border-border text-[11px] text-text-muted transition hover:border-border-strong hover:text-text"
+                      >
+                        +
+                      </button>
+                    </div>
+                    {pickerOpen && (
+                      <div className="mt-1 flex gap-1 rounded-full border border-border bg-surface px-1.5 py-1">
+                        {REACTION_EMOJIS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              toggleChatReaction(msg.id, emoji)
+                              setPickerForMessageId(null)
+                            }}
+                            className="grid h-6 w-6 place-items-center rounded-full text-sm transition hover:bg-surface-muted"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })

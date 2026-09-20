@@ -165,6 +165,10 @@ interface GameState {
   // Marks every message sent so far as read by this player - called when
   // they open the chat panel.
   markChatRead: () => void
+  // Adds this player's reaction to a message, or removes it if they'd
+  // already reacted with that same emoji - a toggle, same as clicking it
+  // again to undo, the way every other reaction picker works.
+  toggleChatReaction: (messageId: string, emoji: string) => void
   startSubmitting: () => void
   submitSong: (
     categoryId: string,
@@ -268,7 +272,16 @@ interface RoomRecord {
   shortModeCapSeconds?: number
   totalRounds?: number
   remotePlayEnabled?: boolean
-  chat?: Record<string, { senderId: string; senderName: string; text: string; timestamp: number }>
+  chat?: Record<
+    string,
+    {
+      senderId: string
+      senderName: string
+      text: string
+      timestamp: number
+      reactions?: Record<string, Record<string, true>>
+    }
+  >
   chatLastRead?: Record<string, number>
   currentSongIndex?: number
   songOrder?: string[]
@@ -781,6 +794,15 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode, localPlayerId } = get()
       if (!roomCode || !localPlayerId) return
       dbUpdate(ref(db, `games/${roomCode}`), { [`chatLastRead/${localPlayerId}`]: Date.now() })
+    },
+
+    toggleChatReaction: (messageId, emoji) => {
+      const { roomCode, localPlayerId, chatMessages } = get()
+      if (!roomCode || !localPlayerId) return
+      const message = chatMessages.find((m) => m.id === messageId)
+      const alreadyReacted = !!message?.reactions?.[emoji]?.[localPlayerId]
+      const path = `chat/${messageId}/reactions/${emoji}/${localPlayerId}`
+      dbUpdate(ref(db, `games/${roomCode}`), { [path]: alreadyReacted ? null : true })
     },
 
     startSubmitting: () => {
