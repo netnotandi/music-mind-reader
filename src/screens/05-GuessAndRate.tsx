@@ -263,12 +263,12 @@ export function GuessAndRate() {
     advancedForRef.current = currentSongIndex
     advanceGroup()
   }
-  // Short mode: the song always plays for exactly shortModeCapSeconds,
+  // Timer mode: the song always plays for exactly shortModeCapSeconds,
   // whether or not everyone has answered - only a natural end (a shorter
   // video) or the host skipping cuts it off sooner. A current song with no
   // video can't be timed by the player, so a wall clock stands in.
   useEffect(() => {
-    if (!isHost || roundPlaythroughDone || roundMode !== 'short') return
+    if (!isHost || roundPlaythroughDone || roundMode !== 'timer') return
     if (currentSong?.youtubeVideoId) return
     const cap = setTimeout(() => doAdvance(), shortModeCapSeconds * 1000)
     return () => clearTimeout(cap)
@@ -281,6 +281,17 @@ export function GuessAndRate() {
     currentSong?.youtubeVideoId,
     shortModeCapSeconds,
   ])
+
+  // Short mode ("auto"): skips the timer/full-song wait entirely and moves
+  // on the instant everyone required has answered - re-checked every time a
+  // guess syncs in from any player, live. Natural song-end (onEnded) and the
+  // host's manual "Skip song" stay available underneath as fallbacks (e.g. a
+  // videoless song, or someone who never answers), same as every other mode.
+  useEffect(() => {
+    if (!isHost || roundPlaythroughDone || roundMode !== 'auto') return
+    if (currentSong && answeredComplete(currentSong)) doAdvance()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, roundMode, roundPlaythroughDone, currentSongIndex, currentSong?.id, guesses, players])
 
   if (!localPlayerId || songs.length === 0) {
     return (
@@ -429,10 +440,10 @@ export function GuessAndRate() {
       <NowPlayingPlayer
         videoId={roundPlaythroughDone ? null : (currentSong?.youtubeVideoId ?? null)}
         capSeconds={
-          isHost && roundMode === 'short' && !roundPlaythroughDone ? shortModeCapSeconds : null
+          isHost && roundMode === 'timer' && !roundPlaythroughDone ? shortModeCapSeconds : null
         }
         onCap={() => {
-          if (isHost && roundMode === 'short') doAdvance()
+          if (isHost && roundMode === 'timer') doAdvance()
         }}
         onEnded={() => {
           if (isHost) doAdvance()
@@ -497,11 +508,9 @@ export function GuessAndRate() {
               onSubmit={handleSubmit}
             />
 
-            {!isOwnSong && (
-              <p className="mb-4 text-center text-sm text-text-secondary">
-                {answeredCount}/{requiredResponders.length} have answered this song
-              </p>
-            )}
+            <p className="mb-4 text-center text-sm text-text-secondary">
+              {answeredCount}/{requiredResponders.length} have answered this song
+            </p>
 
             {!answeredComplete(song) && import.meta.env.DEV && (
               <button
@@ -702,11 +711,9 @@ export function GuessAndRate() {
             onSubmit={handleSubmit}
           />
 
-          {!isOwnSong && (
-            <p className="mb-4 text-center text-sm text-text-secondary">
-              {answeredCount}/{requiredResponders.length} have answered this song
-            </p>
-          )}
+          <p className="mb-4 text-center text-sm text-text-secondary">
+            {answeredCount}/{requiredResponders.length} have answered this song
+          </p>
 
           {!answeredComplete(song) && import.meta.env.DEV && (
             <button

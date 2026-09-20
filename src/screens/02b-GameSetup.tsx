@@ -10,8 +10,9 @@ import {
 import { useThemeStore } from '../state/themeStore'
 
 const ROUND_MODES: { mode: RoundMode; label: string }[] = [
-  { mode: 'short', label: 'Short' },
-  { mode: 'long', label: 'Long' },
+  { mode: 'auto', label: 'Short' },
+  { mode: 'timer', label: 'Timer' },
+  { mode: 'full', label: 'Full Song' },
 ]
 
 const CAP_LABELS: Record<ShortModeCapSeconds, string> = {
@@ -27,7 +28,10 @@ const CAP_PROSE: Record<ShortModeCapSeconds, string> = {
 }
 
 function roundLengthBlurb(mode: RoundMode, cap: ShortModeCapSeconds): string {
-  if (mode === 'long') return 'Each song plays out in full. The host can skip a song early.'
+  if (mode === 'full') return 'Each song plays out in full. The host can skip a song early.'
+  if (mode === 'auto') {
+    return "Moves to the next song as soon as everyone's answered, or when the song ends naturally - whichever comes first. The host can skip a song early too."
+  }
   return `Each song plays for ${CAP_PROSE[cap]}, then moves on - whether or not everyone has answered. The host can skip a song early.`
 }
 
@@ -91,7 +95,7 @@ export function GameSetup() {
               })}
             </div>
 
-            {roundMode === 'short' && (
+            {roundMode === 'timer' && (
               <div className="mt-2 flex gap-1.5">
                 {SHORT_MODE_CAP_OPTIONS.map((seconds) => {
                   const active = seconds === shortModeCapSeconds

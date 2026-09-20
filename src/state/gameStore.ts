@@ -60,9 +60,14 @@ const SESSION_KEY = 'mmr_session'
 
 type Phase = 'lobby' | 'setup' | 'submit' | 'guess' | 'results'
 type JoinResult = 'ok' | 'not-found' | 'in-progress'
-export type RoundMode = 'short' | 'long'
+// Fresh values rather than reusing the old 'short'/'long' strings - a room
+// already mid-game at deploy time might have 'short' stored under the OLD
+// meaning (fixed timer), and reusing it for the new auto-advance mode would
+// silently change that room's behavior mid-round. See normalizeRoundMode
+// below for how legacy values map onto these.
+export type RoundMode = 'auto' | 'timer' | 'full'
 
-// Short mode: the group picks exactly how long each song plays before the
+// Timer mode: the group picks exactly how long each song plays before the
 // host's device advances the group - regardless of who has or hasn't
 // finished answering. A shorter video's natural end, or the host skipping,
 // can still cut it off sooner.
@@ -268,7 +273,10 @@ interface RoomRecord {
   hostId?: string
   phase?: Phase
   selectedCategoryIds?: string[]
-  roundMode?: RoundMode
+  // string, not RoundMode - a room from before this type's values were
+  // renamed could still have the legacy 'short'/'long' strings stored; see
+  // normalizeRoundMode.
+  roundMode?: string
   shortModeCapSeconds?: number
   totalRounds?: number
   remotePlayEnabled?: boolean
@@ -318,6 +326,17 @@ interface RoomRecord {
   finalConfirmations?: Record<string, true>
 }
 
+// Maps whatever's actually stored onto the current RoundMode union - a room
+// created before this rename might still have the legacy 'short' (fixed
+// timer) or 'long' (full song) values sitting in Firebase, and those need to
+// keep behaving exactly as they did before rather than silently picking up
+// the new 'auto' meaning just because the string 'short' used to mean that.
+function normalizeRoundMode(raw: unknown): RoundMode {
+  if (raw === 'auto' || raw === 'timer' || raw === 'full') return raw
+  if (raw === 'long') return 'full'
+  return 'timer'
+}
+
 // Firebase stores children as objects keyed by id, not arrays - converted
 // back to the array shapes the rest of the app already expects, so
 // scoring.ts and every screen need zero changes beyond where data comes from.
@@ -347,7 +366,7 @@ function parseRoom(data: RoomRecord) {
     phase: data.phase ?? 'lobby',
     players,
     selectedCategoryIds: data.selectedCategoryIds ?? [],
-    roundMode: data.roundMode ?? 'short',
+    roundMode: normalizeRoundMode(data.roundMode),
     shortModeCapSeconds: (SHORT_MODE_CAP_OPTIONS as readonly number[]).includes(
       data.shortModeCapSeconds ?? -1
     )
@@ -447,7 +466,7 @@ export const useGameStore = create<GameState>((set, get) => {
     players: [],
     categories: CATEGORIES,
     selectedCategoryIds: [],
-    roundMode: 'short',
+    roundMode: 'timer',
     shortModeCapSeconds: DEFAULT_SHORT_MODE_CAP_SECONDS,
     totalRounds: DEFAULT_TOTAL_ROUNDS,
     remotePlayEnabled: false,
@@ -632,7 +651,7 @@ export const useGameStore = create<GameState>((set, get) => {
         phase: 'lobby',
         players: [],
         selectedCategoryIds: [],
-        roundMode: 'short',
+        roundMode: 'timer',
         shortModeCapSeconds: DEFAULT_SHORT_MODE_CAP_SECONDS,
         totalRounds: DEFAULT_TOTAL_ROUNDS,
         remotePlayEnabled: false,
@@ -662,7 +681,7 @@ export const useGameStore = create<GameState>((set, get) => {
         phase: 'lobby',
         players: [],
         selectedCategoryIds: [],
-        roundMode: 'short',
+        roundMode: 'timer',
         shortModeCapSeconds: DEFAULT_SHORT_MODE_CAP_SECONDS,
         totalRounds: DEFAULT_TOTAL_ROUNDS,
         remotePlayEnabled: false,
