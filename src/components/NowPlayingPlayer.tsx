@@ -475,48 +475,49 @@ export function NowPlayingPlayer({
             <span className="text-xs text-slate-300">No video for this song</span>
           ) : null}
         </div>
-        {showControls && soundOn && audioBlocked && !covered && (
+        {/* Covers the whole video (not just a strip below it) whenever this
+            device isn't actually hearing the game - either it hasn't been
+            unmuted yet, or the browser silently kept it muted despite
+            wanting sound (audioBlocked). A small button below the video was
+            easy to miss entirely (confirmed for real: two remote players in
+            one session never noticed it existed) - sitting directly on top
+            of the thing they're already looking at, with a pulsing icon,
+            is much harder to scroll past without seeing. */}
+        {showControls && !covered && (!soundOn || audioBlocked) && (
           <button
             type="button"
             onClick={() => setSound(true)}
-            className="absolute inset-x-0 bottom-0 bg-black/75 px-3 py-2 text-center text-xs font-semibold text-white"
+            aria-label="Unmute"
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/70 text-white transition hover:bg-black/80"
           >
-            🔇 Sound is muted — tap to unmute
+            <span className="animate-pulse text-5xl">🔇</span>
+            <span className="text-base font-bold">Tap to unmute</span>
           </button>
         )}
       </div>
 
-      {showControls &&
-        (soundOn ? (
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSound(false)}
-              aria-label="Mute"
-              className="text-sm text-text-muted transition hover:text-text"
-            >
-              🔊
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={volume}
-              onChange={(e) => handleVolumeChange(Number(e.target.value))}
-              aria-label="Player volume"
-              className="h-1 flex-1 accent-primary"
-            />
-            <span className="w-8 text-right text-xs tabular-nums text-text-muted">{volume}</span>
-          </div>
-        ) : (
+      {showControls && soundOn && (
+        <div className="mt-2 flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setSound(true)}
-            className="mt-2 w-full rounded-lg border border-primary bg-primary-soft px-4 py-2 text-sm font-semibold text-primary transition hover:border-primary"
+            onClick={() => setSound(false)}
+            aria-label="Mute"
+            className="text-sm text-text-muted transition hover:text-text"
           >
-            🔇 Unmute to hear the music
+            🔊
           </button>
-        ))}
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={volume}
+            onChange={(e) => handleVolumeChange(Number(e.target.value))}
+            aria-label="Player volume"
+            className="h-1 flex-1 accent-primary"
+          />
+          <span className="w-8 text-right text-xs tabular-nums text-text-muted">{volume}</span>
+        </div>
+      )}
     </div>
   )
 }
