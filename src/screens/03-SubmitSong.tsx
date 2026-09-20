@@ -37,12 +37,13 @@ interface SongFormProps {
     youtubeVideoId: string | null,
     youtubeTitle: string | null
   ) => void
+  onChooseNew: () => void
 }
 
 // Keyed by `${category.id}` from the parent, so React remounts this (and
 // resets/refills title+artist, plus the search/link flow below, from
 // existingSong) whenever the category being filled in changes.
-function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
+function SongForm({ category, existingSong, onSubmit, onChooseNew }: SongFormProps) {
   // Light-only: the category name reads as the "current assigned identity"
   // (primary/violet) rather than a success/confirmation signal, and the
   // confirmed-song card reads as "the selected item" (the same info/cyan
@@ -207,6 +208,11 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   }
 
   function chooseNewSong() {
+    // Undoes the earlier submission - otherwise the progress table kept
+    // showing this player as "done" for the round while they were actively
+    // in the middle of picking something else, which read as a lie the
+    // moment someone else glanced at it.
+    onChooseNew()
     setStage('form')
     setAllResults([])
     setVisibleStart(0)
@@ -457,6 +463,7 @@ export function SubmitSong() {
   const hostId = useGameStore((s) => s.hostId)
   const songs = useGameStore((s) => s.songs)
   const submitSong = useGameStore((s) => s.submitSong)
+  const clearSong = useGameStore((s) => s.clearSong)
   const devSubmitSongAs = useGameStore((s) => s.devSubmitSongAs)
   const shuffleSongOrder = useGameStore((s) => s.shuffleSongOrder)
 
@@ -515,6 +522,7 @@ export function SubmitSong() {
         onSubmit={(title, artist, youtubeVideoId, youtubeTitle) =>
           submitSong(categoryToShow.id, title, artist, youtubeVideoId, youtubeTitle)
         }
+        onChooseNew={() => clearSong(categoryToShow.id)}
       />
 
       <ProgressTable

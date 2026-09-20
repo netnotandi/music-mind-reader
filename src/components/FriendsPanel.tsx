@@ -55,41 +55,53 @@ function ProfileLabel({ uid }: { uid: string }) {
   )
 }
 
-function IncomingRequestRow({ uid, onAccept, onDecline }: { uid: string; onAccept: () => void; onDecline: () => void }) {
+// One combined "Friend requests" list covers both directions - incoming
+// (someone asked you, you can Accept/Decline right here) and outgoing
+// (you asked them, shown as a passive "Sent" badge since there's nothing to
+// do but wait, plus a quiet Cancel in case you want to take it back).
+function FriendRequestRow({
+  uid,
+  direction,
+  onAccept,
+  onDecline,
+  onCancel,
+}: {
+  uid: string
+  direction: 'incoming' | 'outgoing'
+  onAccept?: () => void
+  onDecline?: () => void
+  onCancel?: () => void
+}) {
   return (
     <li className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2">
       <span className="min-w-0 truncate text-sm text-text">
         <ProfileLabel uid={uid} />
       </span>
-      <div className="flex flex-shrink-0 gap-2">
-        <button
-          type="button"
-          onClick={onAccept}
-          className="rounded-md border border-success/40 px-2 py-1 text-xs font-semibold text-success transition hover:border-success"
-        >
-          Accept
-        </button>
-        <button
-          type="button"
-          onClick={onDecline}
-          className="rounded-md border border-danger/40 px-2 py-1 text-xs font-semibold text-danger transition hover:border-danger"
-        >
-          Decline
-        </button>
-      </div>
-    </li>
-  )
-}
-
-function OutgoingRequestRow({ uid, onCancel }: { uid: string; onCancel: () => void }) {
-  return (
-    <li className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2">
-      <span className="min-w-0 truncate text-sm text-text-secondary">
-        <ProfileLabel uid={uid} /> <span className="text-xs text-text-muted">· pending</span>
-      </span>
-      <button type="button" onClick={onCancel} className="flex-shrink-0 text-xs text-text-muted hover:text-text">
-        Cancel
-      </button>
+      {direction === 'incoming' ? (
+        <div className="flex flex-shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={onAccept}
+            className="rounded-md border border-success/40 px-2 py-1 text-xs font-semibold text-success transition hover:border-success"
+          >
+            Accept
+          </button>
+          <button
+            type="button"
+            onClick={onDecline}
+            className="rounded-md border border-danger/40 px-2 py-1 text-xs font-semibold text-danger transition hover:border-danger"
+          >
+            Decline
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <span className="text-xs font-medium text-text-muted">Sent</span>
+          <button type="button" onClick={onCancel} className="text-xs text-text-muted hover:text-text">
+            Cancel
+          </button>
+        </div>
+      )}
     </li>
   )
 }
@@ -205,28 +217,21 @@ export function FriendsPanel() {
       </form>
       {error && <p className="mb-3 text-sm text-danger">{error}</p>}
 
-      {incoming.length > 0 && (
+      {(incoming.length > 0 || outgoing.length > 0) && (
         <div className="mb-4">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">Requests</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">Friend requests</p>
           <ul className="space-y-2">
             {incoming.map(([uid]) => (
-              <IncomingRequestRow
+              <FriendRequestRow
                 key={uid}
                 uid={uid}
+                direction="incoming"
                 onAccept={() => acceptFriendRequest(uid)}
                 onDecline={() => removeFriendship(uid)}
               />
             ))}
-          </ul>
-        </div>
-      )}
-
-      {outgoing.length > 0 && (
-        <div className="mb-4">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">Sent</p>
-          <ul className="space-y-2">
             {outgoing.map(([uid]) => (
-              <OutgoingRequestRow key={uid} uid={uid} onCancel={() => removeFriendship(uid)} />
+              <FriendRequestRow key={uid} uid={uid} direction="outgoing" onCancel={() => removeFriendship(uid)} />
             ))}
           </ul>
         </div>

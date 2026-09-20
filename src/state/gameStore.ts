@@ -173,6 +173,11 @@ interface GameState {
     youtubeVideoId: string | null,
     youtubeTitle: string | null
   ) => void
+  // Undoes a submission so the progress table's checkmark honestly reflects
+  // "nothing picked yet" while the player is mid-way through choosing a
+  // replacement - called from "Choose new song", not exposed as its own
+  // button.
+  clearSong: (categoryId: string) => void
   shuffleSongOrder: () => void
   submitGuess: (songId: string, guessedPlayerId: string) => void
   clearGuess: (songId: string) => void
@@ -799,6 +804,13 @@ export const useGameStore = create<GameState>((set, get) => {
         ...(youtubeVideoId ? { youtubeVideoId } : {}),
         ...(youtubeTitle ? { youtubeTitle } : {}),
       })
+    },
+
+    clearSong: (categoryId) => {
+      const { roomCode, localPlayerId } = get()
+      if (!roomCode || !localPlayerId) return
+      const songId = `${localPlayerId}__${categoryId}`
+      dbRemove(ref(db, `games/${roomCode}/songs/${songId}`))
     },
 
     // Songs would otherwise always play back in submission order, which is
