@@ -1,9 +1,20 @@
-import { useState } from 'react'
+import { get as dbGet, ref } from 'firebase/database'
+import { useEffect, useState } from 'react'
+import { db } from '../firebase'
 import { extractYouTubeVideoId, searchYouTubeVideos, type YouTubeSearchResult } from '../logic/youtube'
+import { songLabel } from '../logic/songLabel'
 import { useGameStore } from '../state/gameStore'
 import { MOCK_SONG_POOL } from '../state/mockData'
 import { useThemeStore } from '../state/themeStore'
+import { useUserStore } from '../state/userStore'
 import type { Category } from '../types'
+
+interface SavedSongEntry {
+  title: string
+  artist: string
+  youtubeVideoId?: string
+  youtubeTitle?: string
+}
 
 // Title and artist are both optional individually (only one is required to
 // search), so anywhere they're shown back to the player has to degrade
@@ -38,6 +49,12 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   // border used for the reviewing-an-earlier-song banner elsewhere) rather
   // than a completed/success state - dark keeps its original green look.
   const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
+  const uid = useUserStore((s) => s.uid)
+  // One-off fetch (not a live subscription) of this player's own private
+  // saved-songs list for exactly this category - a shortcut to skip
+  // re-searching for a song they've already stashed here before. null while
+  // loading/signed-out, {} once loaded with nothing saved.
+  const [savedSongs, setSavedSongs] = useState<Record<string, SavedSongEntry> | null>(null)
   const [title, setTitle] = useState(existingSong?.title ?? '')
   const [artist, setArtist] = useState(existingSong?.artist ?? '')
   // 'form' -> 'searching' -> 'preview' (up to a few candidate matches -
@@ -72,6 +89,26 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
   const [confirmedResult, setConfirmedResult] = useState<YouTubeSearchResult | null>(null)
   const [manualLink, setManualLink] = useState('')
   const [linkError, setLinkError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!uid) {
+      setSavedSongs(null)
+      return
+    }
+    let cancelled = false
+    dbGet(ref(db, `users/${uid}/lists/${category.id}`))
+      .then((snap) => {
+        if (cancelled) return
+        setSavedSongs(snap.val() ?? {})
+      })
+      .catch(() => {
+        if (cancelled) return
+        setSavedSongs({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [uid, category.id])
 
   const searchQuery = [title.trim(), artist.trim()].filter(Boolean).join(' ')
 
@@ -134,6 +171,33 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
     // view below can still show what was actually picked, rather than
     // reverting to a blank/prefilled form with no visible confirmation.
     setConfirmedResult(picked)
+    setStage('confirmed')
+    setAllResults([])
+    setVisibleStart(0)
+    setNextPageToken(null)
+    setManualLink('')
+    setLinkError(null)
+  }
+
+  // Skips the search entirely - the player already has this song's title/
+  // artist/video confirmed from a previous save, so it goes straight to
+  // 'confirmed' the same way finish() does, just fed from the saved entry
+  // instead of a live search pick. Reconstructs a thumbnail from YouTube's
+  // public per-video image CDN (no API call/quota needed) so the confirmed
+  // card looks the same either way.
+  function pickSavedSong(entry: SavedSongEntry) {
+    setTitle(entry.title)
+    setArtist(entry.artist)
+    onSubmit(entry.title, entry.artist, entry.youtubeVideoId ?? null, entry.youtubeTitle ?? null)
+    setConfirmedResult(
+      entry.youtubeVideoId
+        ? {
+            videoId: entry.youtubeVideoId,
+            title: entry.youtubeTitle ?? describeSong(entry.title, entry.artist),
+            thumbnailUrl: `https://i.ytimg.com/vi/${entry.youtubeVideoId}/default.jpg`,
+          }
+        : null
+    )
     setStage('confirmed')
     setAllResults([])
     setVisibleStart(0)
@@ -270,32 +334,63 @@ function SongForm({ category, existingSong, onSubmit }: SongFormProps) {
           </button>
         </form>
       ) : (
-        <form className="mb-6 flex flex-col gap-3" onSubmit={handleSearch}>
-          <p className="text-xs text-text-muted">Enter the title, the artist, or both.</p>
-          <input
-            type="search"
-            className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
-            placeholder="Song title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            autoComplete="off"
-          />
-          <input
-            type="search"
-            className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
-            placeholder="Artist"
-            value={artist}
-            onChange={(e) => setArtist(e.target.value)}
-            autoComplete="off"
-          />
-          <button
-            type="submit"
-            disabled={stage === 'searching' || (!title.trim() && !artist.trim())}
-            className="rounded-lg border border-primary bg-primary px-4 py-2 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
-          >
-            {stage === 'searching' ? 'Searching YouTube...' : existingSong ? 'Find New Video' : 'Find Song'}
-          </button>
-        </form>
+        <>
+          {savedSongs && Object.keys(savedSongs).length > 0 && (
+            <div className="mb-4 flex flex-col gap-2">
+              <p className="text-xs uppercase tracking-wide text-text-muted">
+                Your saved songs for this category
+              </p>
+              {Object.entries(savedSongs).map(([songKey, entry]) => {
+                const { primary, secondary } = songLabel(entry)
+                return (
+                  <button
+                    key={songKey}
+                    type="button"
+                    onClick={() => pickSavedSong(entry)}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border-strong bg-surface px-3 py-2 text-left transition hover:border-primary"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm text-text">{primary}</span>
+                      {secondary && <span className="block truncate text-xs text-text-secondary">{secondary}</span>}
+                    </span>
+                    <span className="flex-shrink-0 text-xs font-semibold text-primary">Use this</span>
+                  </button>
+                )
+              })}
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-divider" />
+                <span className="text-xs font-medium text-text-muted">OR SEARCH</span>
+                <div className="h-px flex-1 bg-divider" />
+              </div>
+            </div>
+          )}
+          <form className="mb-6 flex flex-col gap-3" onSubmit={handleSearch}>
+            <p className="text-xs text-text-muted">Enter the title, the artist, or both.</p>
+            <input
+              type="search"
+              className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
+              placeholder="Song title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoComplete="off"
+            />
+            <input
+              type="search"
+              className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-text placeholder:text-placeholder"
+              placeholder="Artist"
+              value={artist}
+              onChange={(e) => setArtist(e.target.value)}
+              autoComplete="off"
+            />
+            <button
+              type="submit"
+              disabled={stage === 'searching' || (!title.trim() && !artist.trim())}
+              className="rounded-lg border border-primary bg-primary px-4 py-2 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
+            >
+              {stage === 'searching' ? 'Searching YouTube...' : existingSong ? 'Find New Video' : 'Find Song'}
+            </button>
+          </form>
+        </>
       )}
     </>
   )

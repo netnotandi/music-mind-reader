@@ -1,4 +1,4 @@
-import { get as dbGet, ref } from 'firebase/database'
+import { get as dbGet, ref, remove as dbRemove } from 'firebase/database'
 import { useEffect, useState } from 'react'
 import { db } from '../firebase'
 import { songLabel } from '../logic/songLabel'
@@ -41,6 +41,25 @@ export function MyListsPanel() {
       cancelled = true
     }
   }, [uid])
+
+  // Deletes locally too rather than re-fetching - this is the only writer of
+  // this data (single-viewer browsing context, see the module comment
+  // above), so the optimistic update can't drift from what's in Firebase.
+  function removeSong(categoryId: string, songKey: string) {
+    if (!uid) return
+    dbRemove(ref(db, `users/${uid}/lists/${categoryId}/${songKey}`))
+    setLists((prev) => {
+      const remaining = { ...(prev[categoryId] ?? {}) }
+      delete remaining[songKey]
+      const next = { ...prev }
+      if (Object.keys(remaining).length === 0) {
+        delete next[categoryId]
+      } else {
+        next[categoryId] = remaining
+      }
+      return next
+    })
+  }
 
   if (status === 'loading') {
     return <p className="text-sm text-text-muted">Loading your lists…</p>
@@ -85,9 +104,18 @@ export function MyListsPanel() {
                 {songs.map(([songKey, entry]) => {
                   const { primary, secondary } = songLabel(entry)
                   return (
-                    <li key={songKey}>
-                      <p className="truncate text-sm text-text">{primary}</p>
-                      {secondary && <p className="truncate text-xs text-text-secondary">{secondary}</p>}
+                    <li key={songKey} className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-text">{primary}</p>
+                        {secondary && <p className="truncate text-xs text-text-secondary">{secondary}</p>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeSong(category.id, songKey)}
+                        className="flex-shrink-0 rounded-md border border-danger/40 px-2 py-1 text-xs font-semibold text-danger transition hover:border-danger"
+                      >
+                        Remove
+                      </button>
                     </li>
                   )
                 })}
