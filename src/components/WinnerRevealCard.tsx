@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { AwardCard, type AwardIconKind } from './AwardCard'
-import { playRandomWinnerFanfare } from '../logic/winnerFanfare'
+import { playWinnerCheer } from '../logic/winnerFanfare'
 
 interface WinnerRevealCardProps {
   icon: AwardIconKind
@@ -35,9 +35,10 @@ const HOLD_AFTER_BURST_MS = 2000
 // fades to gold/orange further out) for the "light rays" look, plus a
 // softer blurred ring in the app's own brand gradient (cyan/violet/pink,
 // same var()s AwardCard's own winner-ring icon already uses) for color. A
-// randomly-picked short synthesized fanfare (winnerFanfare.ts) plays at the
-// same moment. Wraps AwardCard rather than reimplementing it - same card,
-// just with this choreography around it.
+// synthesized crowd cheer (winnerFanfare.ts) starts the instant the spin
+// begins and fades out as the burst finishes, spanning the whole sequence.
+// Wraps AwardCard rather than reimplementing it - same card, just with this
+// choreography around it.
 export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinue }: WinnerRevealCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const sunburstRef = useRef<HTMLDivElement>(null)
@@ -54,6 +55,11 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
     if (!card) return
     let holdTimer: ReturnType<typeof setTimeout> | null = null
 
+    // Starts right as the spin begins, faded out by the time the longer of
+    // the two burst layers (GLOW_MS) finishes fading - spans the whole
+    // reveal, not just a one-shot sting at the end.
+    playWinnerCheer((SPIN_MS + GLOW_MS) / 1000)
+
     const spinAnim = card.animate(
       [
         { transform: 'perspective(900px) rotateY(720deg) scale(0.35)', opacity: 0 },
@@ -64,7 +70,6 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
     )
 
     spinAnim.onfinish = () => {
-      playRandomWinnerFanfare()
       sunburstRef.current?.animate(
         [
           { transform: 'scale(0.4) rotate(0deg)', opacity: 1, offset: 0 },
