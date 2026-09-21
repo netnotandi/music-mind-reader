@@ -19,11 +19,13 @@ const BURST_MS = 800
 // Animations API directly (no library) so it resets cleanly every time this
 // component mounts fresh - the card spins in (rotateY + scale-up from
 // nothing), and the instant it settles, two burst layers fire from behind
-// it: a sharp white sunburst (repeating-conic-gradient wedges) for the
-// "light rays" look, plus a softer blurred ring in the app's own brand
-// gradient (cyan/violet/pink, same var()s AwardCard's own winner-ring icon
-// already uses) for color. Wraps AwardCard rather than reimplementing it -
-// same card, just with this choreography around it.
+// it: a thin, dense sunburst (a repeating-conic-gradient used as a mask over
+// a white-to-gold radial-gradient, so each ray is bright at the card and
+// fades to gold/orange further out) for the "light rays" look, plus a
+// softer blurred ring in the app's own brand gradient (cyan/violet/pink,
+// same var()s AwardCard's own winner-ring icon already uses) for color.
+// Wraps AwardCard rather than reimplementing it - same card, just with this
+// choreography around it.
 export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinue }: WinnerRevealCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const sunburstRef = useRef<HTMLDivElement>(null)
@@ -83,8 +85,14 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
           ref={sunburstRef}
           className="pointer-events-none absolute h-72 w-72 opacity-0"
           style={{
-            background:
-              'repeating-conic-gradient(rgba(255,255,255,0.95) 0deg 5deg, transparent 5deg 22deg)',
+            // The conic-gradient only controls WHICH thin wedges are visible
+            // (mask alpha) - the actual color comes from the radial-gradient
+            // background underneath, so each ray is bright white at the
+            // card and fades to gold/orange further out, not a flat white
+            // wedge end to end.
+            background: 'radial-gradient(circle, #ffffff 0%, #ffe9b0 30%, #ffb84d 60%, transparent 82%)',
+            WebkitMaskImage: 'repeating-conic-gradient(#000 0deg 1.2deg, transparent 1.2deg 8deg)',
+            maskImage: 'repeating-conic-gradient(#000 0deg 1.2deg, transparent 1.2deg 8deg)',
             borderRadius: '9999px',
           }}
         />
