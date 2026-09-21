@@ -616,5 +616,67 @@ Fyrsta helmingnum af „Vinir" kaflanum hér að ofan er lokið: leitað er að 
 - **„Players" flipinn** (`MenuOverlay.tsx`) fékk nýjan `AddFriendControl` fyrir hverja ÖÐRU röð (aldrei sína eigin, athugað bæði með `localPlayerId` og `uid`): `player.uid` vantar (nafnlaus) → ekkert birtist; `uid` er til en engin vinasamband-færsla → **„Add friend"** hnappur; `status: 'pending'` → **„Pending"** merki; `status: 'accepted'` → **„Friends"** merki. Alveg óháð host-stöðu/Kick-hnappnum sem er við hliðina.
 - **Staðfest með lifandi Playwright-prófun** (tvö alvöru innskráð próf-reikningar): senda beiðni → sést sem „incoming" hjá móttakanda og „outgoing" hjá sendanda (bæði spegluðu afritin staðfest með beinni REST-lestri) → sjálf-samþykki hafnað (401, staðfestir öryggislagfæringuna) → alvöru samþykki frá móttakanda virkar (bæði afrit fara í `accepted`) → presence-staða sést rétt hjá vininum → hætt við vinskap fjarlægir bæði afritin → ný beiðni eftir það virkar hreint → „Add friend" í Players-flipanum (alvöru UI-smellur, ekki bara store-köll) flettir yfir í „Pending" og sést samstundis sem móttekin beiðni hjá hinum leikmanninum.
 
+## Leik-lokaflæði — Winner reveal, tilnefningar og leiktölfræði (viðbót við CLAUDE.md)
+
+### Af hverju
+Í dag lítur "Round Results" (eftir hverja umferð) og umbreytingin yfir í "Final Results" (eftir síðustu umferð leiksins) nánast eins út — sami taktur, sami stíll, eini munurinn er að takkinn heitir "See Final Results" í stað "Next Round". Eftir nokkra leiki í röð á sama kvöldi blandast þetta saman í eina langa runu af score-yfirlitum, og fólk missir yfirsýn yfir hvenær ein LEIKUR (ekki bara umferð) er í raun búinn. Þetta olli beinlínis rugli í raunverulegu spili — einn leikmaður áttaði sig ekki á því að tveir heilir leikir voru búnir þegar hópurinn var komin í þann þriðja.
+
+Lausnin er að gera lok leiks að sjónrænt ólíkri, ótvíræðri stund í stað þess að vera "enn eitt score-yfirlitið".
+
+### Hvenær þetta á við
+Alltaf þegar LEIKUR klárast — óháð fjölda umferða. Einnar umferðar leikur fær sama flæði og margra umferða leikur, af því ruglingurinn kom upp í bæði tilvikum.
+
+### Flæði
+1. **Round Results** — óbreytt, nákvæmlega eins og í dag, fyrir síðustu umferð leiksins.
+2. **"See Final Results"** — takkinn og orðalagið haldast óbreytt frá því sem er í dag.
+3. **Winner reveal** — nýr skjár, sjónrænt allt öðruvísi en restin af leiknum til að rjúfa mynstrið. Sigurspjaldið snýst nokkra hringi og þegar það stöðvast koma ljós/geislar út frá því í átt að áhorfandanum. Endurnýtir tækni sem var þegar þróuð fyrir award-animations-demo/award-reveal-sequence vinnuna sem var lögð til hliðar fyrr (glow/burst-effects, einskots Web Animations API áhrif sem endurstillast hreint milli skoðana).
+4. **"See other nominations"** — hin verðlaunaspjöldin birt sem tilnefningar. Endurnýtir uppbyggingu úr eldra reveal-sequence-skjalinu, en í nominee-stíl frekar en stigmagnandi spennuröð frá fyndnu upp í raunverulegt.
+5. **Leiktölfræði-spjald** (sjá að neðan) — nýtt.
+6. **Final scoreboard** — lobby-ið með uppfærðu heildarstigi, eins og í dag.
+
+### Leiktölfræði-spjald — persónulegt „mind reader" yfirlit
+Reiknað úr giska-gögnum leiksins sem eru þegar til (hver giskaði á hvern, rétt/rangt, per umferð) — hrein samantekt í lok leiks, engin ný skrifaðgerð þarf í rauntíma.
+
+Mikilvægt: spjaldið er PERSÓNULEGT. Hver leikmaður sér sína eigin útgáfu á sínu tæki, ekki eitt sameiginlegt spjald sem allir sjá eins.
+
+Grunnlínur (birtar öllum, ef gögn eru til):
+- „[Nafn] read you like a book — guessed your song [N] times" — hver giskaði oftast RÉTT á lögin þín.
+- „You had [Nafn]'s number — guessed them right [N] times" — hvern ÞÚ giskaðir oftast rétt á.
+
+Til viðbótar:
+- „Hardest to read" — leikmaður sem enginn giskaði rétt á allan leikinn.
+- „Most in sync" — parið sem gaf hvort öðru hæstu einkunnir að meðaltali („you and X have similar taste").
+- Flest-rétt-giskandi leikmaður kvöldsins í heild (ekki pöruð tala, bara hæsta heildarsumma réttra giska).
+
+### Jaðartilvik
+- Engin gögn til fyrir línu (t.d. enginn giskaði rétt á neinn allan leikinn) → sleppa henni þegjandi og hljóðalaust, aldrei sýna tóma/villu-línu.
+- Jafntefli → nefna alla sem eru jafnir saman í sömu línu, t.d. „Tryggvi og Birgir read you best."
+
+### Account > Stats — meiri tölfræði á profile-síðunni
+Grunnstikin þrjú úr notendaaðgangs-skjalinu (heildarfjöldi réttra giskana, meðaleinkunn, titlafjöldi) eru byggingareiningin. Á Account > Stats síðunni sjálfri — sem notandi heimsækir viljandi, ólíkt fljótlegu leiktölfræði-spjaldinu í lok leiks — má bæta við meiri talnadýpt:
+
+- **Nákvæmnihlutfall** — réttar giskanir sem hlutfall af heildarfjölda tilrauna (þarf að fylgjast með heildarfjölda giskana, ekki bara réttu).
+- **Meðaleinkunn í báðar áttir** — bæði meðaleinkunn sem notandi GEFUR öðrum og meðaleinkunn sem hann FÆR fyrir sín lög, sem tvær aðskildar tölur í stað einnar.
+- **Lengsta rétt-gisk-runa** — áður frestað úr post-game flæðinu af því hún hentaði ekki þar, en á passar vel á ferils-síðu þar sem engin pressa er um að reikna hana á staðnum.
+- **Hversu erfitt er að lesa þig** — hlutfall þess hversu oft notandans eigin lög eru rétt giskuð af öðrum, ferils-útgáfa af „mind reader" hugmyndinni úr leiktölfræðispjaldinu.
+- **Fjöldi leikja/umferða spilaðar í heild** — einföld þátttökutala sem gefur samhengi við hinar tölurnar.
+
+Þessi listi er byrjunarpunktur — viðbætur eða fjarlæging seinna er ekki vandamál, tekið sem breytingar á þessum kafla þegar þörf er á.
+
+### Staða — útfært (Winner reveal + tilnefningar + leiktölfræði-spjald — Account>Stats-kaflinn hér að ofan er ENN ógert, sér verkefni)
+Sjálf leik-lokafl​æðið (fyrri helmingur kaflans) er komið: `06-Results.tsx`s gamla `showingFinalCards` boolean er núna `finalStep: 'scoreboard' | 'winner' | 'nominations' | 'stats'`. „Final Scoretable →" hnappurinn er alveg óbreyttur (staðsetning/orðalag), en fer núna í `'winner'` í staðinn fyrir að opna gamla flata spjaldastokkinn beint.
+
+- **`src/components/WinnerRevealCard.tsx`** (nýtt) — vefur utan um `AwardCard` (endurnýtt óbreytt fyrir `'overall-winner'`-spjaldið) með einskots Web Animations API-hreyfingu (engin ný pakkaháð): kortið byrjar snúið/smátt/ósýnilegt, snýst niður í flatt/fullt/sýnilegt á ~1,3 sek (`rotateY` + `scale`, hægist á leiðinni — les sem „stöðvun"). Um leið og snúningnum lýkur skjóta tvö lög af sér: hvítur „sunburst" (`repeating-conic-gradient` fleygir) fyrir skörp ljósgeisla-tilfinningu, og mýkri litaður hringur (`conic-gradient` í sömu cyan/violet/pink breytum og vinningshringurinn í `AwardCard` notar nú þegar) fyrir aftan — bæði stækka og dofna. „Continue" takkinn er alltaf smellanlegur, ekki læstur á meðan hreyfingin klárast — stöm hreyfing á hægu tæki á aldrei að festa neinn.
+- **Nýtt gagnalíkan — parað (pairwise) uppsöfnun**: fjórir SKALAR-teljarar sem `applyRoundScoresIfNeeded` safnaði nú þegar (cumulativeCorrectGuesses o.s.frv.) dugðu ekki fyrir spurningar eins og „hver giskaði oftast á ÞITT lag" — hrá gisk/einkunnagögn hverrar umferðar eru þurrkuð út um leið og næsta umferð byrjar. Tveir nýir PARAÐIR reitir á `Player` (`types.ts`), fylltir út í sama skrefi (`applyRoundScoresIfNeeded`, `gameStore.ts`) og hinir fjórir, núllstilltir í `startNewGame` eins og þeir:
+  ```
+  cumulativeCorrectGuessesByTarget?: Record<otherPlayerId, count>
+  cumulativeRatingGivenByTarget?: Record<otherPlayerId, {sum, count}>
+  ```
+  Bæði frá SJÓNARHÓLI þess sem giskar/gefur einkunn (ekki þess sem fær) — að skanna ALLRA hinna spilaranna kort eftir eigin ID svarar „hver giskaði á MIG" jafn vel án þess að skrifa sömu staðreyndina tvisvar. Ný hrein föll í `scoring.ts`: `correctGuessesByTargetThisRound`/`ratingsGivenByTargetThisRound` (per-umferð útgáfur, sama munstur og `countCorrectGuesses`/`ownSongRatingStats`) og `computeGameStatsForViewer(players, viewerId)` sem býr til allt sem leiktölfræði-spjaldið þarf úr lokauppsöfnuðu `players`-fylkinu — hrein aðgerð, engin ný skrif.
+- **`src/components/GameStatsCard.tsx`** (nýtt) — birtir línurnar úr `computeGameStatsForViewer` sem lítinn lista, ein lína á stak; lína sem á ekki við (t.d. enginn giskaði rétt á neinn allan leikinn) er ÞEGJANDI SLEPPT, aldrei sýnd tóm — staðfest í prófun. „Most in sync" er reiknað EINU SINNI fyrir allan leikinn (sama par fyrir alla), en orðalagið er persónugert: „You and X" ef áhorfandinn er í parinu, annars „X and Y" í þriðju persónu.
+- **`06-Results.tsx`** flæðið: `'winner'` (ef enginn sigurvegari finnst, sem ætti aldrei að gerast, er hoppað beint í `'nominations'`) → `'nominations'` (núverandi `FinalScoretableCards`, en Game Winner-spjaldið SÍAÐ ÚT úr fylkinu sem sent er inn — það fékk þegar sína eigin stund) → `'stats'` (`GameStatsCard`, „Continue to Scoreboard" kallar á óbreytt `returnToLobby()`).
+- **Staðfest með lifandi Playwright-prófun** (3 alvöru spilarar, handhannað gisk/einkunna-atburðarás svo hægt væri að reikna út vænt gildi fyrirfram og bera saman): parað gagnalíkan lendir rétt í Firebase eftir umferð; Winner reveal sýnir réttan sigurvegara (stigareikningur sjálfur — 12,5 stig — passaði nákvæmlega við handreikning); Game Winner-spjaldið endurtekur sig EKKI í tilnefningunum; hver leikmaður sá SÍNA EIGIN, ólíku útgáfu af leiktölfræði-spjaldinu (t.d. leikmaður sem enginn giskaði á sá hvorki „read you like a book" línuna né sjálfan sig ranglega á öðrum línum, en sá sjálfan sig rétt í „hardest to read"); „Continue to Scoreboard" úr stats-spjaldinu skilar sér alla leið í Lobby.
+- **Ekki staðfest sjónrænt af notanda ennþá**: sjálf hreyfingin („lítur þetta vel út?") er huglægt mat sem skjáskot/sjálfvirk próf ná ekki utan um — fyrri tilraun til svona hreyfinga var gerð og lögð til hliðar áður því notandi var ekki sáttur við útkomuna. Þarf lifandi skoðun og hugsanlega aðlögunarlotu eftir að þetta er komið í loftið, ekki gefið að fyrsta útgáfa hitti í mark.
+- **Frestað sér verkefni**: „Account > Stats" ferils-tölfræðin (yfir ALLA leiki innskráðs notanda, þarf nýja varanlega skrifleið per reikning, alveg aðskilið frá `players/{playerId}` sem er bundið einu herbergi/leik) — `StatsPanel` í `AccountPanel.tsx` segir áfram „coming soon".
 
 

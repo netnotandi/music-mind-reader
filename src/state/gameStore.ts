@@ -14,9 +14,11 @@ import { db } from '../firebase'
 import { computeCascade } from '../logic/ratingCascade'
 import {
   computeFinalScores,
+  correctGuessesByTargetThisRound,
   countCorrectGuesses,
   countGuessedByOthers,
   ownSongRatingStats,
+  ratingsGivenByTargetThisRound,
 } from '../logic/scoring'
 import type { Category, ChatMessage, Guess, Player, Rating, Song } from '../types'
 import { CATEGORIES } from './mockData'
@@ -308,6 +310,8 @@ interface RoomRecord {
       cumulativeRatingSum?: number
       cumulativeOwnedSongCount?: number
       cumulativeGuessedByOthersCount?: number
+      cumulativeCorrectGuessesByTarget?: Record<string, number>
+      cumulativeRatingGivenByTarget?: Record<string, { sum: number; count: number }>
     }
   >
   songs?: Record<
@@ -352,6 +356,8 @@ function parseRoom(data: RoomRecord) {
       cumulativeRatingSum: p.cumulativeRatingSum ?? 0,
       cumulativeOwnedSongCount: p.cumulativeOwnedSongCount ?? 0,
       cumulativeGuessedByOthersCount: p.cumulativeGuessedByOthersCount ?? 0,
+      cumulativeCorrectGuessesByTarget: p.cumulativeCorrectGuessesByTarget ?? {},
+      cumulativeRatingGivenByTarget: p.cumulativeRatingGivenByTarget ?? {},
     }))
 
   const songs: Song[] = Object.entries(data.songs ?? {}).map(([id, s]) => ({ id, ...s }))
@@ -438,6 +444,21 @@ export const useGameStore = create<GameState>((set, get) => {
         (player.cumulativeOwnedSongCount ?? 0) + ownedSongCount
       updates[`players/${player.id}/cumulativeGuessedByOthersCount`] =
         (player.cumulativeGuessedByOthersCount ?? 0) + countGuessedByOthers(round, player.id)
+
+      // Pairwise - feeds computeGameStatsForViewer's personal lines at
+      // game-end (who guessed YOUR songs most, who YOU guessed most, most
+      // in sync), since raw guesses/ratings don't survive past this round.
+      const guessesByTarget = correctGuessesByTargetThisRound(round, player.id)
+      for (const [targetId, count] of Object.entries(guessesByTarget)) {
+        updates[`players/${player.id}/cumulativeCorrectGuessesByTarget/${targetId}`] =
+          (player.cumulativeCorrectGuessesByTarget?.[targetId] ?? 0) + count
+      }
+      const ratingsByTarget = ratingsGivenByTargetThisRound(round, player.id)
+      for (const [targetId, { sum, count }] of Object.entries(ratingsByTarget)) {
+        const existing = player.cumulativeRatingGivenByTarget?.[targetId] ?? { sum: 0, count: 0 }
+        updates[`players/${player.id}/cumulativeRatingGivenByTarget/${targetId}/sum`] = existing.sum + sum
+        updates[`players/${player.id}/cumulativeRatingGivenByTarget/${targetId}/count`] = existing.count + count
+      }
     }
     if (Object.keys(updates).length > 0) {
       // Awaited (not fire-and-forget) so a caller that awaits
@@ -757,6 +778,8 @@ export const useGameStore = create<GameState>((set, get) => {
         updates[`players/${player.id}/cumulativeRatingSum`] = 0
         updates[`players/${player.id}/cumulativeOwnedSongCount`] = 0
         updates[`players/${player.id}/cumulativeGuessedByOthersCount`] = 0
+        updates[`players/${player.id}/cumulativeCorrectGuessesByTarget`] = null
+        updates[`players/${player.id}/cumulativeRatingGivenByTarget`] = null
       }
       dbUpdate(ref(db, `games/${roomCode}`), updates)
     },

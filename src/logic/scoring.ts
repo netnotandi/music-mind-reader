@@ -224,6 +224,51 @@ export function countGuessedByOthers(round: RoundData, playerId: string): number
   return ownSongs.reduce((sum, s) => sum + correctGuessers(s, guesses).length, 0)
 }
 
+// Pairwise version of countCorrectGuesses, within one round: how many times
+// this guesser correctly guessed EACH other player's song, keyed by that
+// other player's id. Folded into Player.cumulativeCorrectGuessesByTarget by
+// applyRoundScoresIfNeeded (gameStore.ts) since raw guesses don't survive
+// past the round they happened in.
+export function correctGuessesByTargetThisRound(
+  round: RoundData,
+  guesserId: string
+): Record<string, number> {
+  const { songs, guesses } = round
+  const songById = new Map(songs.map((s) => [s.id, s]))
+  const result: Record<string, number> = {}
+  for (const g of guesses) {
+    if (g.guesserId !== guesserId) continue
+    const song = songById.get(g.songId)
+    if (song && g.guessedPlayerId === song.playerId) {
+      result[song.playerId] = (result[song.playerId] ?? 0) + 1
+    }
+  }
+  return result
+}
+
+// Pairwise version of ownSongRatingStats, within one round, from the
+// RATER's side instead of the song owner's: sum/count of ratings this rater
+// gave to EACH other player's songs, keyed by that other player's id. Folded
+// into Player.cumulativeRatingGivenByTarget the same way.
+export function ratingsGivenByTargetThisRound(
+  round: RoundData,
+  raterId: string
+): Record<string, { sum: number; count: number }> {
+  const { songs, ratings } = round
+  const songById = new Map(songs.map((s) => [s.id, s]))
+  const result: Record<string, { sum: number; count: number }> = {}
+  for (const r of ratings) {
+    if (r.raterId !== raterId) continue
+    const song = songById.get(r.songId)
+    if (!song || song.playerId === raterId) continue
+    const entry = result[song.playerId] ?? { sum: 0, count: 0 }
+    entry.sum += r.value
+    entry.count += 1
+    result[song.playerId] = entry
+  }
+  return result
+}
+
 export function computeTitles(round: RoundData, players: Player[]): Title[] {
   const { songs } = round
   if (songs.length === 0 || players.length === 0) return []
@@ -353,4 +398,84 @@ export function computeOverallWinners(players: Player[]): string[] {
   if (players.length === 0) return []
   const maxScore = Math.max(...players.map((p) => p.totalScore ?? 0))
   return players.filter((p) => (p.totalScore ?? 0) === maxScore).map((p) => p.id)
+}
+
+export interface GameStatsForViewer {
+  // Who most often correctly guessed the VIEWER's songs, across the whole
+  // game - "[names] read you like a book — guessed your song N times".
+  bestGuesserOfYou: { playerIds: string[]; count: number } | null
+  // Who the VIEWER most often correctly guessed, across the whole game -
+  // "You had [names]'s number — guessed them right N times".
+  yourBestGuess: { playerIds: string[]; count: number } | null
+  // Players nobody ever correctly guessed, all game (must have actually
+  // played at least one song - otherwise "nobody guessed them" is vacuous).
+  hardestToRead: string[]
+  // The pair who rated each other's songs most similarly, game-wide (same
+  // for every viewer) - null if fewer than two players have given each
+  // other any rating at all.
+  mostInSyncPair: { playerIds: [string, string]; viewerIsMember: boolean } | null
+  // Highest cumulativeCorrectGuesses overall - same criterion as the "Music
+  // Mind Reader" title, restated as a highlight on this card.
+  topOverallGuesser: { playerIds: string[]; count: number } | null
+}
+
+// Built once, at game-end, from the final players array (every cumulative
+// field fully folded in) - a pure summary, no new writes. Every field is
+// null/empty when nothing qualifies, so the card can skip that line
+// entirely rather than showing an empty or zeroed-out one.
+export function computeGameStatsForViewer(players: Player[], viewerId: string): GameStatsForViewer {
+  const others = players.filter((p) => p.id !== viewerId)
+
+  let bestGuesserOfYou: GameStatsForViewer['bestGuesserOfYou'] = null
+  const guessedYouCounts = others
+    .map((p) => ({ id: p.id, count: p.cumulativeCorrectGuessesByTarget?.[viewerId] ?? 0 }))
+    .filter((x) => x.count > 0)
+  if (guessedYouCounts.length > 0) {
+    const max = Math.max(...guessedYouCounts.map((x) => x.count))
+    bestGuesserOfYou = { playerIds: guessedYouCounts.filter((x) => x.count === max).map((x) => x.id), count: max }
+  }
+
+  let yourBestGuess: GameStatsForViewer['yourBestGuess'] = null
+  const viewer = players.find((p) => p.id === viewerId)
+  const yourGuessMap = viewer?.cumulativeCorrectGuessesByTarget ?? {}
+  const yourGuessEntries = Object.entries(yourGuessMap).filter(([, count]) => count > 0)
+  if (yourGuessEntries.length > 0) {
+    const max = Math.max(...yourGuessEntries.map(([, count]) => count))
+    yourBestGuess = {
+      playerIds: yourGuessEntries.filter(([, count]) => count === max).map(([id]) => id),
+      count: max,
+    }
+  }
+
+  const hardestToRead = players
+    .filter((p) => (p.cumulativeGuessedByOthersCount ?? 0) === 0 && (p.cumulativeOwnedSongCount ?? 0) > 0)
+    .map((p) => p.id)
+
+  let mostInSyncPair: GameStatsForViewer['mostInSyncPair'] = null
+  let bestSyncAvg = 0
+  for (let i = 0; i < players.length; i++) {
+    for (let j = i + 1; j < players.length; j++) {
+      const a = players[i]
+      const b = players[j]
+      const aGivesB = a.cumulativeRatingGivenByTarget?.[b.id]
+      const bGivesA = b.cumulativeRatingGivenByTarget?.[a.id]
+      if (!aGivesB || aGivesB.count === 0 || !bGivesA || bGivesA.count === 0) continue
+      const avg = (aGivesB.sum / aGivesB.count + bGivesA.sum / bGivesA.count) / 2
+      if (avg > bestSyncAvg) {
+        bestSyncAvg = avg
+        mostInSyncPair = { playerIds: [a.id, b.id], viewerIsMember: a.id === viewerId || b.id === viewerId }
+      }
+    }
+  }
+
+  let topOverallGuesser: GameStatsForViewer['topOverallGuesser'] = null
+  const guessCounts = players
+    .map((p) => ({ id: p.id, count: p.cumulativeCorrectGuesses ?? 0 }))
+    .filter((x) => x.count > 0)
+  if (guessCounts.length > 0) {
+    const max = Math.max(...guessCounts.map((x) => x.count))
+    topOverallGuesser = { playerIds: guessCounts.filter((x) => x.count === max).map((x) => x.id), count: max }
+  }
+
+  return { bestGuesserOfYou, yourBestGuess, hardestToRead, mostInSyncPair, topOverallGuesser }
 }

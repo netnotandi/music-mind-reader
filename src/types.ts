@@ -19,6 +19,13 @@ export interface Player {
   cumulativeRatingSum?: number
   cumulativeOwnedSongCount?: number
   cumulativeGuessedByOthersCount?: number
+  // Pairwise, keyed by the OTHER player's id - both from THIS player's own
+  // perspective as the acting party (guesser / rater). Folded in alongside
+  // the scalars above; feeds computeGameStatsForViewer's personal lines
+  // ("X read you like a book", "most in sync") at game-end, which raw
+  // per-round guesses/ratings can't answer once they're wiped each round.
+  cumulativeCorrectGuessesByTarget?: Record<string, number>
+  cumulativeRatingGivenByTarget?: Record<string, { sum: number; count: number }>
 }
 
 export interface Song {

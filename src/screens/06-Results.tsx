@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import type { AwardIconKind } from '../components/AwardCard'
 import { type FinalScoretableCard, FinalScoretableCards } from '../components/FinalScoretableCards'
+import { GameStatsCard } from '../components/GameStatsCard'
 import { ScoreBoard } from '../components/ScoreBoard'
+import { WinnerRevealCard } from '../components/WinnerRevealCard'
 import {
   averageRating,
   computeCumulativeTitles,
   computeFinalScores,
+  computeGameStatsForViewer,
   computeOverallWinners,
   computeScoreBreakdown,
   computeTitles,
@@ -84,7 +87,14 @@ export function Results() {
   // pre-committed total - chosen once at the first Game Setup, see
   // chooseTotalRounds in gameStore.ts.
   const isLastRound = roundsCompleted + 1 >= totalRounds
-  const [showingFinalCards, setShowingFinalCards] = useState(false)
+  // Only meaningful once isLastRound - a whole GAME ending needs to read as
+  // a distinct, unmistakable moment (winner reveal, then nominations, then
+  // a personal stats card) rather than just another round's score screen,
+  // which is exactly the confusion this replaces (see CLAUDE.md's
+  // "Leik-lokaflæði" section - someone didn't realize two full games had
+  // already ended because Round Results and the old flat card deck looked
+  // the same).
+  const [finalStep, setFinalStep] = useState<'scoreboard' | 'winner' | 'nominations' | 'stats'>('scoreboard')
 
   const round = { songs, guesses, ratings }
   const scores = computeFinalScores(round)
@@ -123,18 +133,39 @@ export function Results() {
   // returnToLobby triggers - see applyFinalRoundScores in gameStore.ts) so
   // the cumulative award cards about to render already include this
   // round's contribution, instead of only picking it up later once the
-  // player continues past the deck.
+  // player continues past the deck. Button/label are unchanged from before -
+  // only what happens next (winner reveal first) is new.
   async function handleShowFinalCards() {
     await applyFinalRoundScores()
-    setShowingFinalCards(true)
+    setFinalStep('winner')
   }
+
+  const finalCards = buildFinalScoretableCards(players)
+  const winnerCard = finalCards.find((c) => c.icon === 'overall-winner')
+  const nominationCards = finalCards.filter((c) => c.icon !== 'overall-winner')
+  const gameStats = computeGameStatsForViewer(players, localPlayerId ?? '')
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-8 pt-16">
       <h1 className="mb-6 text-center text-2xl font-bold text-text">Results</h1>
 
-      {showingFinalCards ? (
-        <FinalScoretableCards cards={buildFinalScoretableCards(players)} onContinue={handleGoToLobby} />
+      {finalStep === 'winner' && winnerCard ? (
+        <WinnerRevealCard
+          icon={winnerCard.icon}
+          title={winnerCard.title}
+          subtitle={winnerCard.subtitle}
+          playerNames={winnerCard.playerNames}
+          onContinue={() => setFinalStep('nominations')}
+        />
+      ) : finalStep === 'winner' || finalStep === 'nominations' ? (
+        <FinalScoretableCards cards={nominationCards} onContinue={() => setFinalStep('stats')} />
+      ) : finalStep === 'stats' ? (
+        <GameStatsCard
+          stats={gameStats}
+          players={players}
+          viewerId={localPlayerId ?? ''}
+          onContinue={handleGoToLobby}
+        />
       ) : (
         <>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">
