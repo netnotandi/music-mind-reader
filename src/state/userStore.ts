@@ -29,6 +29,36 @@ export interface UserProfile {
   createdAt: number
 }
 
+// Lives at users/{uid}/careerStats - a separate, permanent write path from
+// the room-scoped cumulative fields on Player (types.ts), which are wiped
+// per room. Folded in by gameStore.ts's applyCareerStatsIfNeeded, one
+// signed-in player's own device at a time (see that function's own comment
+// for why no single device can write every player's career stats the way
+// applyRoundScoresIfNeeded does for room-scoped totals). Read by
+// StatsPanel.tsx.
+export interface CareerStats {
+  roundsPlayed?: number
+  gamesPlayed?: number
+  totalCorrectGuesses?: number
+  totalGuessAttempts?: number
+  totalOwnedSongCount?: number
+  totalGuessedByOthersCount?: number
+  ratingGivenSum?: number
+  ratingGivenCount?: number
+  ratingReceivedSum?: number
+  ratingReceivedCount?: number
+  // Running across every round/game ever played by this account - only
+  // broken by a wrong guess, never reset for any other reason.
+  currentGuessStreak?: number
+  longestGuessStreak?: number
+  titleCounts?: Partial<Record<string, number>>
+  // Idempotency guard only (see applyCareerStatsIfNeeded) - never read by
+  // any UI, grows by one small boolean per round ever played and is never
+  // pruned (accepted - same tolerance for small permanent cruft as rooms
+  // themselves, which are also never deleted).
+  _appliedRounds?: Record<string, true>
+}
+
 const MIN_NAME_LENGTH = 2
 const DISCRIMINATOR_MAX = 9999
 const CLAIM_ATTEMPTS = 8

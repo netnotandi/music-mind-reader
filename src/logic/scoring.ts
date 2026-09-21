@@ -269,6 +269,50 @@ export function ratingsGivenByTargetThisRound(
   return result
 }
 
+// Total guesses this player made this round, right or wrong - unlike
+// countCorrectGuesses, needed for career-wide accuracy % (users/{uid}/
+// careerStats in gameStore.ts) since "guessed right" alone can't tell you
+// how many attempts it was out of.
+export function countGuessAttempts(round: RoundData, playerId: string): number {
+  return round.guesses.filter((g) => g.guesserId === playerId).length
+}
+
+// Sum/count of every rating this player GAVE to anyone else's song this
+// round - the mirror of ownSongRatingStats (which is from the RECEIVING
+// side). Feeds career "average rating given" as a separate number from
+// "average rating received".
+export function ratingsGivenStats(round: RoundData, raterId: string): { sum: number; count: number } {
+  const { songs, ratings } = round
+  const songById = new Map(songs.map((s) => [s.id, s]))
+  let sum = 0
+  let count = 0
+  for (const r of ratings) {
+    if (r.raterId !== raterId) continue
+    const song = songById.get(r.songId)
+    if (!song || song.playerId === raterId) continue
+    sum += r.value
+    count += 1
+  }
+  return { sum, count }
+}
+
+// Whether each song this player guessed on this round was correct, in play
+// order (round.songs is already sorted by songOrder via
+// getCurrentRoundSongs) - feeds the career-wide longest-correct-guess-streak
+// counter in gameStore.ts, which keeps walking this sequence round after
+// round, game after game, only ever broken by a wrong guess.
+export function guessSequenceForPlayer(round: RoundData, playerId: string): boolean[] {
+  const { songs, guesses } = round
+  const guessBySongId = new Map(guesses.filter((g) => g.guesserId === playerId).map((g) => [g.songId, g]))
+  const sequence: boolean[] = []
+  for (const song of songs) {
+    const guess = guessBySongId.get(song.id)
+    if (!guess) continue
+    sequence.push(guess.guessedPlayerId === song.playerId)
+  }
+  return sequence
+}
+
 export function computeTitles(round: RoundData, players: Player[]): Title[] {
   const { songs } = round
   if (songs.length === 0 || players.length === 0) return []

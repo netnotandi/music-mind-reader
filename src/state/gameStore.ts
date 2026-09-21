@@ -13,15 +13,21 @@ import { trackEvent } from '../analytics'
 import { db } from '../firebase'
 import { computeCascade } from '../logic/ratingCascade'
 import {
+  computeCumulativeTitles,
   computeFinalScores,
+  computeOverallWinners,
   correctGuessesByTargetThisRound,
   countCorrectGuesses,
+  countGuessAttempts,
   countGuessedByOthers,
+  guessSequenceForPlayer,
   ownSongRatingStats,
   ratingsGivenByTargetThisRound,
+  ratingsGivenStats,
 } from '../logic/scoring'
 import type { Category, ChatMessage, Guess, Player, Rating, Song } from '../types'
 import { CATEGORIES } from './mockData'
+import type { CareerStats } from './userStore'
 import { useUserStore } from './userStore'
 
 export const MAX_SELECTED_CATEGORIES = 1
@@ -467,6 +473,109 @@ export const useGameStore = create<GameState>((set, get) => {
       // songs/guesses/ratings before doing anything that might clear them.
       await dbUpdate(ref(db, `games/${roomCode}`), updates)
     }
+  }
+
+  // Folds THIS device's own signed-in account's career stats into
+  // users/{uid}/careerStats - a permanent, account-scoped tally across every
+  // room this account ever plays, separate from the room-scoped cumulative
+  // fields on Player that applyRoundScoresIfNeeded folds above (those are
+  // wiped per room by startNewGame).
+  //
+  // Unlike applyRoundScoresIfNeeded, this can NOT be done once by whichever
+  // device wins a shared claim: there are no Cloud Functions in this project
+  // (client-direct Firebase), and RTDB rules can only authorize a write by
+  // whoever is actually signed in on the device making it - a device can
+  // write users/{its own uid}/careerStats, never anyone else's. So every
+  // signed-in player's own device calls this itself, from returnToLobby()
+  // below, which already runs once per round on every player's own device.
+  async function applyCareerStatsIfNeeded() {
+    const { roomCode, localPlayerId, players, guesses, ratings, roundsCompleted, totalRounds, phase } = get()
+    if (!roomCode || !localPlayerId) return
+    // A legitimate call always happens while THIS round's Results screen is
+    // still up - finalizeRoundIfReady (which flips phase away from
+    // 'results') can't have run yet, since it requires every player
+    // INCLUDING this one to already be lobbyReady, and this call fires
+    // before this player's own readiness write below. A stale replay (e.g.
+    // browser back button to an already-finalized Results screen) always
+    // finds phase already moved on, and must bail here rather than re-fold
+    // roundsPlayed/gamesPlayed/titleCounts a second time - unlike the
+    // room-scoped fold above, those aren't naturally zero on a repeat call
+    // (players' cumulative fields don't get wiped between rounds).
+    if (phase !== 'results') return
+    const uid = useUserStore.getState().uid
+    if (!uid) return
+    // Only fold stats for the account that was actually signed in when this
+    // room's player record was created - a device that's since signed into
+    // a different account (or signed out) must not attribute this player's
+    // round to the wrong (or no) account.
+    const localPlayer = players.find((p) => p.id === localPlayerId)
+    if (!localPlayer || localPlayer.uid !== uid) return
+
+    // Same transaction-claim shape as roundScoresApplied above, just scoped
+    // under this account's own permanent tree instead of the room's
+    // ephemeral one - guards React StrictMode's dev-mode double-invoke and
+    // any accidental repeat call for the same round.
+    const claimKey = `${roomCode}_${roundsCompleted}`
+    let wonClaim = false
+    await runTransaction(ref(db, `users/${uid}/careerStats/_appliedRounds/${claimKey}`), (current) => {
+      if (current) return current
+      wonClaim = true
+      return true
+    })
+    if (!wonClaim) return
+
+    // Round data is still untouched here - the reset only happens later, in
+    // finalizeRoundIfReady, once every player has called returnToLobby.
+    const round = { songs: getCurrentRoundSongs(get()), guesses, ratings }
+
+    const statsSnap = await dbGet(ref(db, `users/${uid}/careerStats`))
+    const stats = (statsSnap.val() ?? {}) as CareerStats
+
+    const { sum: receivedSum, count: receivedCount } = ownSongRatingStats(round, localPlayerId)
+    const { sum: givenSum, count: givenCount } = ratingsGivenStats(round, localPlayerId)
+
+    let streak = stats.currentGuessStreak ?? 0
+    let longestStreak = stats.longestGuessStreak ?? 0
+    for (const correct of guessSequenceForPlayer(round, localPlayerId)) {
+      streak = correct ? streak + 1 : 0
+      if (streak > longestStreak) longestStreak = streak
+    }
+
+    const updates: Record<string, unknown> = {
+      [`users/${uid}/careerStats/roundsPlayed`]: (stats.roundsPlayed ?? 0) + 1,
+      [`users/${uid}/careerStats/totalCorrectGuesses`]:
+        (stats.totalCorrectGuesses ?? 0) + countCorrectGuesses(round, localPlayerId),
+      [`users/${uid}/careerStats/totalGuessAttempts`]:
+        (stats.totalGuessAttempts ?? 0) + countGuessAttempts(round, localPlayerId),
+      [`users/${uid}/careerStats/totalOwnedSongCount`]: (stats.totalOwnedSongCount ?? 0) + receivedCount,
+      [`users/${uid}/careerStats/totalGuessedByOthersCount`]:
+        (stats.totalGuessedByOthersCount ?? 0) + countGuessedByOthers(round, localPlayerId),
+      [`users/${uid}/careerStats/ratingReceivedSum`]: (stats.ratingReceivedSum ?? 0) + receivedSum,
+      [`users/${uid}/careerStats/ratingReceivedCount`]: (stats.ratingReceivedCount ?? 0) + receivedCount,
+      [`users/${uid}/careerStats/ratingGivenSum`]: (stats.ratingGivenSum ?? 0) + givenSum,
+      [`users/${uid}/careerStats/ratingGivenCount`]: (stats.ratingGivenCount ?? 0) + givenCount,
+      [`users/${uid}/careerStats/currentGuessStreak`]: streak,
+      [`users/${uid}/careerStats/longestGuessStreak`]: longestStreak,
+    }
+
+    // Only true once per whole GAME (not every round) - titles/game count are
+    // a game-wide verdict, computed from the by-now-settled players array
+    // (fresh here: this fires only after the user has clicked through the
+    // Winner reveal, nominations and stats card, long past the same-tick
+    // race applyRoundScoresIfNeeded's own comment warns about above).
+    if (roundsCompleted + 1 >= totalRounds) {
+      const titleCounts = { ...(stats.titleCounts ?? {}) }
+      for (const { name, playerId } of computeCumulativeTitles(players)) {
+        if (playerId === localPlayerId) titleCounts[name] = (titleCounts[name] ?? 0) + 1
+      }
+      if (computeOverallWinners(players).includes(localPlayerId)) {
+        titleCounts['Game Winner'] = (titleCounts['Game Winner'] ?? 0) + 1
+      }
+      updates[`users/${uid}/careerStats/gamesPlayed`] = (stats.gamesPlayed ?? 0) + 1
+      updates[`users/${uid}/careerStats/titleCounts`] = titleCounts
+    }
+
+    await dbUpdate(ref(db), updates)
   }
 
   function attachListener(roomCode: string, playerId: string) {
@@ -993,6 +1102,10 @@ export const useGameStore = create<GameState>((set, get) => {
       // having to wait for the last straggler to click through before
       // anyone's total updates.
       applyRoundScoresIfNeeded()
+      // Independent of the room-scoped fold above - see that function's own
+      // comment for why this has to run separately, per signed-in account,
+      // on that account's own device.
+      applyCareerStatsIfNeeded()
       dbUpdate(ref(db, `games/${roomCode}`), { [`lobbyReady/${localPlayerId}`]: true })
     },
 

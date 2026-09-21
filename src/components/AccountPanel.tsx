@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { FriendsPanel } from './FriendsPanel'
 import { MyListsPanel } from './MyListsPanel'
+import { StatsPanel } from './StatsPanel'
 import { MAX_NAME_LENGTH } from '../state/gameStore'
 import { auth } from '../firebase'
 import { useUserStore } from '../state/userStore'
@@ -189,10 +190,6 @@ const ACCOUNT_SUB_TABS = [
   { id: 'stats', label: 'Stats' },
 ] as const
 type AccountSubTab = (typeof ACCOUNT_SUB_TABS)[number]['id']
-
-function StatsPanel() {
-  return <p className="text-sm text-text-muted">Lifetime stats are coming soon.</p>
-}
 
 interface ReadyViewProps {
   // Owned by MenuOverlay, not local state here - it needs to know when
