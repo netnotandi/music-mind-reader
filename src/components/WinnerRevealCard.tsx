@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { AwardCard, type AwardIconKind } from './AwardCard'
+import { playRandomWinnerFanfare } from '../logic/winnerFanfare'
 
 interface WinnerRevealCardProps {
   icon: AwardIconKind
@@ -33,9 +34,10 @@ const HOLD_AFTER_BURST_MS = 2000
 // a white-to-gold radial-gradient, so each ray is bright at the card and
 // fades to gold/orange further out) for the "light rays" look, plus a
 // softer blurred ring in the app's own brand gradient (cyan/violet/pink,
-// same var()s AwardCard's own winner-ring icon already uses) for color.
-// Wraps AwardCard rather than reimplementing it - same card, just with this
-// choreography around it.
+// same var()s AwardCard's own winner-ring icon already uses) for color. A
+// randomly-picked short synthesized fanfare (winnerFanfare.ts) plays at the
+// same moment. Wraps AwardCard rather than reimplementing it - same card,
+// just with this choreography around it.
 export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinue }: WinnerRevealCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const sunburstRef = useRef<HTMLDivElement>(null)
@@ -62,6 +64,7 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
     )
 
     spinAnim.onfinish = () => {
+      playRandomWinnerFanfare()
       sunburstRef.current?.animate(
         [
           { transform: 'scale(0.4) rotate(0deg)', opacity: 1, offset: 0 },

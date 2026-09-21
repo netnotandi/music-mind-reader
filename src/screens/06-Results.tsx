@@ -15,6 +15,7 @@ import {
   computeScoreBreakdown,
   computeTitles,
 } from '../logic/scoring'
+import { primeWinnerFanfare } from '../logic/winnerFanfare'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 import type { Player } from '../types'
@@ -136,6 +137,11 @@ export function Results() {
   // player continues past the deck. Button/label are unchanged from before -
   // only what happens next (winner reveal first) is new.
   async function handleShowFinalCards() {
+    // Synchronous, before the await below - has to happen inside this real
+    // click's own call stack so the AudioContext it creates still counts as
+    // user-gesture-authorized once the fanfare actually plays, ~1.3s later
+    // once WinnerRevealCard's spin settles (see winnerFanfare.ts).
+    primeWinnerFanfare()
     await applyFinalRoundScores()
     setFinalStep('winner')
   }
