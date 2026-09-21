@@ -6,9 +6,10 @@ interface WinnerRevealCardProps {
   title: string
   subtitle: string
   playerNames: string[]
-  // Always clickable, even mid-animation - a stuttering animation on a
-  // slow device should never be the thing standing between someone and the
-  // rest of the game-end flow.
+  // Called automatically once the whole reveal has played out (see
+  // HOLD_AFTER_BURST_MS below) - also wired to a tap anywhere on the card,
+  // so someone impatient (or a browser that never fires the burst
+  // animation's finish event) always has a way through.
   onContinue: () => void
 }
 
@@ -19,6 +20,10 @@ const SPIN_MS = 1300
 // almost as soon as it appeared.
 const SUNBURST_MS = 2000
 const GLOW_MS = 2300
+// How long to sit on the settled, ray-free card after the burst has fully
+// faded before moving on by itself - long enough to actually read the
+// card, not so long it feels stuck.
+const HOLD_AFTER_BURST_MS = 2000
 
 // A one-shot entrance for the game's overall winner, built with the Web
 // Animations API directly (no library) so it resets cleanly every time this
@@ -35,10 +40,17 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
   const cardRef = useRef<HTMLDivElement>(null)
   const sunburstRef = useRef<HTMLDivElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
+  // Kept fresh every render so the one-shot mount effect below (and its
+  // setTimeout, which can fire well after the render that scheduled it)
+  // always calls whatever onContinue the parent currently has, not a stale
+  // one captured at mount.
+  const onContinueRef = useRef(onContinue)
+  onContinueRef.current = onContinue
 
   useEffect(() => {
     const card = cardRef.current
     if (!card) return
+    let holdTimer: ReturnType<typeof setTimeout> | null = null
 
     const spinAnim = card.animate(
       [
@@ -68,10 +80,15 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
         ],
         { duration: GLOW_MS, easing: 'ease-out', fill: 'forwards' }
       )
+      // Moves on by itself once the burst has fully faded and the card's
+      // had a couple of quiet seconds on screen - no button needed for the
+      // common case. GLOW_MS is the longer of the two burst layers.
+      holdTimer = setTimeout(() => onContinueRef.current(), GLOW_MS + HOLD_AFTER_BURST_MS)
     }
 
     return () => {
       spinAnim.cancel()
+      if (holdTimer !== null) clearTimeout(holdTimer)
     }
     // Runs once per mount - the whole point is a clean one-shot every time
     // this card is freshly shown, not something that reruns on prop changes.
@@ -79,7 +96,12 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
   }, [])
 
   return (
-    <div className="flex flex-col items-center">
+    <button
+      type="button"
+      onClick={onContinue}
+      aria-label="Continue"
+      className="flex w-full appearance-none flex-col items-center border-0 bg-transparent p-0 text-left"
+    >
       <div className="relative flex items-center justify-center">
         <div
           ref={glowRef}
@@ -109,13 +131,6 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
           <AwardCard icon={icon} title={title} subtitle={subtitle} playerNames={playerNames} />
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onContinue}
-        className="mt-6 w-full max-w-md rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
-      >
-        Continue →
-      </button>
-    </div>
+    </button>
   )
 }

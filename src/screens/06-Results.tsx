@@ -147,7 +147,9 @@ export function Results() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-8 pt-16">
-      <h1 className="mb-6 text-center text-2xl font-bold text-text">Results</h1>
+      {finalStep === 'scoreboard' && (
+        <h1 className="mb-6 text-center text-2xl font-bold text-text">Results</h1>
+      )}
 
       {finalStep === 'winner' && winnerCard ? (
         <WinnerRevealCard
@@ -187,7 +189,7 @@ export function Results() {
               onClick={handleShowFinalCards}
               className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
             >
-              Final Scoretable →
+              Final Results →
             </button>
           ) : (
             <>
