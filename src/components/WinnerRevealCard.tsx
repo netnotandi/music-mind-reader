@@ -13,7 +13,12 @@ interface WinnerRevealCardProps {
 }
 
 const SPIN_MS = 1300
-const BURST_MS = 800
+// Fast rise (rays are already near full size/brightness a fifth of the way
+// in - "arrive sooner"), a long hold at full brightness, then a fade at the
+// very end - rather than a single linear grow-and-fade that read as gone
+// almost as soon as it appeared.
+const SUNBURST_MS = 2000
+const GLOW_MS = 2300
 
 // A one-shot entrance for the game's overall winner, built with the Web
 // Animations API directly (no library) so it resets cleanly every time this
@@ -47,17 +52,21 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
     spinAnim.onfinish = () => {
       sunburstRef.current?.animate(
         [
-          { transform: 'scale(0.2) rotate(0deg)', opacity: 0.9 },
-          { transform: 'scale(2.8) rotate(25deg)', opacity: 0 },
+          { transform: 'scale(0.4) rotate(0deg)', opacity: 1, offset: 0 },
+          { transform: 'scale(1.6) rotate(8deg)', opacity: 1, offset: 0.2 },
+          { transform: 'scale(2.1) rotate(18deg)', opacity: 1, offset: 0.7 },
+          { transform: 'scale(2.8) rotate(25deg)', opacity: 0, offset: 1 },
         ],
-        { duration: BURST_MS, easing: 'ease-out', fill: 'forwards' }
+        { duration: SUNBURST_MS, easing: 'ease-out', fill: 'forwards' }
       )
       glowRef.current?.animate(
         [
-          { transform: 'scale(0.3)', opacity: 0.85 },
-          { transform: 'scale(2.2)', opacity: 0 },
+          { transform: 'scale(0.5)', opacity: 0.9, offset: 0 },
+          { transform: 'scale(1.4)', opacity: 0.9, offset: 0.2 },
+          { transform: 'scale(1.8)', opacity: 0.9, offset: 0.7 },
+          { transform: 'scale(2.2)', opacity: 0, offset: 1 },
         ],
-        { duration: BURST_MS + 300, easing: 'ease-out', fill: 'forwards' }
+        { duration: GLOW_MS, easing: 'ease-out', fill: 'forwards' }
       )
     }
 
