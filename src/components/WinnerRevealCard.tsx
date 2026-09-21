@@ -35,9 +35,9 @@ const HOLD_AFTER_BURST_MS = 2000
 // fades to gold/orange further out) for the "light rays" look, plus a
 // softer blurred ring in the app's own brand gradient (cyan/violet/pink,
 // same var()s AwardCard's own winner-ring icon already uses) for color. A
-// synthesized crowd cheer (winnerFanfare.ts) starts the instant the spin
-// begins and fades out as the burst finishes, spanning the whole sequence.
-// Wraps AwardCard rather than reimplementing it - same card, just with this
+// real cheer sound clip (winnerFanfare.ts, one of a handful the host
+// dropped into public/sounds/) starts the instant the spin begins. Wraps
+// AwardCard rather than reimplementing it - same card, just with this
 // choreography around it.
 export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinue }: WinnerRevealCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
@@ -55,13 +55,11 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
     if (!card) return
     let holdTimer: ReturnType<typeof setTimeout> | null = null
 
-    // Starts right as the spin begins, faded out by the time the longer of
-    // the two burst layers (GLOW_MS) finishes fading - spans the whole
-    // reveal, not just a one-shot sting at the end. stopCheer() is called
-    // from this effect's own cleanup below, so an early unmount (React's
-    // dev-mode double-invoke, or a real early tap-to-skip) can't leave two
-    // overlapping cheers or one still playing into the next screen.
-    const stopCheer = playWinnerCheer((SPIN_MS + GLOW_MS) / 1000)
+    // Starts right as the spin begins, plays out to its own natural end.
+    // stopCheer() is called from this effect's own cleanup below, so an
+    // early unmount (React's dev-mode double-invoke, or a real early
+    // tap-to-skip) can't leave a cheer still playing into the next screen.
+    const stopCheer = playWinnerCheer()
 
     const spinAnim = card.animate(
       [
