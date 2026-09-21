@@ -1,11 +1,17 @@
-// A synthesized crowd cheer + applause bed for the Winner reveal - starts
-// the instant the card starts spinning and fades out as the reveal
-// animation finishes. Built entirely with the Web Audio API (filtered noise
-// bursts shaped into claps/whoops) rather than tonal oscillator "fanfare"
-// jingles (an earlier version of this file - those just sounded bad in
-// practice). Not bundled/recorded audio or a real crowd sample either, same
-// "no copyrighted/hosted audio" boundary this project keeps everywhere else
-// (see CLAUDE.md's Spotify/YouTube decisions), and no new dependency.
+// A synthesized crowd cheer for the Winner reveal - starts the instant the
+// card starts spinning and fades out as the reveal animation finishes.
+// Built entirely with the Web Audio API (percussive noise claps + pitched
+// "woo-hoo!" oscillator shouts) - not bundled/recorded audio or a real
+// crowd sample, same "no copyrighted/hosted audio" boundary this project
+// keeps everywhere else (see CLAUDE.md's Spotify/YouTube decisions), and no
+// new dependency either.
+//
+// First attempt used a continuous filtered-noise "bed" for texture, which
+// in practice just read as rain/static hiss rather than a crowd - real
+// applause is actually many distinct percussive claps happening close
+// together, not a wash of noise, so this version leans entirely on
+// individual clap transients (sparse at first, then dense) plus a couple of
+// pitched vocal-ish "woo-hoo!" shouts instead.
 let audioCtx: AudioContext | null = null
 
 // Call this synchronously from within a real user gesture (the "Final
@@ -31,63 +37,90 @@ function createNoiseBuffer(ctx: AudioContext, durationSec: number): AudioBuffer 
   return buffer
 }
 
-// One quick hand-clap - a very short, high-passed noise burst with a sharp
-// attack and fast decay. Many of these scattered randomly across the
-// duration is what actually reads as "a crowd clapping" rather than a
-// single synthesized tone ever could.
-function addClap(ctx: AudioContext, dest: AudioNode, at: number) {
-  const clapDur = 0.03
+// One hand-clap: a short, punchy noise burst band-passed around the
+// 1.5-3.5kHz range real claps concentrate their energy in, with a sharp
+// attack and quick decay - distinct little "thwack" transients rather than
+// a wash, so a handful of them read as actual claps instead of static.
+function addClap(ctx: AudioContext, dest: AudioNode, at: number, peak: number) {
+  const clapDur = 0.045
   const source = ctx.createBufferSource()
   source.buffer = createNoiseBuffer(ctx, clapDur)
-  const highpass = ctx.createBiquadFilter()
-  highpass.type = 'highpass'
-  highpass.frequency.value = 1800 + Math.random() * 2500
+  const bandpass = ctx.createBiquadFilter()
+  bandpass.type = 'bandpass'
+  bandpass.frequency.value = 1500 + Math.random() * 2000
+  bandpass.Q.value = 1.2
   const gain = ctx.createGain()
-  const peak = 0.06 + Math.random() * 0.08
   gain.gain.setValueAtTime(0, at)
-  gain.gain.linearRampToValueAtTime(peak, at + 0.004)
+  gain.gain.linearRampToValueAtTime(peak, at + 0.002)
   gain.gain.exponentialRampToValueAtTime(0.001, at + clapDur)
-  source.connect(highpass)
-  highpass.connect(gain)
+  source.connect(bandpass)
+  bandpass.connect(gain)
   gain.connect(dest)
   source.start(at)
   source.stop(at + clapDur + 0.02)
 }
 
-// One rising-then-falling "whoop" of cheering, from filtered noise swept
-// through a bandpass filter's center frequency - a crude but effective
-// stand-in for a voice-like shout, layered under the claps.
-function addCheerWhoop(ctx: AudioContext, dest: AudioNode, at: number, duration: number) {
-  const source = ctx.createBufferSource()
-  source.buffer = createNoiseBuffer(ctx, duration)
-  const filter = ctx.createBiquadFilter()
-  filter.type = 'bandpass'
-  filter.Q.value = 3.5
-  const peakFreq = 1000 + Math.random() * 900
-  filter.frequency.setValueAtTime(500, at)
-  filter.frequency.linearRampToValueAtTime(peakFreq, at + duration * 0.55)
-  filter.frequency.linearRampToValueAtTime(peakFreq * 0.6, at + duration)
+// A single shouted "Woo-hoo!" - a pitched sawtooth (softened with a
+// low-pass so it doesn't buzz) that glides up quickly for the "Woo-", holds
+// with a light vibrato for the "-hoo!", then decays - reads as an actual
+// human cheer far better than filtered noise ever does.
+function addWoohoo(ctx: AudioContext, dest: AudioNode, at: number, peak: number) {
+  const duration = 0.85
+  const osc = ctx.createOscillator()
+  osc.type = 'sawtooth'
+  osc.frequency.setValueAtTime(300, at)
+  osc.frequency.exponentialRampToValueAtTime(680, at + 0.16)
+  osc.frequency.exponentialRampToValueAtTime(560, at + 0.45)
+  osc.frequency.exponentialRampToValueAtTime(420, at + duration)
+
+  const vibrato = ctx.createOscillator()
+  vibrato.frequency.value = 7
+  const vibratoGain = ctx.createGain()
+  vibratoGain.gain.value = 12
+  vibrato.connect(vibratoGain)
+  vibratoGain.connect(osc.frequency)
+
+  const lowpass = ctx.createBiquadFilter()
+  lowpass.type = 'lowpass'
+  lowpass.frequency.value = 2000
+
   const gain = ctx.createGain()
   gain.gain.setValueAtTime(0, at)
-  gain.gain.linearRampToValueAtTime(0.1, at + duration * 0.25)
-  gain.gain.linearRampToValueAtTime(0, at + duration)
-  source.connect(filter)
-  filter.connect(gain)
+  gain.gain.linearRampToValueAtTime(peak, at + 0.06)
+  gain.gain.setValueAtTime(peak, at + 0.4)
+  gain.gain.exponentialRampToValueAtTime(0.001, at + duration)
+
+  osc.connect(lowpass)
+  lowpass.connect(gain)
   gain.connect(dest)
-  source.start(at)
-  source.stop(at + duration + 0.05)
+  osc.start(at)
+  osc.stop(at + duration + 0.05)
+  vibrato.start(at)
+  vibrato.stop(at + duration + 0.05)
 }
 
-// Plays a crowd cheer + applause bed for `durationSec`, faded in at the
-// start and out at the end (per the host's request) - meant to span the
-// WHOLE reveal animation (spin + burst), started right as it begins rather
-// than waiting for it to settle.
-export function playWinnerCheer(durationSec: number) {
+// Plays a crowd cheer for `durationSec`, faded in at the start and out at
+// the end - starts with a few sparse, distinct claps ("clap... clap...
+// clap..."), a couple of "woo-hoo!" shouts overlapping in, then builds into
+// a dense flurry of claps (applause) for the rest of the duration. Meant to
+// span the WHOLE reveal animation (spin + burst), started right as it
+// begins rather than waiting for it to settle.
+//
+// Returns a stop() that silences everything immediately - every clap/whoop
+// is scheduled up front and can't individually be un-scheduled, but they
+// all route through one master gain node, so cancelling its ramps and
+// zeroing it silences the lot in one call. Needed because React's dev-mode
+// double-invoke (mount -> cleanup -> mount again) would otherwise fire two
+// overlapping cheers on top of each other with no way to stop the first -
+// harmless in production (StrictMode double-invoke is dev-only), but WOULD
+// also matter for a real early exit (someone taps to skip before the cheer
+// finishes on its own).
+export function playWinnerCheer(durationSec: number): () => void {
   try {
-    if (!audioCtx) return
+    if (!audioCtx) return () => {}
     const ctx = audioCtx
     const now = ctx.currentTime
-    const fadeIn = 0.2
+    const fadeIn = 0.05
     const fadeOut = 0.5
 
     const master = ctx.createGain()
@@ -97,44 +130,41 @@ export function playWinnerCheer(durationSec: number) {
     master.gain.linearRampToValueAtTime(0, now + durationSec)
     master.connect(ctx.destination)
 
-    // Continuous filtered-noise "roar" bed underneath the claps/whoops,
-    // with a slow random amplitude wobble so it doesn't sound like a flat
-    // hiss - many overlapping voices/hands rather than one steady tone.
-    const bedSource = ctx.createBufferSource()
-    bedSource.buffer = createNoiseBuffer(ctx, durationSec + 0.2)
-    bedSource.loop = false
-    const bandpass = ctx.createBiquadFilter()
-    bandpass.type = 'bandpass'
-    bandpass.frequency.value = 1600
-    bandpass.Q.value = 0.5
-    const bedGain = ctx.createGain()
-    const wobbleSteps = Math.max(6, Math.round(durationSec * 5))
-    bedGain.gain.setValueAtTime(0, now)
-    for (let i = 0; i <= wobbleSteps; i++) {
-      const t = now + (i / wobbleSteps) * durationSec
-      bedGain.gain.linearRampToValueAtTime(0.12 + Math.random() * 0.1, t)
+    // A few sparse, clearly separated claps up front.
+    const sparseCount = 4
+    const sparseSpacing = 0.22
+    for (let i = 0; i < sparseCount; i++) {
+      addClap(ctx, master, now + i * sparseSpacing, 0.35 + Math.random() * 0.1)
     }
-    bedSource.connect(bandpass)
-    bandpass.connect(bedGain)
-    bedGain.connect(master)
-    bedSource.start(now)
-    bedSource.stop(now + durationSec)
+    const sparseEnd = sparseCount * sparseSpacing
 
-    // Dense scattered claps across the whole duration.
-    const clapCount = Math.round(durationSec * 16)
-    for (let i = 0; i < clapCount; i++) {
-      addClap(ctx, master, now + Math.random() * durationSec)
+    // One or two "woo-hoo!" shouts, starting around when the sparse claps
+    // finish, staggered slightly so they don't sound perfectly stacked.
+    addWoohoo(ctx, master, now + sparseEnd, 0.22)
+    if (durationSec > 2.5) {
+      addWoohoo(ctx, master, now + sparseEnd + 1.3 + Math.random() * 0.4, 0.18)
     }
 
-    // A handful of cheering whoops layered in.
-    const whoopCount = Math.max(2, Math.round(durationSec / 1.1))
-    for (let i = 0; i < whoopCount; i++) {
-      const whoopDuration = 0.4 + Math.random() * 0.5
-      const start = now + Math.random() * Math.max(0.1, durationSec - whoopDuration)
-      addCheerWhoop(ctx, master, start, whoopDuration)
+    // Dense applause flurry for the remainder of the duration.
+    const flurryStart = sparseEnd + 0.15
+    const flurryDuration = Math.max(0.3, durationSec - flurryStart)
+    const flurryCount = Math.round(flurryDuration * 22)
+    for (let i = 0; i < flurryCount; i++) {
+      const at = now + flurryStart + Math.random() * flurryDuration
+      addClap(ctx, master, at, 0.12 + Math.random() * 0.14)
+    }
+
+    return () => {
+      try {
+        master.gain.cancelScheduledValues(ctx.currentTime)
+        master.gain.setValueAtTime(0, ctx.currentTime)
+      } catch {
+        // ignore - context/node may already be gone
+      }
     }
   } catch {
     // The cheer is a nice-to-have flourish, never something that should be
     // able to break the reveal itself.
+    return () => {}
   }
 }

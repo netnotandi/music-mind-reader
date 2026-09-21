@@ -57,8 +57,11 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
 
     // Starts right as the spin begins, faded out by the time the longer of
     // the two burst layers (GLOW_MS) finishes fading - spans the whole
-    // reveal, not just a one-shot sting at the end.
-    playWinnerCheer((SPIN_MS + GLOW_MS) / 1000)
+    // reveal, not just a one-shot sting at the end. stopCheer() is called
+    // from this effect's own cleanup below, so an early unmount (React's
+    // dev-mode double-invoke, or a real early tap-to-skip) can't leave two
+    // overlapping cheers or one still playing into the next screen.
+    const stopCheer = playWinnerCheer((SPIN_MS + GLOW_MS) / 1000)
 
     const spinAnim = card.animate(
       [
@@ -96,6 +99,7 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
 
     return () => {
       spinAnim.cancel()
+      stopCheer()
       if (holdTimer !== null) clearTimeout(holdTimer)
     }
     // Runs once per mount - the whole point is a clean one-shot every time
