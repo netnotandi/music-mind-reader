@@ -1,5 +1,5 @@
 // One "Final Scoretable" award card - now a host-supplied badge image
-// (public/badges/*.jpg, each already a complete card: themed border, icon,
+// (public/badges/*, each already a complete card: themed border, icon,
 // title and subtitle baked in) with just the dynamic winning player's
 // name(s) added underneath, since that's the one thing per-game that no
 // static image could contain. Replaces an earlier version built from inline
@@ -32,18 +32,18 @@ const BADGE_IMAGE: Record<AwardIconKind, string> = {
   'best-taste': '/badges/best_taste.jpg',
   'master-of-disguise': '/badges/master_of_disguise.jpg',
   'most-predictable': '/badges/most_predictable.jpg',
-  'musical-criminal': '/badges/musical_criminal.jpg',
-  'overall-winner': '/badges/round_winner.jpg',
+  'musical-criminal': '/badges/musical-criminal-v3.png',
+  'overall-winner': '/badges/game-winner-card-v3-corrected.png',
 }
 
 export function AwardCard({ icon, title, playerNames }: AwardCardProps) {
   return (
     <div className="flex flex-col items-center gap-4 px-2 py-4 text-center">
-      {/* The JPGs have an opaque near-black background outside their own
+      {/* These images have an opaque near-black background outside their own
           rounded border art (no alpha channel) - overflow-hidden + rounded-2xl
           on the wrapper softens the image's own square outer corners. Looks
           right in dark mode; may read as a slightly boxy dark card on light
-          theme until/unless these get redone as transparent PNGs. */}
+          theme until/unless these get redone with real transparency. */}
       <div className="w-full max-w-xs overflow-hidden rounded-2xl">
         <img src={BADGE_IMAGE[icon]} alt={title} className="block w-full" />
       </div>
