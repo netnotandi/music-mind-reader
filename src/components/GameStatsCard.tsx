@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { GameStatsForViewer } from '../logic/scoring'
 import type { Player } from '../types'
 
@@ -10,6 +11,25 @@ interface GameStatsCardProps {
 function joinNames(ids: string[], nameById: Map<string, string>): string {
   return ids.map((id) => nameById.get(id) ?? '?').join(' and ')
 }
+
+function times(count: number): string {
+  return `${count} time${count === 1 ? '' : 's'}`
+}
+
+// A few interchangeable ways to phrase each of the two base lines, picked at
+// random once per mount (see the useState lazy-initializers below) rather
+// than always saying the exact same sentence every game.
+const BEST_GUESSER_OF_YOU_PHRASES: ((names: string, count: number) => string)[] = [
+  (names, count) => `${names} read you like a book — guessed your song ${times(count)}.`,
+  (names, count) => `${names} had your number — guessed you right ${times(count)}.`,
+  (names, count) => `${names} saw right through you — correct ${times(count)}.`,
+]
+
+const YOUR_BEST_GUESS_PHRASES: ((names: string, count: number) => string)[] = [
+  (names, count) => `You had ${names}'s number — guessed them right ${times(count)}.`,
+  (names, count) => `You read ${names} like an open book — guessed them right ${times(count)}.`,
+  (names, count) => `You've got ${names} figured out — correct ${times(count)}.`,
+]
 
 // A personal, per-player summary shown once per game (after nominations,
 // before the final Lobby scoreboard) - built entirely from the cumulative
@@ -24,13 +44,19 @@ export function GameStatsCard({ stats, players, viewerId }: GameStatsCardProps) 
   const nameById = new Map(players.map((p) => [p.id, p.name]))
   const viewerIsInSyncPair = stats.mostInSyncPair?.viewerIsMember ?? false
 
-  const lines: { emoji: string; text: string }[] = []
+  // Chosen once per mount (lazy initializer), not on every render - this is
+  // a fresh once-per-game screen, so the phrasing shouldn't flicker to a
+  // different variant if something else causes a re-render while it's up.
+  const [bestGuesserPhraseIndex] = useState(() => Math.floor(Math.random() * BEST_GUESSER_OF_YOU_PHRASES.length))
+  const [yourBestGuessPhraseIndex] = useState(() => Math.floor(Math.random() * YOUR_BEST_GUESS_PHRASES.length))
+
+  const lines: { emoji: string; text: string; caption?: string }[] = []
 
   if (stats.bestGuesserOfYou) {
     const { playerIds, count } = stats.bestGuesserOfYou
     lines.push({
       emoji: '🕵️',
-      text: `${joinNames(playerIds, nameById)} read you like a book — guessed your song ${count} time${count === 1 ? '' : 's'}.`,
+      text: BEST_GUESSER_OF_YOU_PHRASES[bestGuesserPhraseIndex](joinNames(playerIds, nameById), count),
     })
   }
 
@@ -38,24 +64,28 @@ export function GameStatsCard({ stats, players, viewerId }: GameStatsCardProps) 
     const { playerIds, count } = stats.yourBestGuess
     lines.push({
       emoji: '🎯',
-      text: `You had ${joinNames(playerIds, nameById)}'s number — guessed them right ${count} time${count === 1 ? '' : 's'}.`,
+      text: YOUR_BEST_GUESS_PHRASES[yourBestGuessPhraseIndex](joinNames(playerIds, nameById), count),
     })
   }
 
   if (stats.hardestToRead.length > 0) {
+    const names = joinNames(stats.hardestToRead, nameById)
     lines.push({
       emoji: '🕶️',
-      text: `${joinNames(stats.hardestToRead, nameById)} — hardest to read. Nobody guessed them all game.`,
+      text: `${names} — Hardest to Read`,
+      caption: `Nobody guessed ${names}'s song correctly all night.`,
     })
   }
 
   if (stats.mostInSyncPair) {
     const [aId, bId] = stats.mostInSyncPair.playerIds
+    const names = viewerIsInSyncPair
+      ? `You and ${nameById.get(aId === viewerId ? bId : aId) ?? '?'}`
+      : `${nameById.get(aId) ?? '?'} and ${nameById.get(bId) ?? '?'}`
     lines.push({
       emoji: '🎶',
-      text: viewerIsInSyncPair
-        ? `You and ${nameById.get(aId === viewerId ? bId : aId) ?? '?'} have similar taste.`
-        : `${nameById.get(aId) ?? '?'} and ${nameById.get(bId) ?? '?'} have similar taste.`,
+      text: `${names} — Most in Sync`,
+      caption: 'They gave each other the highest score.',
     })
   }
 
@@ -63,7 +93,8 @@ export function GameStatsCard({ stats, players, viewerId }: GameStatsCardProps) 
     const { playerIds, count } = stats.topOverallGuesser
     lines.push({
       emoji: '🏆',
-      text: `${joinNames(playerIds, nameById)} had the most correct guesses tonight (${count}).`,
+      text: `${joinNames(playerIds, nameById)} — Top Guesser (${count})`,
+      caption: 'Most correct guesses of the night.',
     })
   }
 
@@ -84,7 +115,10 @@ export function GameStatsCard({ stats, players, viewerId }: GameStatsCardProps) 
               className="flex items-start gap-3 rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-text"
             >
               <span className="flex-shrink-0 text-lg leading-none">{line.emoji}</span>
-              <span>{line.text}</span>
+              <span>
+                {line.text}
+                {line.caption && <span className="mt-0.5 block text-xs text-text-secondary">{line.caption}</span>}
+              </span>
             </li>
           ))}
         </ul>

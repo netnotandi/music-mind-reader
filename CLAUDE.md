@@ -705,3 +705,9 @@ Notandi bjó til `public/badges/` með sex fullbúnum JPG-spjöldum (eitt per ti
 - Staðfest með lifandi Playwright-prófun: Winner reveal sýnir nýja „Round Winner" spjaldið með fullri hreyfingu; sameinaði tilnefninga+tölfræði-skjárinn (sjá næst) sýnir hvert badge rétt með nafni undir; bæði þemu skoðuð.
 
 
+### Staða — útfært (orðalagsfjölbreytni + skýringarlínur á leiktölfræði-spjaldinu)
+- **Grunnlínurnar tvær** (`bestGuesserOfYou`/`yourBestGuess` í `GameStatsCard.tsx`) fá núna eina af þremur orðalags-útgáfum hvor, valið af handahófi — ekki lengur alltaf sömu tvær setningarnar. Valið gerist EINU SINNI per mount (`useState`-löt frumstilling, ekki bein `Math.random()` í render-hlutanum), svo orðalagið stekkur ekki milli útgáfa ef eitthvað annað veldur endurteikningu á meðan spjaldið er uppi.
+- **Skýringarlína undir hverjum af „Til viðbótar"-punktunum þremur** (hardestToRead/mostInSyncPair/topOverallGuesser): hver punktur er núna FYRIRSÖGN + minni SKÝRINGARLÍNA fyrir neðan (`text-xs text-text-secondary`), sama taktur og badge-myndirnar hér að ofan (titill + undirtexti) — t.d. „Carol — Hardest to Read" / „Nobody guessed Carol's song correctly all night."
+- Staðfest með lifandi Playwright-prófun (3 spilarar, handhannað svo öll fimm línurnar ættu við samtímis): allar fimm birtust réttar, orðalagsvalið kom fram í reynd (mismunandi setning valin milli keyrslna), fyrirsögn+skýringarlína birtist rétt fyrir öll þrjú „til viðbótar" atriðin.
+
+
