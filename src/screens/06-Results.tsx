@@ -95,7 +95,7 @@ export function Results() {
   // "Leik-lokaflæði" section - someone didn't realize two full games had
   // already ended because Round Results and the old flat card deck looked
   // the same).
-  const [finalStep, setFinalStep] = useState<'scoreboard' | 'winner' | 'nominations' | 'stats'>('scoreboard')
+  const [finalStep, setFinalStep] = useState<'scoreboard' | 'winner' | 'nominations'>('scoreboard')
 
   const round = { songs, guesses, ratings }
   const scores = computeFinalScores(round)
@@ -166,14 +166,19 @@ export function Results() {
           onContinue={() => setFinalStep('nominations')}
         />
       ) : finalStep === 'winner' || finalStep === 'nominations' ? (
-        <FinalScoretableCards cards={nominationCards} onContinue={() => setFinalStep('stats')} />
-      ) : finalStep === 'stats' ? (
-        <GameStatsCard
-          stats={gameStats}
-          players={players}
-          viewerId={localPlayerId ?? ''}
-          onContinue={handleGoToLobby}
-        />
+        <>
+          {nominationCards.length > 0 && <FinalScoretableCards cards={nominationCards} />}
+          <div className={nominationCards.length > 0 ? 'mt-8' : ''}>
+            <GameStatsCard stats={gameStats} players={players} viewerId={localPlayerId ?? ''} />
+          </div>
+          <button
+            type="button"
+            onClick={handleGoToLobby}
+            className="mt-6 w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
+          >
+            Continue to Scoreboard
+          </button>
+        </>
       ) : (
         <>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">

@@ -5,7 +5,6 @@ interface GameStatsCardProps {
   stats: GameStatsForViewer
   players: Player[]
   viewerId: string
-  onContinue: () => void
 }
 
 function joinNames(ids: string[], nameById: Map<string, string>): string {
@@ -18,7 +17,10 @@ function joinNames(ids: string[], nameById: Map<string, string>): string {
 // (gameStore.ts), so it needs no new writes. Every line is independently
 // optional: whatever computeGameStatsForViewer couldn't find data for is
 // just absent, never shown empty or zeroed-out.
-export function GameStatsCard({ stats, players, viewerId, onContinue }: GameStatsCardProps) {
+// Rendered alongside FinalScoretableCards as one combined screen (see that
+// component's own comment) - the shared "Continue to Scoreboard" button
+// lives in 06-Results.tsx, not here.
+export function GameStatsCard({ stats, players, viewerId }: GameStatsCardProps) {
   const nameById = new Map(players.map((p) => [p.id, p.name]))
   const viewerIsInSyncPair = stats.mostInSyncPair?.viewerIsMember ?? false
 
@@ -87,14 +89,6 @@ export function GameStatsCard({ stats, players, viewerId, onContinue }: GameStat
           ))}
         </ul>
       )}
-
-      <button
-        type="button"
-        onClick={onContinue}
-        className="mt-6 w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
-      >
-        Continue to Scoreboard
-      </button>
     </div>
   )
 }

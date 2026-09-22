@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { AwardCard, type AwardIconKind } from './AwardCard'
 
 export interface FinalScoretableCard {
@@ -10,22 +10,16 @@ export interface FinalScoretableCard {
 
 interface FinalScoretableCardsProps {
   cards: FinalScoretableCard[]
-  // Reports "done browsing" - the caller decides what that means (here,
-  // 06-Results.tsx calls the existing returnToLobby()). This component
-  // never touches game state itself.
-  onContinue: () => void
 }
 
 // A plain paginated deck - no swipe gesture, no transition/animation
 // (deliberately, per the host: "just the cards"), just Prev/Next and dots.
-export function FinalScoretableCards({ cards, onContinue }: FinalScoretableCardsProps) {
+// Pure browsing within itself - the caller (06-Results.tsx) renders this
+// alongside GameStatsCard and owns the single "Continue to Scoreboard"
+// action for both, since the host asked for the two to read as one combined
+// screen rather than separate steps each gated behind their own button.
+export function FinalScoretableCards({ cards }: FinalScoretableCardsProps) {
   const [index, setIndex] = useState(0)
-
-  useEffect(() => {
-    // Nobody qualified for any title (e.g. no ratings exist yet) - skip
-    // straight past the empty deck rather than showing a blank screen.
-    if (cards.length === 0) onContinue()
-  }, [cards.length, onContinue])
 
   if (cards.length === 0) return null
 
@@ -67,14 +61,6 @@ export function FinalScoretableCards({ cards, onContinue }: FinalScoretableCards
           Next →
         </button>
       </div>
-
-      <button
-        type="button"
-        onClick={onContinue}
-        className="mt-4 w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
-      >
-        Continue to Scoreboard
-      </button>
     </div>
   )
 }
