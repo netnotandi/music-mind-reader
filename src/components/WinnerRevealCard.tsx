@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { AwardCard, type AwardIconKind } from './AwardCard'
+import { pauseForWinnerReveal, resumeAfterWinnerReveal } from '../logic/backgroundMusic'
 import { playWinnerCheer } from '../logic/winnerFanfare'
 
 interface WinnerRevealCardProps {
@@ -60,6 +61,11 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
     // early unmount (React's dev-mode double-invoke, or a real early
     // tap-to-skip) can't leave a cheer still playing into the next screen.
     const stopCheer = playWinnerCheer()
+    // Ducks the ambient background music (still technically phase:
+    // 'results') for the duration of this one card, so it never fights the
+    // cheer sound above - resumed in this same effect's cleanup, the moment
+    // this card is left behind for nominations/stats.
+    pauseForWinnerReveal()
 
     const spinAnim = card.animate(
       [
@@ -98,6 +104,7 @@ export function WinnerRevealCard({ icon, title, subtitle, playerNames, onContinu
     return () => {
       spinAnim.cancel()
       stopCheer()
+      resumeAfterWinnerReveal()
       if (holdTimer !== null) clearTimeout(holdTimer)
     }
     // Runs once per mount - the whole point is a clean one-shot every time

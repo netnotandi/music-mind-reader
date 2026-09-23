@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ChatOverlay } from './components/ChatOverlay'
 import { InAppBrowserBanner } from './components/InAppBrowserBanner'
 import { MenuOverlay } from './components/MenuOverlay'
 import { RoomCodeBadge } from './components/RoomCodeBadge'
+import * as backgroundMusic from './logic/backgroundMusic'
 import { CreateJoin } from './screens/01-CreateJoin'
 import { JoinGame } from './screens/01b-JoinGame'
 import { Lobby } from './screens/02-Lobby'
@@ -88,6 +89,43 @@ function useFinalizeRoundWatcher() {
   }, [phase, playerCount, readyCount, finalizeRoundIfReady])
 }
 
+// Always mounted, drives backgroundMusic.ts purely off phase - see that
+// module and CLAUDE.md's "Bakgrunnshljóð eftir fösum leiksins" for the full
+// reasoning. lobby/setup/results play (lobby specifically reshuffles the
+// track), submit/guess stay silent, and leaving the room entirely stops it.
+// The Winner-reveal exception (paused during that one card, regardless of
+// phase still being 'results') is handled separately, by WinnerRevealCard
+// itself calling pauseForWinnerReveal/resumeAfterWinnerReveal.
+function useBackgroundMusic() {
+  const roomCode = useGameStore((s) => s.roomCode)
+  const phase = useGameStore((s) => s.phase)
+  const previousRoomCode = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!roomCode) {
+      if (previousRoomCode.current) backgroundMusic.stopAndReset()
+      previousRoomCode.current = null
+      return
+    }
+    // A brand new room (or rejoining one) always starts fresh, same as any
+    // other entry into 'lobby' below.
+    const justEnteredRoom = previousRoomCode.current !== roomCode
+    previousRoomCode.current = roomCode
+
+    if (phase === 'lobby') {
+      void backgroundMusic.enterLobby()
+    } else if (phase === 'setup' || phase === 'results') {
+      if (justEnteredRoom) void backgroundMusic.enterLobby()
+      else backgroundMusic.resumePlaying()
+    } else {
+      backgroundMusic.pausePlaying()
+    }
+    // justEnteredRoom is derived from a ref, not state, on purpose - it
+    // shouldn't itself retrigger this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomCode, phase])
+}
+
 // A QR code scanned by the phone's own camera app (rather than the in-app
 // scanner) lands here in a fresh session, with no name known yet - bounce
 // through the front page first so name entry only ever happens in one
@@ -101,6 +139,7 @@ function AppRoutes() {
   usePhaseNavigation()
   useFinalizeRoundWatcher()
   useKickedWatcher()
+  useBackgroundMusic()
 
   return (
     <Routes>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
 import { AccountPromoCard } from '../components/AccountPromoCard'
+import { primeBackgroundMusic } from '../logic/backgroundMusic'
 import { MAX_NAME_LENGTH, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 import { useUiStore } from '../state/uiStore'
@@ -63,6 +64,10 @@ export function CreateJoin() {
   async function handleCreateGame() {
     if (!name.trim() || creating) return
     setCreating(true)
+    // Synchronous, inside this real click - primes the shared background-
+    // music <audio> element so it counts as user-gesture-authorized once
+    // the Lobby phase actually starts it playing a moment later.
+    primeBackgroundMusic()
     // No explicit navigate - createGame resolving attaches the room
     // listener, which syncs phase 'lobby' and lets the app-wide phase
     // watcher route this device (and every other) to the Lobby.

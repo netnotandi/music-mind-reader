@@ -1,6 +1,7 @@
 import jsQR from 'jsqr'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { primeBackgroundMusic } from '../logic/backgroundMusic'
 import { extractRoomCode } from '../logic/qrCode'
 import { ROOM_CODE_LENGTH, useGameStore } from '../state/gameStore'
 
@@ -149,6 +150,9 @@ export function JoinGame() {
     if (code.length < ROOM_CODE_LENGTH || joining) return
     setJoining(true)
     setError(null)
+    // Synchronous, inside this real click - see CreateJoin.tsx's identical
+    // call for why.
+    primeBackgroundMusic()
     // No explicit navigate on success - the app-wide phase watcher picks up
     // the newly-synced room state and moves this device to the Lobby.
     const result = await joinGame(code, name)

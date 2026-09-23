@@ -720,4 +720,55 @@ Notandi bjó til `public/badges/` með sex fullbúnum JPG-spjöldum (eitt per ti
 - **Skýringarlína undir hverjum af „Til viðbótar"-punktunum þremur** (hardestToRead/mostInSyncPair/topOverallGuesser): hver punktur er núna FYRIRSÖGN + minni SKÝRINGARLÍNA fyrir neðan (`text-xs text-text-secondary`), sama taktur og badge-myndirnar hér að ofan (titill + undirtexti) — t.d. „Carol — Hardest to Read" / „Nobody guessed Carol's song correctly all night."
 - Staðfest með lifandi Playwright-prófun (3 spilarar, handhannað svo öll fimm línurnar ættu við samtímis): allar fimm birtust réttar, orðalagsvalið kom fram í reynd (mismunandi setning valin milli keyrslna), fyrirsögn+skýringarlína birtist rétt fyrir öll þrjú „til viðbótar" atriðin.
 
+## Bakgrunnshljóð eftir fösum leiksins (viðbót við CLAUDE.md)
+
+### Af hverju
+Audio cues gefa leikmönnum skýrari tilfinningu fyrir framvindu leiksins — hvenær er verið að bíða/skipuleggja, hvenær á að einbeita sér að hlustun, og hvenær má slaka á og skoða úrslit.
+
+### Hvenær hljóð/þögn
+- **Lobby / Game Setup** — bakgrunnstónlist (lúppa).
+- **Verið að velja lag / hlusta á lög (Now Playing)** — EKKERT bakgrunnshljóð. Tónlist leiksins sjálf (YouTube-lagið sem er í gangi) á sviðið óskipt.
+- **Eftir Winner-spjaldið**, meðan fólk er að skoða tilnefningar/leiktölfræði/úrslit — bakgrunnstónlist byrjar aftur.
+- **Þegar allir eru komnir aftur í lobby** — tónlist byrjar upp á nýtt, en ekki endilega sama lag og áður. Slembivalið úr safninu í hvert sinn.
+
+### Tæknileg staðsetning — Firebase Storage, ekki Realtime Database
+Realtime Database (sem allt annað í leiknum notar í dag — players/phase/categories o.s.frv.) hentar ekki fyrir hljóðskrár, það er JSON-tré hannað fyrir smáan skipulagðan texta/tölur. Hljóðskrár eiga heima í **Firebase Cloud Storage** — sér þjónusta innan sama Firebase-verkefnis, hönnuð fyrir svona skráageymslu, tengist jafn einfaldlega og Realtime DB gerir í dag.
+
+### Stærð og kostnaður
+Á ókeypis Spark-áætluninni: 5 GB heildargeymsla, 1 GB flutningur á dag (~30 GB/mánuði), 20.000 upphal og 50.000 niðurhal á dag. Fyrir örfáar stuttar lúppur (1-3 MB hver skrá) er heildargeymslan hverfandi hlutfall af þakinu — dags-flutningsþakið er raunhæfari takmörkunin, en dugar samt fyrir mörg hundruð leiki á dag frítt. Blaze greiðsluáætlunin tekur við sjálfkrafa eftir það á lágu verði (~$0,026/GB geymt, ~$0,12/GB flutt umfram þakið).
+
+Ábending: láta tækið **cache-a** skrárnar staðbundið (browser cache/IndexedDB) eftir fyrsta niðurhal, svo sami leikmaður sæki sömu tónlistarskrá ekki aftur í hverjum leik — lækkar raunverulega notkun verulega eftir því sem fólk spilar meira.
+
+### Réttindi á tónlistinni
+Ólíkt lögunum sem leikmenn velja sjálfir (koma frá YouTube, hýst og dreift af þeim, ekki af okkur), er bakgrunnstónlistin skrá sem VIÐ sjálf hýsum og dreifum beint úr Firebase Storage — það þarf raunverulegt, staðfest leyfi fyrir hana.
+
+- **Pixabay Music** — má nota frítt, án þess að geta höfundar, svo lengi sem lagið er notað sem hluti af stærra verki (leiknum) en ekki endurselt/endurdreift eitt og sér sem hrá skrá ("standalone"). Einfaldasti og öruggasti kosturinn miðað við núverandi athugun.
+- **Epidemic Sound** — ódýrasta áskriftin (Personal/Creator) DUGAR EKKI, hún nær bara yfir efni á YouTube/samfélagsmiðlum. Þyrfti Commercial/Pro/Business áskrift fyrir notkun inni í seldri/auglýsingafjármagnaðri vöru. Óljóst úr þeirra eigin efni hvað gerist við tónlist sem þegar er bökuð inn í útgefna vöru ef áskrift er sögð upp seinna — fá skriflegt svar beint frá þeim áður en reitt er á þetta til lengdar.
+- **Öruggasti kosturinn til lengri tíma**: tónlist með ótímabundnu/kaup-einu-sinni leyfi (t.d. Pixabay, eða keypt buyout-leyfi) frekar en viðvarandi áskriftarþjónustu, fyrir föst bakgrunnslög sem verða varanlega bökuð inn í appið.
+- Gott að vista skjáskot/heimild af leyfisskilmálum og nákvæmlega hvaða lag var sótt hvenær, til að eiga sönnun ef spurt er seinna.
+
+### Mute-hnappur í valmyndinni
+Staðsettur í hamborgara-valmyndinni, rétt undir light/dark theme-takkanum — sama svæði, sama eðli (persónuleg tækjastilling, ekki leikjaástand sem þarf að samstillast milli leikmanna).
+
+- Slekkur/kveikir á bakgrunnstónlistinni sem er lýst hér að ofan (ekki á tónlist leiksins sjálfs sem kemur frá YouTube — það er sér mál).
+- Táknmynd/staða breytist eftir því hvort kveikt eða slökkt er (t.d. hátalari vs. hátalari-með-striki), sama mynstur og theme-takkinn notar fyrir sína tvo stöðu.
+- Vistast staðbundið á tækinu (t.d. localStorage), rétt eins og þema-valið er líklega vistað í dag — persónuleg stilling sem á að muna sig milli heimsókna, ekki eitthvað sem þarf að fara í gegnum Firebase.
+- Opið: á takkinn bara að ná yfir bakgrunnstónlistina eins og hún er hér lýst, eða á hann líka að ná yfir hljóðbrellur/effects sem gætu bæst við seinna (t.d. í Winner reveal-animationinu)? Einfaldast er að hafa þetta einn allsherjar "Music/Sound"-takki í byrjun, en vert að ákveða áður en fleiri hljóðheimildir bætast við.
+
+### Næstu skref / opið
+- Velja endanlegan tónlistarbanka (Pixabay einfaldast miðað við ofangreint, nema annað komi í ljós).
+- Ákveða fjölda lúppa sem slembivalið er úr fyrir hvern fasa.
+- Ákveða umfang mute-takkans (sjá að ofan).
+
+### Staða — útfært
+Bæði opnu spurningarnar hér að ofan eru útkljáðar: mute-takkinn nær EINGÖNGU yfir bakgrunnstónlistina (ekki hljóðbrellur eins og Winner reveal-fagnaðarlætin — sér ákvörðun, staðfest af notanda), og sami 6-laga pottur er notaður fyrir öll fösin sem fá tónlist (engin sérstök skipting eftir fasa).
+
+- **Firebase Storage sett upp**: verkefnið uppfært í Blaze (nauðsynlegt fyrir Storage, jafnvel þó notkun haldist innan frí-magnsins), $1 fjárhags-viðvörun sett (bara tölvupóstur, engin hörð takmörkun), sex `.mp3` lúppur (Pixabay) hlaðið upp í rót geymslunnar (engin undirmappa). Reglur (`allow read: if true; allow write: if false;` fyrir öll slóðir) birtar — sama helgisiði og allar aðrar reglubreytingar (birt, staðfest með beinni prófun).
+- **`src/logic/backgroundMusic.ts`** (nýtt) — spegilmynd af `winnerFanfare.ts`s stíl: skrárnöfnin handskráð (`BACKGROUND_MUSIC_FILES`), niðurhals-slóðir sóttar með `getDownloadURL()` (ekki hörð HTTPS-slóð — lifir af ef skrá er endurhlaðin með nýju tóki), forsóttar strax við module-hleðslu (ekki löt) svo bilið milli smells og fyrstu spilunar sé sem styst fyrir vafra-sjálfvirknireglur. Eitt sameiginlegt `HTMLAudioElement` (aldrei í DOM — þarf það ekki), sama `setInterval`-þrepa hljóðstyrks-mýking og `NowPlayingPlayer.tsx`s `fadeVolume` notar nú þegar (bara á 0–1 skalanum í stað YouTube's 0–100).
+- **Fasa-drifin stjórn** (`useBackgroundMusic` í `App.tsx`, alltaf mounted eins og `useFinalizeRoundWatcher`): `lobby`/`setup`/`results` spila (`lobby` sérstaklega stokkar upp nýju handahófsvöldu lagi — sama „aldrei endurvelja það sem er þegar í gangi" regla og Random-takkinn á flokkavalinu notar), `submit`/`guess` þagna, ekkert herbergi = engin tónlist yfir höfuð.
+- **Winner reveal-undantekningin**: `WinnerRevealCard.tsx`s núverandi mount/cleanup-effect (þar sem `playWinnerCheer()`/`stopCheer()` eru nú þegar kölluð) fékk tvö ný köll (`pauseForWinnerReveal()`/`resumeAfterWinnerReveal()`) beint við hliðina — hrein viðbót, engin ný samstillt staða þurfti (`finalStep` er staðbundið UI-state í `06-Results.tsx`, aldrei hluti af `phase`).
+- **Undirbúningur fyrir sjálfvirka spilun** (`primeBackgroundMusic()`): kallað samstundis úr alvöru smellum („Create Game" í `01-CreateJoin.tsx`, „join" í `01b-JoinGame.tsx`) — sama mynstur og `primeWinnerFanfare()`.
+- **`src/state/musicStore.ts`** (nýtt) — nákvæm spegilmynd af `themeStore.ts`: `muted`-boolean, vistað í `localStorage` (`mmr_music_muted`). `backgroundMusic.ts` gerist áskrifandi að þessari búð beint svo mute-takkinn hafi tafarlaus áhrif (mýkir núverandi lag niður/upp í stað þess að bíða eftir næstu fasabreytingu).
+- **Mute-takki** (`MenuOverlay.tsx`, `MusicMuteControl`) — beint fyrir neðan `ThemeModeControl`, einn hnappur (🔊/🔇 + „Music on"/„Music off") frekar en tveggja-valkosta hópur, enda er þetta einfalt á/af, ekki val úr tveimur nöfnum.
+- Staðfest með lifandi Playwright-prófun (tveir spilarar, alvöru UI-smellir fyrir Create Game/mute-takkann): rétt hljóðstyrk/paused staða skoðuð með `window.__mmrBackgroundAudio` DEV-krók (sama mynstur og `window.__mmrPlayer`) á HVERJU fasaskrefi — spilun í lobby/setup, mýking niður í submit/guess, mýking upp aftur í results, pása nákvæmlega á meðan Winner reveal-spjaldið er uppi, mýking upp aftur í tilnefningum, og staðfest að lagið skiptist raunverulega (annað `src`) þegar hópurinn kemur aftur í lobby. Mute-takkinn prófaður sér: mýkir niður í 0 + pásar á smell, mýkir upp aftur við afmute. Sjálf hljóðgæðin/blandan við afspilun er huglægt mat sem þarf lifandi hlustun frá notanda, sama fyrirvari og gilti um Winner reveal-hljóðin.
 

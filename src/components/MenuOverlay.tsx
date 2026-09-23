@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AccountPanel } from './AccountPanel'
 import { useFriendsStore } from '../state/friendsStore'
 import { useGameStore } from '../state/gameStore'
+import { useMusicStore } from '../state/musicStore'
 import { type ThemeMode, useThemeStore } from '../state/themeStore'
 import { useUiStore } from '../state/uiStore'
 import { useUserStore } from '../state/userStore'
@@ -168,6 +169,47 @@ function ThemeModeControl() {
   )
 }
 
+function SpeakerOnIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+      <path d="M4 9v6h4l5 5V4L8 9H4z" />
+      <path d="M17 9a4 4 0 010 6" />
+      <path d="M19.5 6.5a8 8 0 010 11" />
+    </svg>
+  )
+}
+
+function SpeakerMutedIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+      <path d="M4 9v6h4l5 5V4L8 9H4z" />
+      <path d="M17 9l5 6M22 9l-5 6" />
+    </svg>
+  )
+}
+
+// Placed right under the theme toggle - same personal, device-local nature
+// (not game state that needs to sync between players). Covers the ambient
+// background music only (see backgroundMusic.ts) - the winner-reveal cheer
+// and any other one-off effects are a separate concern, per the host's own
+// call in CLAUDE.md's "Bakgrunnshljóð eftir fösum leiksins" section.
+function MusicMuteControl() {
+  const muted = useMusicStore((s) => s.muted)
+  const setMuted = useMusicStore((s) => s.setMuted)
+
+  return (
+    <button
+      type="button"
+      onClick={() => setMuted(!muted)}
+      aria-pressed={muted}
+      className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary transition hover:text-text"
+    >
+      {muted ? <SpeakerMutedIcon /> : <SpeakerOnIcon />}
+      {muted ? 'Music off' : 'Music on'}
+    </button>
+  )
+}
+
 export function MenuOverlay() {
   const navigate = useNavigate()
   const leaveGame = useGameStore((s) => s.leaveGame)
@@ -281,6 +323,7 @@ export function MenuOverlay() {
                 How to Play
               </button>
               <ThemeModeControl />
+              <MusicMuteControl />
 
               {roomCode !== null && <div className="h-px bg-divider" />}
 
