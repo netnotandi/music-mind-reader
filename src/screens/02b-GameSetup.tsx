@@ -65,6 +65,12 @@ export function GameSetup() {
     chooseCategories(toggleCategorySelection(selectedCategoryIds, categoryId))
   }
 
+  // Always a direct "select exactly this one" - see CategoryPicker's own
+  // comment on why this can't just reuse toggleCategory.
+  function selectCategoryDirectly(categoryId: string) {
+    chooseCategories([categoryId])
+  }
+
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-12 pt-16">
       <h1 className="mb-8 text-2xl font-bold text-text">Game Setup</h1>
@@ -199,6 +205,7 @@ export function GameSetup() {
             categories={categories}
             selectedCategoryIds={selectedCategoryIds}
             onToggle={toggleCategory}
+            onRandomPick={selectCategoryDirectly}
           />
         ) : selectedCategories.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-1.5">

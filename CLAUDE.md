@@ -278,6 +278,9 @@ Nýjar store-aðgerðir: `startRoundSetup()` (lobby→setup), `backToLobby()` (s
 
 Þar sem eldri kaflar segja „host velur flokk í Lobby" er átt við þennan Game Setup skjá núna.
 
+### Staða — útfært (🎲 Random takki á flokkavalinu)
+Ábending frá notanda (skjáskot af 5-síðna flokkavalinu): bætt við „🎲 Random" hnappi við hliðina á „Pick a category" (`CategoryPicker.tsx`). Útilokar núverandi val úr slembivalinu þegar fleiri en einn flokkur er í boði (svo takkinn breyti alltaf einhverju sýnilegu, aldrei „dauður" smellur sem endurvelur það sem er þegar valið), og hoppar sjálfkrafa á þá síðu sem nýja valið lenti á (`setPage` út frá heildarvísitölu flokksins) — annars hefði slembivalið getað lent á síðu sem host er ekki að skoða, og smellur hefði virst gera ekki neitt. Kallar `chooseCategories([id])` beint (nýtt `onRandomPick`-prop, sér frá `onToggle`) frekar en að endurnýta toggle-rökréttina — að „toggla" flokk sem er þegar valinn myndi afvelja hann, ekki það sem „gefðu mér eitthvað nýtt" takki á að gera. Staðfest með lifandi Playwright-prófun: tveir smellir í röð völdu tvo ólíka flokka, og skjárinn flettist sjálfkrafa yfir á rétta síðu með nýja valið merkt.
+
 ## Long/Short lagalengd + sjálfvirk framvinda (viðbót við CLAUDE.md — hluti af lagaspilun í appinu)
 
 Leikstjóri velur hvort umferðin keyrir í „long" eða „short" ham (t.d. valið í lobby-inu, samhliða flokkavali).

@@ -8,13 +8,19 @@ interface CategoryPickerProps {
   categories: Category[]
   selectedCategoryIds: string[]
   onToggle: (categoryId: string) => void
+  // Called by the "Random" button with the category id it landed on -
+  // always a direct "select exactly this one" (02b-GameSetup.tsx wires it
+  // to chooseCategories([id])), not routed through onToggle: toggling a
+  // category that happens to already be selected would deselect it, which
+  // isn't what a "give me something new" button should ever do.
+  onRandomPick: (categoryId: string) => void
 }
 
 // Game Setup is a screen of its own now with room to spare, so more
 // categories fit per page than the old cramped-into-the-Lobby days.
 const PAGE_SIZE = 10
 
-export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: CategoryPickerProps) {
+export function CategoryPicker({ categories, selectedCategoryIds, onToggle, onRandomPick }: CategoryPickerProps) {
   // Local to this component instance - paged browsing is a pure UI concern,
   // and resets naturally to page 0 each time the picker (re)mounts (e.g. the
   // next round's fresh category choice).
@@ -37,13 +43,37 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: Ca
     setPage(Math.min(Math.max(next, 0), totalPages - 1))
   }
 
+  // Excludes whatever's already selected (when there's more than one
+  // category to choose from) so the button always visibly does something,
+  // rather than occasionally re-picking the current category and looking
+  // like a dead click. Also jumps the page to wherever the new pick landed,
+  // since it could be on a page the host isn't currently looking at.
+  function handleRandom() {
+    const pool = categories.filter((c) => !selectedCategoryIds.includes(c.id))
+    const candidates = pool.length > 0 ? pool : categories
+    const choice = candidates[Math.floor(Math.random() * candidates.length)]
+    if (!choice) return
+    const globalIndex = categories.findIndex((c) => c.id === choice.id)
+    setPage(Math.floor(globalIndex / PAGE_SIZE))
+    onRandomPick(choice.id)
+  }
+
   return (
     <div>
-      <p className="mb-4 text-sm text-text-secondary">
-        {MAX_SELECTED_CATEGORIES === 1
-          ? 'Pick a category'
-          : `Pick up to ${MAX_SELECTED_CATEGORIES} categories (${selectedCategoryIds.length}/${MAX_SELECTED_CATEGORIES} selected)`}
-      </p>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-sm text-text-secondary">
+          {MAX_SELECTED_CATEGORIES === 1
+            ? 'Pick a category'
+            : `Pick up to ${MAX_SELECTED_CATEGORIES} categories (${selectedCategoryIds.length}/${MAX_SELECTED_CATEGORIES} selected)`}
+        </p>
+        <button
+          type="button"
+          onClick={handleRandom}
+          className={`flex-shrink-0 rounded-full border border-border-strong px-3 py-1.5 text-xs font-semibold text-text-secondary transition hover:border-primary hover:text-primary ${isLight ? 'bg-surface' : ''}`}
+        >
+          🎲 Random
+        </button>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         {pageCategories.map((c, i) => {
           // Global index (not the page-relative one) so a category's accent
