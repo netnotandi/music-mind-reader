@@ -50,7 +50,6 @@ export const CATEGORIES: Category[] = [
   { id: 'celebrity-song', name: 'A Surprisingly Good Celebrity Song' },
   { id: 'love-in-unknown-language', name: "A Song I Love in a Language I Don't Speak" },
   { id: 'better-than-the-movie', name: "A Song That's Better Than the Movie It's From" },
-  { id: 'everywhere-turned-18', name: 'The Song That Was Everywhere the Year You Turned 18' },
   { id: 'great-cover-song', name: 'A Great Cover Song' },
   { id: 'who-am-i', name: 'Who Am I' },
 ]

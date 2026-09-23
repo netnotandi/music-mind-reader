@@ -471,7 +471,7 @@ export function GuessAndRate() {
                 index={viewIndex}
                 total={songs.length}
                 needsAnswer={needsAnswer}
-                action={!isOwnSong ? <SaveSongButton song={song} /> : undefined}
+                action={<SaveSongButton song={song} />}
               />
             </div>
 
@@ -661,7 +661,7 @@ export function GuessAndRate() {
               index={viewIndex}
               total={songs.length}
               needsAnswer={needsAnswer}
-              action={!isOwnSong ? <SaveSongButton song={song} /> : undefined}
+              action={<SaveSongButton song={song} />}
             />
           </div>
 
