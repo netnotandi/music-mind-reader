@@ -30,6 +30,14 @@ const FADE_STEPS = 20
 // for attention. Lowered three times after live listens: full volume ->
 // 0.35 ("way too loud") -> 0.12 -> here.
 const MAX_VOLUME = 0.1
+// Per-track adjustment relative to MAX_VOLUME - the source files come from
+// different Pixabay artists and aren't loudness-normalized against each
+// other, so the same MAX_VOLUME setting doesn't read as equally loud
+// across all of them. 1 = no adjustment; only listed here once a track's
+// been flagged as off after a live listen.
+const VOLUME_MULTIPLIER: Partial<Record<string, number>> = {
+  'the_mountain-retro-game-593063.mp3': 0.5,
+}
 
 let audio: HTMLAudioElement | null = null
 let fadeTimer: ReturnType<typeof setInterval> | null = null
@@ -108,7 +116,9 @@ function fadeTo(el: HTMLAudioElement, to: number, onDone?: () => void) {
 }
 
 function targetVolume(): number {
-  return useMusicStore.getState().muted ? 0 : MAX_VOLUME
+  if (useMusicStore.getState().muted) return 0
+  const multiplier = (currentFile !== null ? VOLUME_MULTIPLIER[currentFile] : undefined) ?? 1
+  return MAX_VOLUME * multiplier
 }
 
 // Call synchronously from within a real user gesture (the Create Game /
