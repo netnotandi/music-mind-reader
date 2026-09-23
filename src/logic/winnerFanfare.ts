@@ -14,16 +14,11 @@ let audioCtx: AudioContext | null = null
 // listing for a static host). Keep this in sync with whatever's actually in
 // public/sounds/.
 const WINNER_SOUND_FILES = [
-  '/sounds/433702__dersuperanton__congratulations-deep-voice.wav',
-  '/sounds/409978__sound_2425__clapping-hands.wav',
-  '/sounds/588234__mehraniiii__win.wav',
-  '/sounds/607207__fupicat__congrats.wav',
-  '/sounds/332320__sirderf__group-of-people-cheering-outside-07.wav',
   '/sounds/769801__thelastoneonearth__groovy-winner-end-version.wav',
   '/sounds/547657__awrecordingit__totalwin1.wav',
-  // 198305__klankbeeld__and-the-winner-is-male-original.wav deliberately
-  // excluded - it's 13MB (everything else here is under 2MB), too much to
-  // fetch on someone's phone for a few seconds of sound.
+  '/sounds/u_ss015dykrt-brass-fanfare-with-timpani-and-winchimes-reverberated-146260.mp3',
+  '/sounds/pw23check-winning-218995.mp3',
+  '/sounds/freesound_community-winning-82808.mp3',
 ]
 
 // Decoded buffers are cached per URL so picking the same file twice in one
