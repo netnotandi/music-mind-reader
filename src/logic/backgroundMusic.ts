@@ -25,6 +25,11 @@ const BACKGROUND_MUSIC_FILES = [
 
 const FADE_MS = 1000
 const FADE_STEPS = 20
+// Truly ambient - meant to sit under the room's own conversation without
+// anyone consciously noticing it's there, not a "second song" competing
+// for attention. Lowered twice after live listens (first from full volume
+// to 0.35, still "way too loud"; then here).
+const MAX_VOLUME = 0.12
 
 let audio: HTMLAudioElement | null = null
 let fadeTimer: ReturnType<typeof setInterval> | null = null
@@ -103,7 +108,7 @@ function fadeTo(el: HTMLAudioElement, to: number, onDone?: () => void) {
 }
 
 function targetVolume(): number {
-  return useMusicStore.getState().muted ? 0 : 1
+  return useMusicStore.getState().muted ? 0 : MAX_VOLUME
 }
 
 // Call synchronously from within a real user gesture (the Create Game /
@@ -191,6 +196,6 @@ useMusicStore.subscribe((state) => {
     fadeTo(audio, 0, () => audio?.pause())
   } else {
     void audio.play().catch(() => {})
-    fadeTo(audio, 1)
+    fadeTo(audio, MAX_VOLUME)
   }
 })
