@@ -27,9 +27,9 @@ const FADE_MS = 1000
 const FADE_STEPS = 20
 // Truly ambient - meant to sit under the room's own conversation without
 // anyone consciously noticing it's there, not a "second song" competing
-// for attention. Lowered twice after live listens (first from full volume
-// to 0.35, still "way too loud"; then here).
-const MAX_VOLUME = 0.12
+// for attention. Lowered three times after live listens: full volume ->
+// 0.35 ("way too loud") -> 0.12 -> here.
+const MAX_VOLUME = 0.1
 
 let audio: HTMLAudioElement | null = null
 let fadeTimer: ReturnType<typeof setInterval> | null = null
