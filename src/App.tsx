@@ -89,41 +89,57 @@ function useFinalizeRoundWatcher() {
   }, [phase, playerCount, readyCount, finalizeRoundIfReady])
 }
 
-// Always mounted, drives backgroundMusic.ts purely off phase - see that
-// module and CLAUDE.md's "Bakgrunnshljóð eftir fösum leiksins" for the full
-// reasoning. lobby/setup/results play (lobby specifically reshuffles the
-// track), submit/guess stay silent, and leaving the room entirely stops it.
-// The Winner-reveal exception (paused during that one card, regardless of
-// phase still being 'results') is handled separately, by WinnerRevealCard
-// itself calling pauseForWinnerReveal/resumeAfterWinnerReveal.
+// Always mounted, drives backgroundMusic.ts purely off phase (plus the
+// host/remote-play gate below) - see that module and CLAUDE.md's
+// "Bakgrunnshljóð eftir fösum leiksins" for the full reasoning. lobby/setup/
+// results play (lobby specifically reshuffles the track), submit/guess stay
+// silent, and leaving the room entirely stops it. The Winner-reveal
+// exception (paused during that one card, regardless of phase still being
+// 'results') is handled separately, by WinnerRevealCard itself calling
+// pauseForWinnerReveal/resumeAfterWinnerReveal.
 function useBackgroundMusic() {
   const roomCode = useGameStore((s) => s.roomCode)
   const phase = useGameStore((s) => s.phase)
+  const localPlayerId = useGameStore((s) => s.localPlayerId)
+  const hostId = useGameStore((s) => s.hostId)
+  const remotePlayEnabled = useGameStore((s) => s.remotePlayEnabled)
   const previousRoomCode = useRef<string | null>(null)
+  const previousEligible = useRef(false)
+
+  // Everyone physically together only needs ONE phone's speaker running the
+  // ambient loop - the host's - or every phone in the room would each play
+  // its own out-of-sync track over each other. Once remote play is on,
+  // everyone gets their own (a remote player's device is their only
+  // speaker), with the existing mute button as their way to opt back out.
+  const isHost = localPlayerId !== null && localPlayerId === hostId
+  const eligible = isHost || remotePlayEnabled
 
   useEffect(() => {
-    if (!roomCode) {
-      if (previousRoomCode.current) backgroundMusic.stopAndReset()
-      previousRoomCode.current = null
+    if (!roomCode || !eligible) {
+      if (previousEligible.current) backgroundMusic.stopAndReset()
+      previousRoomCode.current = roomCode
+      previousEligible.current = eligible
       return
     }
-    // A brand new room (or rejoining one) always starts fresh, same as any
-    // other entry into 'lobby' below.
-    const justEnteredRoom = previousRoomCode.current !== roomCode
+    // A brand new room (or rejoining one), or just now becoming eligible
+    // (remote play switched on for a non-host device) both start fresh,
+    // same as any other entry into 'lobby' below.
+    const freshStart = previousRoomCode.current !== roomCode || !previousEligible.current
     previousRoomCode.current = roomCode
+    previousEligible.current = eligible
 
     if (phase === 'lobby') {
       void backgroundMusic.enterLobby()
     } else if (phase === 'setup' || phase === 'results') {
-      if (justEnteredRoom) void backgroundMusic.enterLobby()
+      if (freshStart) void backgroundMusic.enterLobby()
       else backgroundMusic.resumePlaying()
     } else {
       backgroundMusic.pausePlaying()
     }
-    // justEnteredRoom is derived from a ref, not state, on purpose - it
-    // shouldn't itself retrigger this effect.
+    // freshStart is derived from refs, not state, on purpose - it shouldn't
+    // itself retrigger this effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomCode, phase])
+  }, [roomCode, phase, eligible])
 }
 
 // A QR code scanned by the phone's own camera app (rather than the in-app
