@@ -18,7 +18,7 @@ const BACKGROUND_MUSIC_FILES = [
   'aurectheme-cocktail-jazz-603901.mp3',
   'the_mountain-retro-game-593063.mp3',
   'trtasfiq-upbeat-background-music-212772.mp3',
-  'vadim_makes_sound_quiz-thinking-timer-loop-551268.mp3',
+  'vadim_makes_sound-quiz-thinking-timer-loop-551268.mp3',
   'andriih-funny-funny-music-585934.mp3',
   'tunetank-upbeat-funk-background-347615.mp3',
 ]
