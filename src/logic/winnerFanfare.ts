@@ -9,6 +9,11 @@
 // else: see CLAUDE.md's Spotify/YouTube decisions).
 let audioCtx: AudioContext | null = null
 
+// Full-volume source clips read as too loud against the rest of the reveal -
+// lowered after live-listen feedback, same "adjust after hearing it live"
+// pattern as backgroundMusic.ts's MAX_VOLUME.
+const MAX_VOLUME = 0.5
+
 // public/ files are served at the site root - Vite doesn't rewrite these
 // paths, so they need to be listed by hand (no build-time directory
 // listing for a static host). Keep this in sync with whatever's actually in
@@ -81,7 +86,7 @@ export function playWinnerCheer(): () => void {
       const gain = ctx.createGain()
       const now = ctx.currentTime
       gain.gain.setValueAtTime(0, now)
-      gain.gain.linearRampToValueAtTime(1, now + 0.03)
+      gain.gain.linearRampToValueAtTime(MAX_VOLUME, now + 0.03)
       gain.connect(ctx.destination)
 
       source = ctx.createBufferSource()
