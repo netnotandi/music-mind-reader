@@ -35,9 +35,9 @@ const FADE_MS = 1000
 const FADE_STEPS = 20
 // Truly ambient - meant to sit under the room's own conversation without
 // anyone consciously noticing it's there, not a "second song" competing
-// for attention. Lowered four times after live listens: full volume ->
-// 0.35 ("way too loud") -> 0.12 -> 0.1 -> here.
-const MAX_VOLUME = 0.08
+// for attention. Lowered five times after live listens: full volume ->
+// 0.35 ("way too loud") -> 0.12 -> 0.1 -> 0.08 -> here.
+const MAX_VOLUME = 0.06
 // Per-track adjustment relative to MAX_VOLUME - the source files come from
 // different Pixabay artists and aren't loudness-normalized against each
 // other, so the same MAX_VOLUME setting doesn't read as equally loud
