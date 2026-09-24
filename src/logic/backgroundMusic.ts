@@ -6,6 +6,12 @@
 // public/, unlike winnerFanfare.ts's sound effects - see CLAUDE.md's
 // "Bakgrunnshljóð eftir fösum leiksins" section for why: RTDB doesn't suit
 // binary files, and Storage is a separate service within the same project).
+//
+// Two separate pools, in two Storage folders: Lobby/ (used for the
+// lobby/setup group) and Scorboard/ (sic - matches the host's actual folder
+// name in Storage; used for the results/scoreboard group) - picking a fresh
+// track happens whenever the active group changes, not on every phase
+// change within the same group (see useBackgroundMusic in App.tsx).
 import { getDownloadURL, ref } from 'firebase/storage'
 import { storage } from '../firebase'
 import { useMusicStore } from '../state/musicStore'
@@ -13,15 +19,17 @@ import { useMusicStore } from '../state/musicStore'
 // Hand-listed, same reasoning as winnerFanfare.ts's WINNER_SOUND_FILES -
 // Storage has no trivial client-side directory listing without extra rules
 // complexity, so this just has to be kept in sync by hand with whatever's
-// actually in the bucket root.
-const BACKGROUND_MUSIC_FILES = [
-  'aurectheme-cocktail-jazz-603901.mp3',
-  'the_mountain-retro-game-593063.mp3',
-  'trtasfiq-upbeat-background-music-212772.mp3',
-  'vadim_makes_sound-quiz-thinking-timer-loop-551268.mp3',
-  'andriih-funny-funny-music-585934.mp3',
-  'tunetank-upbeat-funk-background-347615.mp3',
+// actually in the bucket.
+const LOBBY_MUSIC_FILES = [
+  'Lobby/the_mountain-retro-game-593063.mp3',
+  'Lobby/trtasfiq-upbeat-background-music-212772.mp3',
+  'Lobby/tunetank-upbeat-funk-background-347615.mp3',
 ]
+const SCOREBOARD_MUSIC_FILES = [
+  'Scorboard/gr0za-upbeat-upbeat-music-596488.mp3',
+  'Scorboard/sonican-quiz-background-loop-thinking-news-275636.mp3',
+]
+const ALL_MUSIC_FILES = [...LOBBY_MUSIC_FILES, ...SCOREBOARD_MUSIC_FILES]
 
 const FADE_MS = 1000
 const FADE_STEPS = 20
@@ -36,7 +44,7 @@ const MAX_VOLUME = 0.08
 // across all of them. 1 = no adjustment; only listed here once a track's
 // been flagged as off after a live listen.
 const VOLUME_MULTIPLIER: Partial<Record<string, number>> = {
-  'the_mountain-retro-game-593063.mp3': 0.5,
+  'Lobby/the_mountain-retro-game-593063.mp3': 0.5,
 }
 
 let audio: HTMLAudioElement | null = null
@@ -67,7 +75,7 @@ function loadUrl(file: string): Promise<string> {
 // these have very likely already resolved, which matters for
 // primeBackgroundMusic()/enterLobby() staying inside the browser's
 // autoplay-gesture window instead of racing a fresh network round-trip.
-for (const file of BACKGROUND_MUSIC_FILES) {
+for (const file of ALL_MUSIC_FILES) {
   loadUrl(file).catch(() => {})
 }
 
@@ -135,14 +143,16 @@ export function primeBackgroundMusic() {
   void el.play().catch(() => {})
 }
 
-// Picks a fresh random track (excluding whatever just played, when there's
-// more than one to choose from - same "always visibly change something"
-// rule already used for the category picker's Random button) and fades it
-// in. The one explicit reshuffle moment the spec calls for - fired only
-// when the room's phase transitions INTO 'lobby' (see useBackgroundMusic).
-export async function enterLobby() {
-  const pool = BACKGROUND_MUSIC_FILES.filter((f) => f !== currentFile)
-  const candidates = pool.length > 0 ? pool : BACKGROUND_MUSIC_FILES
+// Picks a fresh random track from `files` (excluding whatever just played,
+// when there's more than one to choose from - same "always visibly change
+// something" rule already used for the category picker's Random button) and
+// fades it in. Shared by enterLobby()/enterScoreboard() below - the one
+// explicit reshuffle moment the spec calls for, fired whenever the active
+// pool GROUP changes (lobby/setup <-> results), not on every phase change
+// within the same group (see useBackgroundMusic in App.tsx).
+async function pickAndPlay(files: string[]) {
+  const pool = files.filter((f) => f !== currentFile)
+  const candidates = pool.length > 0 ? pool : files
   const file = candidates[Math.floor(Math.random() * candidates.length)]
   if (!file) return
   try {
@@ -160,6 +170,14 @@ export async function enterLobby() {
     // background music is a nice-to-have flourish, never something that
     // should be able to break the actual game.
   }
+}
+
+export function enterLobby(): Promise<void> {
+  return pickAndPlay(LOBBY_MUSIC_FILES)
+}
+
+export function enterScoreboard(): Promise<void> {
+  return pickAndPlay(SCOREBOARD_MUSIC_FILES)
 }
 
 // Fades the already-loaded track back in and resumes it, without picking a
@@ -206,6 +224,6 @@ useMusicStore.subscribe((state) => {
     fadeTo(audio, 0, () => audio?.pause())
   } else {
     void audio.play().catch(() => {})
-    fadeTo(audio, MAX_VOLUME)
+    fadeTo(audio, targetVolume())
   }
 })

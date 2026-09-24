@@ -89,13 +89,26 @@ function useFinalizeRoundWatcher() {
   }, [phase, playerCount, readyCount, finalizeRoundIfReady])
 }
 
+// Which of backgroundMusic.ts's two track pools (if any) a phase belongs to
+// - lobby/setup share the "Lobby" pool, results gets its own "Scorboard"
+// pool, submit/guess get silence. See useBackgroundMusic below.
+type MusicGroup = 'lobby' | 'scoreboard' | 'silent'
+function musicGroupForPhase(phase: ReturnType<typeof useGameStore.getState>['phase']): MusicGroup {
+  if (phase === 'lobby' || phase === 'setup') return 'lobby'
+  if (phase === 'results') return 'scoreboard'
+  return 'silent'
+}
+
 // Always mounted, drives backgroundMusic.ts purely off phase (plus the
 // host/remote-play gate below) - see that module and CLAUDE.md's
-// "Bakgrunnshljóð eftir fösum leiksins" for the full reasoning. lobby/setup/
-// results play (lobby specifically reshuffles the track), submit/guess stay
-// silent, and leaving the room entirely stops it. The Winner-reveal
-// exception (paused during that one card, regardless of phase still being
-// 'results') is handled separately, by WinnerRevealCard itself calling
+// "Bakgrunnshljóð eftir fösum leiksins" for the full reasoning. A fresh
+// track is only picked when the active GROUP changes (silent -> lobby,
+// lobby -> scoreboard, etc.) - moving between phases within the same group
+// (lobby <-> setup, or a fresh room/newly-eligible device landing directly
+// in setup/results) just resumes whatever's already loaded, or loads one
+// for the first time. The Winner-reveal exception (paused during that one
+// card, regardless of phase still being 'results') is handled separately,
+// by WinnerRevealCard itself calling
 // pauseForWinnerReveal/resumeAfterWinnerReveal.
 function useBackgroundMusic() {
   const roomCode = useGameStore((s) => s.roomCode)
@@ -105,6 +118,7 @@ function useBackgroundMusic() {
   const remotePlayEnabled = useGameStore((s) => s.remotePlayEnabled)
   const previousRoomCode = useRef<string | null>(null)
   const previousEligible = useRef(false)
+  const previousGroup = useRef<MusicGroup | null>(null)
 
   // Everyone physically together only needs ONE phone's speaker running the
   // ambient loop - the host's - or every phone in the room would each play
@@ -113,31 +127,37 @@ function useBackgroundMusic() {
   // speaker), with the existing mute button as their way to opt back out.
   const isHost = localPlayerId !== null && localPlayerId === hostId
   const eligible = isHost || remotePlayEnabled
+  const group = musicGroupForPhase(phase)
 
   useEffect(() => {
     if (!roomCode || !eligible) {
       if (previousEligible.current) backgroundMusic.stopAndReset()
       previousRoomCode.current = roomCode
       previousEligible.current = eligible
+      previousGroup.current = null
       return
     }
     // A brand new room (or rejoining one), or just now becoming eligible
-    // (remote play switched on for a non-host device) both start fresh,
-    // same as any other entry into 'lobby' below.
-    const freshStart = previousRoomCode.current !== roomCode || !previousEligible.current
+    // (remote play switched on for a non-host device), both count as a
+    // group change even if `group` itself happens to match what it was
+    // last time - either way there's nothing loaded yet for this device.
+    const groupChanged =
+      previousRoomCode.current !== roomCode || !previousEligible.current || previousGroup.current !== group
     previousRoomCode.current = roomCode
     previousEligible.current = eligible
+    previousGroup.current = group
 
-    if (phase === 'lobby') {
-      void backgroundMusic.enterLobby()
-    } else if (phase === 'setup' || phase === 'results') {
-      if (freshStart) void backgroundMusic.enterLobby()
+    if (group === 'lobby') {
+      if (groupChanged) void backgroundMusic.enterLobby()
+      else backgroundMusic.resumePlaying()
+    } else if (group === 'scoreboard') {
+      if (groupChanged) void backgroundMusic.enterScoreboard()
       else backgroundMusic.resumePlaying()
     } else {
       backgroundMusic.pausePlaying()
     }
-    // freshStart is derived from refs, not state, on purpose - it shouldn't
-    // itself retrigger this effect.
+    // groupChanged is derived from refs, not state, on purpose - it
+    // shouldn't itself retrigger this effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode, phase, eligible])
 }
