@@ -16,6 +16,7 @@ export const CATEGORIES: Category[] = [
   { id: 'teenage-years', name: 'A Song From My Teenage Years' },
   { id: 'nobody-expects', name: 'A Song Nobody Expects Me to Like' },
   { id: 'karaoke-song', name: 'My Karaoke Song' },
+  { id: 'gym-song', name: 'My Gym Song' },
   { id: 'describes-me', name: 'A Song That Describes Me' },
   { id: 'gets-me-going', name: 'A Song That Gets Me Going' },
   { id: 'party-starter', name: 'The Perfect Party Starter' },

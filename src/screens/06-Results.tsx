@@ -154,7 +154,7 @@ export function Results() {
   return (
     <div className="mx-auto min-h-screen max-w-md px-6 pb-8 pt-16">
       {finalStep === 'scoreboard' && (
-        <h1 className="mb-6 text-center text-2xl font-bold text-text">Results</h1>
+        <h1 className="mb-6 text-center text-2xl font-bold text-text">Round Result</h1>
       )}
 
       {finalStep === 'winner' && winnerCard ? (

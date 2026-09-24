@@ -26,6 +26,14 @@ const WINNER_SOUND_FILES = [
   '/sounds/freesound_community-winning-82808.mp3',
 ]
 
+// Per-file absolute volume, overriding MAX_VOLUME - these source clips
+// aren't loudness-matched against each other, so one flat volume doesn't
+// read as equally loud across all of them. Only listed here once a clip's
+// been flagged as off after a live listen; everything else uses MAX_VOLUME.
+const VOLUME_OVERRIDE: Partial<Record<string, number>> = {
+  '/sounds/pw23check-winning-218995.mp3': 0.35,
+}
+
 // Decoded buffers are cached per URL so picking the same file twice in one
 // session (or preloading below) doesn't re-fetch/re-decode it.
 const bufferCache = new Map<string, Promise<AudioBuffer>>()
@@ -86,7 +94,7 @@ export function playWinnerCheer(): () => void {
       const gain = ctx.createGain()
       const now = ctx.currentTime
       gain.gain.setValueAtTime(0, now)
-      gain.gain.linearRampToValueAtTime(MAX_VOLUME, now + 0.03)
+      gain.gain.linearRampToValueAtTime(VOLUME_OVERRIDE[url] ?? MAX_VOLUME, now + 0.03)
       gain.connect(ctx.destination)
 
       source = ctx.createBufferSource()

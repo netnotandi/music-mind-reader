@@ -34,6 +34,8 @@ Raunverulegi listinn (ensku, flatur — ekki grúppaður í UI-inu) er í `src/s
 
 **Frekari fækkun (eftir ábendingu notanda):** „The Song That Was Everywhere the Year You Turned 18" tekinn út — 40 flokkar eftir. Engin önnur tilvísun í `everywhere-turned-18`-ID-ið annars staðar í kóðanum, örugg eyðing.
 
+**Nýr flokkur bætt við (eftir ábendingu notanda):** „My Gym Song" (`gym-song`) — 41 flokkur núna.
+
 ## Stigagjöf (samræmt)
 - Rétt ágiskun á eiganda lags: **+3 stig**
 - Eigandi fær MEÐALTAL (ekki summu) einkunna frá öðrum, á skalanum 0–5
@@ -700,6 +702,8 @@ Sjálf leik-lokafl​æðið (fyrri helmingur kaflans) er komið: `06-Results.ts
 
 ### Staða — útfært (hljóðbrotin endurnýjuð eftir lifandi hlustun)
 Notandi skipti út 5 af upprunalegu 7 skránum fyrir 3 nýjar (samtals 5 núna — tvær upprunalegu, `769801__thelastoneonearth...`/`547657__awrecordingit...`, héldu sæti). `WINNER_SOUND_FILES` í `winnerFanfare.ts` uppfært til að passa nákvæmlega við `public/sounds/` eins og það er núna. Staðfest með beinni prófun: allar 5 skrár sækjast og afkóðast villulaust (`decodeAudioData`, 2–10 sek langar), og alvöru „Final Results"-smellur keyrir í gegnum sömu kóðaslóð án villu. Sjálf hljóðgæðin/upplifunin er aftur huglægt mat sem þarf lifandi hlustun frá notanda.
+- **Hljóðstyrkur á sigur-fagnaðarlátunum lækkaður eftir lifandi hlustun**: spilaðist áður á fullum styrk (`gain` fór alltaf í `1`, enginn þak var til). Nýtt `MAX_VOLUME = 0.5` í `winnerFanfare.ts`, sama mynstur og `backgroundMusic.ts` notar. Að auki: `VOLUME_OVERRIDE` — per-skrá ALGERT gildi (ekki margfaldari) sem hnekkir `MAX_VOLUME`, notað fyrir `pw23check-winning-218995.mp3` sem var lækkuð sérstaklega niður í `0.35`.
+- **„Round Result" í stað „Results"** á venjulega umferðar-skjánum (`06-Results.tsx`): eftir ábendingu notanda — af því fyrirsögnin sagði „Results" fyrir HVERJA umferð, þ.m.t. þá síðustu, leit skjárinn út fyrir að VERA lokaúrslitin áður en ýtt var á „Final Results →" hnappinn fyrir neðan, sem er nákvæmlega sú tveggja-orða-rugling sem „Leik-lokaflæði" kaflinn hér að neðan var upphaflega hannaður til að losna við. „Scoreboard" undirfyrirsögnin er óbreytt.
 - **Frestað sér verkefni (nú útfært, sjá „Staða — útfært" undir Account > Stats-kaflanum sjálfum hér að ofan)**: „Account > Stats" ferils-tölfræðin (yfir ALLA leiki innskráðs notanda, þarf nýja varanlega skrifleið per reikning, alveg aðskilið frá `players/{playerId}` sem er bundið einu herbergi/leik) — `StatsPanel` í `AccountPanel.tsx` sagði áfram „coming soon" þangað til nú.
 
 ### Staða — útfært (Account > Stats — ferils-tölfræði yfir alla leiki)
