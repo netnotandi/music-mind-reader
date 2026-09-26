@@ -24,8 +24,9 @@ const SUNBURST_MS = 2000
 const GLOW_MS = 2300
 // How long to sit on the settled, ray-free card after the burst has fully
 // faded before moving on by itself - long enough to actually read the
-// card, not so long it feels stuck.
-const HOLD_AFTER_BURST_MS = 2000
+// card, not so long it feels stuck. Trimmed by 0.5s after live feedback
+// that the whole reveal ran a bit long.
+const HOLD_AFTER_BURST_MS = 1500
 
 // A one-shot entrance for the game's overall winner, built with the Web
 // Animations API directly (no library) so it resets cleanly every time this
