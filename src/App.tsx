@@ -147,12 +147,16 @@ function useBackgroundMusic() {
     previousEligible.current = eligible
     previousGroup.current = group
 
-    if (group === 'lobby') {
-      if (groupChanged) void backgroundMusic.enterLobby()
-      else backgroundMusic.resumePlaying()
-    } else if (group === 'scoreboard') {
-      if (groupChanged) void backgroundMusic.enterScoreboard()
-      else backgroundMusic.resumePlaying()
+    if (group === 'lobby' || group === 'scoreboard') {
+      // Clears the 'phase' silence reason FIRST, before possibly loading a
+      // new track - pickAndPlay (inside enterLobby/enterScoreboard) now
+      // routes through the same silence-aware playback state as everything
+      // else, so a still-set 'phase' reason from the just-left submit/guess
+      // silence would otherwise leave a freshly loaded track paused.
+      backgroundMusic.resumePlaying()
+      if (groupChanged) {
+        void (group === 'lobby' ? backgroundMusic.enterLobby() : backgroundMusic.enterScoreboard())
+      }
     } else {
       backgroundMusic.pausePlaying()
     }

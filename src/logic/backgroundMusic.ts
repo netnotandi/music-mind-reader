@@ -54,6 +54,21 @@ let fadeTimer: ReturnType<typeof setInterval> | null = null
 // whether it's actually audible right now (that's audio.paused/volume).
 let currentFile: string | null = null
 
+// Independent reasons the music should be silent right now - the phase
+// (submit/guess), the Winner-reveal card being up, and the hamburger menu
+// being open can all overlap (e.g. opening the menu mid-submit), so this is
+// a set rather than a single flag: music only actually plays once EVERY
+// reason has cleared, and closing the menu during a silent phase correctly
+// leaves it silent instead of forcing playback back on.
+type SilenceReason = 'phase' | 'winnerReveal' | 'menu'
+const silenceReasons = new Set<SilenceReason>()
+
+function setSilenceReason(reason: SilenceReason, silenced: boolean) {
+  if (silenced) silenceReasons.add(reason)
+  else silenceReasons.delete(reason)
+  applyPlaybackState()
+}
+
 // Resolved once per file, not once per call - a real HTTPS download URL
 // backed by a token, not something to re-fetch on every phase change.
 const urlCache = new Map<string, Promise<string>>()
@@ -129,6 +144,20 @@ function targetVolume(): number {
   return MAX_VOLUME * multiplier
 }
 
+// The single place that decides whether the currently-loaded track should
+// actually be audible right now, and fades it there - called after every
+// change to silenceReasons, the mute store, or a freshly loaded track
+// (pickAndPlay). Never picks a new track itself.
+function applyPlaybackState() {
+  if (!audio || !currentFile) return
+  if (silenceReasons.size > 0 || useMusicStore.getState().muted) {
+    fadeTo(audio, 0, () => audio?.pause())
+  } else {
+    void audio.play().catch(() => {})
+    fadeTo(audio, targetVolume())
+  }
+}
+
 // Call synchronously from within a real user gesture (the Create Game /
 // Join Game button handlers) so the shared <audio> element's first play()
 // attempt counts as user-gesture-authorized - same reasoning as
@@ -161,10 +190,11 @@ async function pickAndPlay(files: string[]) {
     const el = getAudio()
     el.src = url
     el.currentTime = 0
-    if (!useMusicStore.getState().muted) {
-      void el.play().catch(() => {})
-    }
-    fadeTo(el, targetVolume())
+    el.volume = 0
+    // Respects any active silence reason (e.g. the menu happening to be
+    // open at the exact moment the pool group changes) rather than always
+    // playing - applyPlaybackState() is the one place that decides that.
+    applyPlaybackState()
   } catch {
     // Storage fetch failed (rules not published yet, offline, etc.) -
     // background music is a nice-to-have flourish, never something that
@@ -180,28 +210,34 @@ export function enterScoreboard(): Promise<void> {
   return pickAndPlay(SCOREBOARD_MUSIC_FILES)
 }
 
-// Fades the already-loaded track back in and resumes it, without picking a
-// new one - used coming back from submit/guess or the winner reveal.
+// Fades the already-loaded track in/out without picking a new one - used by
+// useBackgroundMusic (App.tsx) for the submit/guess <-> lobby/setup/results
+// silence, driven by the room's phase.
 export function resumePlaying() {
-  if (!currentFile || !audio) return
-  if (!useMusicStore.getState().muted) void audio.play().catch(() => {})
-  fadeTo(audio, targetVolume())
+  setSilenceReason('phase', false)
 }
-
-// Fades the currently loaded track out, then pauses it - used whenever a
-// phase (or the winner reveal) says the music should stop, without
-// forgetting where it was or picking a new track.
 export function pausePlaying() {
-  if (!currentFile || !audio) return
-  fadeTo(audio, 0, () => audio?.pause())
+  setSilenceReason('phase', true)
 }
 
-// Thin, separately-named wrappers around the same pause/resume the phase
-// watcher uses - called from WinnerRevealCard's own mount/cleanup effect,
-// right alongside its existing playWinnerCheer()/stopCheer() calls, so the
-// ambient loop never fights the cheer sound for the same moment.
-export const pauseForWinnerReveal = pausePlaying
-export const resumeAfterWinnerReveal = resumePlaying
+// Called from WinnerRevealCard's own mount/cleanup effect, right alongside
+// its existing playWinnerCheer()/stopCheer() calls, so the ambient loop
+// never fights the cheer sound for the same moment - independent of the
+// phase reason above (phase stays 'results' the whole time the card is up).
+export function pauseForWinnerReveal() {
+  setSilenceReason('winnerReveal', true)
+}
+export function resumeAfterWinnerReveal() {
+  setSilenceReason('winnerReveal', false)
+}
+
+// Called when the hamburger menu opens/closes (MenuOverlay.tsx) - ducks the
+// ambient loop while the menu is up, independent of whatever phase/reveal
+// reason is (or isn't) already active, so closing the menu during a
+// silent phase correctly leaves the music off instead of forcing it back on.
+export function setMenuOpen(open: boolean) {
+  setSilenceReason('menu', open)
+}
 
 // Called when roomCode becomes null (left the room back to the Home screen,
 // which has no background music at all per the spec) so a stale loop can't
@@ -213,17 +249,14 @@ export function stopAndReset() {
     audio.volume = 0
   }
   currentFile = null
+  // A leftover reason (e.g. left the room with the menu still open) must
+  // not carry over and silence a future room's music for no visible cause.
+  silenceReasons.clear()
 }
 
 // Subscribed once, at module load - toggling mute mid-track fades the
 // CURRENTLY LOADED audio immediately, rather than waiting for the next
 // phase change to notice muted has changed.
-useMusicStore.subscribe((state) => {
-  if (!audio || !currentFile) return
-  if (state.muted) {
-    fadeTo(audio, 0, () => audio?.pause())
-  } else {
-    void audio.play().catch(() => {})
-    fadeTo(audio, targetVolume())
-  }
+useMusicStore.subscribe(() => {
+  applyPlaybackState()
 })

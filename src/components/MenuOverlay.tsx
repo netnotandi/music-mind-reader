@@ -1,6 +1,7 @@
 import { type ReactElement, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AccountPanel } from './AccountPanel'
+import * as backgroundMusic from '../logic/backgroundMusic'
 import { useFriendsStore } from '../state/friendsStore'
 import { useGameStore } from '../state/gameStore'
 import { useMusicStore } from '../state/musicStore'
@@ -216,6 +217,15 @@ export function MenuOverlay() {
   const roomCode = useGameStore((s) => s.roomCode)
   const [isOpen, setIsOpen] = useState(false)
   const [panel, setPanel] = useState<'rules' | 'players' | 'account'>('rules')
+
+  // Ducks the ambient background music while the menu is open (see
+  // backgroundMusic.ts's setMenuOpen) - the cleanup covers the unlikely
+  // case of this component unmounting while the menu happens to be open, so
+  // a stale "menu" silence reason can't linger and mute music forever.
+  useEffect(() => {
+    backgroundMusic.setMenuOpen(isOpen)
+    return () => backgroundMusic.setMenuOpen(false)
+  }, [isOpen])
   const [confirmingLeave, setConfirmingLeave] = useState(false)
   // Phone widths stack the sidebar and content instead of showing both side
   // by side (see the layout comment below) - without this, picking an
