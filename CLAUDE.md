@@ -444,6 +444,7 @@ Host velur fyrirfram, í fyrstu Game Setup (samhliða umferðarlengd og flokki),
 - **`02-Lobby.tsx`**: nýr „Leave Game" hnappur, sýnilegur bara þegar `roundsCompleted >= totalRounds`.
 - **`02b-GameSetup.tsx`**: nýr „Number of rounds" pillu-veljari (1–4), bara gagnvirkur fyrir host ÁÐUR en fyrsta umferð er spiluð (`roundsCompleted === 0`) — annars bara texti („Playing X rounds").
 - **„New Game" í Lobby**: þegar leikurinn er búinn (`roundsCompleted >= totalRounds`) kemur „New Game" hnappur (host) í staðinn fyrir „Set up round" — `startNewGame()` núllstillir `totalScore` og öll fjögur uppsöfnuðu teljarana á öllum leikmönnum, og `roundsCompleted` í 0 (sama herbergi/kóði/spilarar haldast). Af því `roundsCompleted` fer í 0, verða „Round length" og „Number of rounds" reitirnir sjálfkrafa gagnvirkir aftur á Game Setup — engin sérstök viðbótarrökfræði þarf fyrir það.
+- **Uppfært eftir ábendingu notanda**: „New Game" hnappurinn var virkur óháð spilarafjölda (ólíkt „Set up round" sem er `disabled` þar til `MIN_PLAYERS_TO_START` næst) — sama `disabled={players.length < MIN_PLAYERS_TO_START}` skilyrði bætt við hann í `02-Lobby.tsx`. Að auki fer `startNewGame()` núna beint í `phase: 'setup'` (var `'lobby'`) — host sleppir því að þurfa að ýta á „Set up round" strax á eftir, enda er hann augljóslega á leið þangað hvort eð er þegar hann ýtir á „New Game".
 
 ## Kick spilara (viðbót við CLAUDE.md)
 

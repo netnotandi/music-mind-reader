@@ -864,7 +864,12 @@ export const useGameStore = create<GameState>((set, get) => {
       const { roomCode, players } = get()
       if (!roomCode) return
       const updates: Record<string, unknown> = {
-        phase: 'lobby',
+        // Straight to Game Setup, not Lobby - unlike the very first game,
+        // everyone's already here and ready (the host only sees this button
+        // once MIN_PLAYERS_TO_START is met, see 02-Lobby.tsx), so there's no
+        // reason to make the host take a second "Set up round" click just to
+        // reach the screen they're clearly already heading for.
+        phase: 'setup',
         songs: null,
         guesses: null,
         ratings: null,

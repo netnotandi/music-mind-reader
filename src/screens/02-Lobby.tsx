@@ -146,8 +146,9 @@ export function Lobby() {
         isHost ? (
           <button
             type="button"
+            disabled={players.length < MIN_PLAYERS_TO_START}
             onClick={startNewGame}
-            className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active"
+            className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
           >
             New Game
           </button>
