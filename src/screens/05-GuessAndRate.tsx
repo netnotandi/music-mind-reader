@@ -184,6 +184,7 @@ export function GuessAndRate() {
   const currentSongIndex = useGameStore((s) => s.currentSongIndex)
   const roundMode = useGameStore((s) => s.roundMode)
   const shortModeCapSeconds = useGameStore((s) => s.shortModeCapSeconds)
+  const remotePlayEnabled = useGameStore((s) => s.remotePlayEnabled)
   const roundPlaythroughDone = useGameStore((s) => s.roundPlaythroughDone)
   const localPlayerId = useGameStore((s) => s.localPlayerId)
   const hostId = useGameStore((s) => s.hostId)
@@ -484,6 +485,7 @@ export function GuessAndRate() {
         }}
         wrapUp={roundPlaythroughDone}
         follower={!isHost}
+        remotePlayEnabled={remotePlayEnabled}
       />
 
       {roundPlaythroughDone ? (

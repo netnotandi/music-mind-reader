@@ -20,6 +20,12 @@ interface NowPlayingPlayerProps {
   // of phones shouldn't all blast overlapping audio - and can unmute to
   // hear it themselves.
   follower: boolean
+  // Whether the host has turned on remote play (see CLAUDE.md's
+  // "Textaspjall fyrir fjarspilun" section) - i.e. whether anyone in this
+  // game might be relying on this device's own audio to hear the music at
+  // all, rather than everyone sharing one room's speaker. Governs how loud
+  // the "you're muted" prompt gets - see the big-overlay comment below.
+  remotePlayEnabled: boolean
 }
 
 const FADE_MS = 900
@@ -53,6 +59,7 @@ export function NowPlayingPlayer({
   onEnded,
   wrapUp,
   follower,
+  remotePlayEnabled,
 }: NowPlayingPlayerProps) {
   // A malformed id (seen for real in production - a stray edge case
   // upstream, or old data) must never reach the IFrame Player API: it
@@ -454,6 +461,18 @@ export function NowPlayingPlayer({
   }
 
   const showControls = videoId !== null && !wrapUp
+  // The big, hard-to-miss overlay is only warranted when unmuting actually
+  // matters: audioBlocked (the browser silently refused to unmute a device
+  // that DOES want sound - true for host or follower, remote or not - a
+  // real malfunction that needs fixing right now) or a follower who's muted
+  // while remote play is on, where this device's own audio may be the only
+  // way anyone hears the game at all. A follower muted in ordinary same-room
+  // play is the CORRECT steady state (the room already has the host's
+  // speaker) - covering their view of a video people are enjoying watching,
+  // just to offer an unmute nobody needs, was worse than the silence it
+  // "fixed" (see CLAUDE.md's background-music-adjacent feedback on this).
+  const showBigUnmuteOverlay =
+    showControls && !covered && (audioBlocked || (follower && !soundOn && remotePlayEnabled))
 
   return (
     <div className="mb-6">
@@ -475,15 +494,14 @@ export function NowPlayingPlayer({
             <span className="text-xs text-slate-300">No video for this song</span>
           ) : null}
         </div>
-        {/* Covers the whole video (not just a strip below it) whenever this
-            device isn't actually hearing the game - either it hasn't been
-            unmuted yet, or the browser silently kept it muted despite
-            wanting sound (audioBlocked). A small button below the video was
-            easy to miss entirely (confirmed for real: two remote players in
-            one session never noticed it existed) - sitting directly on top
-            of the thing they're already looking at, with a pulsing icon,
-            is much harder to scroll past without seeing. */}
-        {showControls && !covered && (!soundOn || audioBlocked) && (
+        {/* Covers the whole video (not just a strip below it) - see
+            showBigUnmuteOverlay above for exactly when this is warranted. A
+            small button below the video was easy to miss entirely
+            (confirmed for real: two remote players in one session never
+            noticed it existed) - sitting directly on top of the thing
+            they're already looking at, with a pulsing icon, is much harder
+            to scroll past without seeing. */}
+        {showBigUnmuteOverlay && (
           <button
             type="button"
             onClick={() => setSound(true)}
@@ -496,26 +514,43 @@ export function NowPlayingPlayer({
         )}
       </div>
 
-      {showControls && soundOn && (
+      {showControls && !showBigUnmuteOverlay && (
         <div className="mt-2 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSound(false)}
-            aria-label="Mute"
-            className="text-sm text-text-muted transition hover:text-text"
-          >
-            🔊
-          </button>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={volume}
-            onChange={(e) => handleVolumeChange(Number(e.target.value))}
-            aria-label="Player volume"
-            className="h-1 flex-1 accent-primary"
-          />
-          <span className="w-8 text-right text-xs tabular-nums text-text-muted">{volume}</span>
+          {soundOn ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setSound(false)}
+                aria-label="Mute"
+                className="text-sm text-text-muted transition hover:text-text"
+              >
+                🔊
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={volume}
+                onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                aria-label="Player volume"
+                className="h-1 flex-1 accent-primary"
+              />
+              <span className="w-8 text-right text-xs tabular-nums text-text-muted">{volume}</span>
+            </>
+          ) : (
+            // Same-room follower, sound off by default (see comment above) -
+            // a quiet, easy-to-ignore way to opt into personal audio (e.g.
+            // earbuds) instead of the attention-grabbing overlay this device
+            // doesn't need.
+            <button
+              type="button"
+              onClick={() => setSound(true)}
+              aria-label="Unmute"
+              className="text-sm text-text-muted transition hover:text-text"
+            >
+              🔇 Tap to unmute
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import type { AwardIconKind } from '../components/AwardCard'
 import { type FinalScoretableCard, FinalScoretableCards } from '../components/FinalScoretableCards'
@@ -17,7 +16,6 @@ import {
 } from '../logic/scoring'
 import { primeWinnerFanfare } from '../logic/winnerFanfare'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
-import { useThemeStore } from '../state/themeStore'
 import type { Player } from '../types'
 
 const CUMULATIVE_TITLE_META: Record<string, { icon: AwardIconKind; subtitle: string }> = {
@@ -68,10 +66,6 @@ function buildFinalScoretableCards(players: Player[]): FinalScoretableCard[] {
 }
 
 export function Results() {
-  // Light-only: "Leave Game" reads as a violet-outlined secondary action
-  // instead of a plain navy-bordered one - dark keeps its current look.
-  const isLight = useThemeStore((s) => s.resolvedTheme === 'light')
-  const navigate = useNavigate()
   const players = useGameStore((s) => s.players)
   const songs = useGameStore(useShallow(getCurrentRoundSongs))
   const guesses = useGameStore((s) => s.guesses)
@@ -80,7 +74,6 @@ export function Results() {
   const lobbyReadyPlayerIds = useGameStore((s) => s.lobbyReadyPlayerIds)
   const roundsCompleted = useGameStore((s) => s.roundsCompleted)
   const totalRounds = useGameStore((s) => s.totalRounds)
-  const leaveGame = useGameStore((s) => s.leaveGame)
   const returnToLobby = useGameStore((s) => s.returnToLobby)
   const applyFinalRoundScores = useGameStore((s) => s.applyFinalRoundScores)
   const hasReturnedToLobby = localPlayerId !== null && lobbyReadyPlayerIds.includes(localPlayerId)
@@ -110,17 +103,7 @@ export function Results() {
     ])
   )
 
-  // Per-device only - leaving never touches the shared room, so everyone
-  // else can keep discussing the results for as long as they want. Passing
-  // false keeps this player's row (songs, scores, titles) on everyone
-  // else's scoreboard - the round's already over, so there's no "seat" to
-  // free up the way there would be mid-lobby or mid-game.
-  function handleLeave() {
-    leaveGame(false)
-    navigate('/')
-  }
-
-  // Per-device, just like Leave Game - marks this player ready and moves
+  // Per-device - marks this player ready and moves
   // only THIS device to Lobby, without waiting for or disturbing anyone
   // still reviewing Results. No explicit navigate here: the app-wide phase
   // watcher picks up this player's own readiness and moves them to Lobby
@@ -203,28 +186,14 @@ export function Results() {
               Final Results →
             </button>
           ) : (
-            <>
-              <button
-                type="button"
-                disabled={hasReturnedToLobby}
-                onClick={handleGoToLobby}
-                className="mb-3 w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
-              >
-                {hasReturnedToLobby ? '✓ Ready for next round — waiting for others' : 'Next Round →'}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleLeave}
-                className={
-                  isLight
-                    ? 'w-full rounded-xl border-[1.5px] border-primary bg-surface px-5 py-3 font-semibold text-primary transition'
-                    : 'w-full rounded-xl border border-border-strong px-5 py-3 font-semibold text-text transition hover:border-border-strong'
-                }
-              >
-                Leave Game
-              </button>
-            </>
+            <button
+              type="button"
+              disabled={hasReturnedToLobby}
+              onClick={handleGoToLobby}
+              className="w-full rounded-xl border border-primary bg-primary px-5 py-3 font-semibold text-text-on-primary transition hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled-bg disabled:text-disabled-text"
+            >
+              {hasReturnedToLobby ? '✓ Ready for next round — waiting for others' : 'Next Round →'}
+            </button>
           )}
         </>
       )}
