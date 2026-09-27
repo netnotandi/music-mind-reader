@@ -3,9 +3,9 @@ import { useShallow } from 'zustand/react/shallow'
 import { NowPlayingPlayer } from '../components/NowPlayingPlayer'
 import { SaveSongButton } from '../components/SaveSongButton'
 import { SongCard } from '../components/SongCard'
+import { SwipeCarousel } from '../components/SwipeCarousel'
 import { hasCascadeRoom } from '../logic/ratingCascade'
 import { songLabel } from '../logic/songLabel'
-import { useSwipeNavigation } from '../logic/useSwipeNavigation'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 import type { Player, Song } from '../types'
@@ -313,11 +313,49 @@ export function GuessAndRate() {
     clearReturnToOverview()
     setViewIndex(i)
   }
-  // A swipe on the song card is a second way to trigger the exact same
-  // goPrev/goNext as the buttons below it - shared by both places SongCard
-  // is rendered (mid-round and the wrap-up edit view). Declared before the
-  // early return below so this hook call is never skipped conditionally.
-  const swipeHandlers = useSwipeNavigation(goNext, goPrev)
+  // Builds the SongCard props for an arbitrary song index (not just the one
+  // currently viewed) - SwipeCarousel needs the prev/next song's own card
+  // rendered too, each with its own needsAnswer state, so it can peek them
+  // in mid-drag. Returns null past either end of the song list.
+  function songCardPropsFor(i: number) {
+    const s = songs[i]
+    if (!s) return null
+    const isOwn = s.playerId === localPlayerId
+    return {
+      title: s.title,
+      artist: s.artist,
+      youtubeTitle: s.youtubeTitle,
+      index: i,
+      total: songs.length,
+      needsAnswer: !isOwn && !isDoneForMe(s),
+      action: <SaveSongButton song={s} />,
+    }
+  }
+  // Shared by both places SongCard is rendered (mid-round and the wrap-up
+  // edit view) - a single carousel definition, swapped in via {songCarousel}
+  // below. canGoNext is capped at maxReachableIndex (not just songs.length)
+  // so dragging past the song currently playing never peeks at - or lands
+  // on - one that hasn't happened yet, same guard the old Next button had.
+  const songCarousel = (
+    <SwipeCarousel
+      canGoPrev={viewIndex > 0}
+      canGoNext={viewIndex < maxReachableIndex}
+      onCommitPrev={goPrev}
+      onCommitNext={goNext}
+      renderPrev={() => {
+        const p = songCardPropsFor(viewIndex - 1)
+        return p && <SongCard {...p} />
+      }}
+      renderCurrent={() => {
+        const p = songCardPropsFor(viewIndex)
+        return p && <SongCard {...p} />
+      }}
+      renderNext={() => {
+        const p = songCardPropsFor(viewIndex + 1)
+        return p && <SongCard {...p} />
+      }}
+    />
+  )
   // Dots replace the old Prev/Next buttons entirely (per host feedback, once
   // swipe/tap covered the same ground) - one per song, filled for the one
   // being viewed, dimmed and unclickable past maxReachableIndex just like
@@ -405,7 +443,6 @@ export function GuessAndRate() {
   const hasConfirmed = confirmedPlayerIds.includes(localPlayerId)
   const allConfirmed = players.length > 0 && confirmedPlayerIds.length >= players.length
   const myUnanswered = songs.filter((s) => s.playerId !== localPlayerId && !isDoneForMe(s)).length
-  const needsAnswer = !isOwnSong && !isDoneForMe(song)
 
   function openSongInOverview(index: number) {
     clearReturnToOverview()
@@ -499,17 +536,7 @@ export function GuessAndRate() {
               ← Back to overview
             </button>
 
-            <div className="mb-4" {...swipeHandlers}>
-              <SongCard
-                title={song.title}
-                artist={song.artist}
-                youtubeTitle={song.youtubeTitle}
-                index={viewIndex}
-                total={songs.length}
-                needsAnswer={needsAnswer}
-                action={<SaveSongButton song={song} />}
-              />
-            </div>
+            <div className="mb-4">{songCarousel}</div>
 
             {songDots}
 
@@ -669,17 +696,7 @@ export function GuessAndRate() {
             Now playing: <span className="font-semibold text-text">Song {currentSongIndex + 1}</span>
           </div>
 
-          <div className="mb-4" {...swipeHandlers}>
-            <SongCard
-              title={song.title}
-              artist={song.artist}
-              youtubeTitle={song.youtubeTitle}
-              index={viewIndex}
-              total={songs.length}
-              needsAnswer={needsAnswer}
-              action={<SaveSongButton song={song} />}
-            />
-          </div>
+          <div className="mb-4">{songCarousel}</div>
 
           {!isViewingCurrent && (
             <button
@@ -693,7 +710,7 @@ export function GuessAndRate() {
 
           {/* Dots, right under the song card, so browsing back and forth to
               review or fix an earlier answer doesn't mean hunting further
-              down the page - swipe works here too (see swipeHandlers above). */}
+              down the page - swipe (drag the card itself) works here too. */}
           {songDots}
 
           <AnswerForm
