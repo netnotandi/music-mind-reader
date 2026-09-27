@@ -5,6 +5,7 @@ import { SaveSongButton } from '../components/SaveSongButton'
 import { SongCard } from '../components/SongCard'
 import { hasCascadeRoom } from '../logic/ratingCascade'
 import { songLabel } from '../logic/songLabel'
+import { useSwipeNavigation } from '../logic/useSwipeNavigation'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 import type { Player, Song } from '../types'
@@ -293,6 +294,53 @@ export function GuessAndRate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, roundMode, roundPlaythroughDone, currentSongIndex, currentSong?.id, guesses, players])
 
+  // Browse the round's songs with a simple prev/next stepper. Neither button
+  // moves the group - during play you can only step back as far as the song
+  // that's currently playing; once the round has played through you can
+  // range over every song to finish up.
+  const maxReachableIndex = roundPlaythroughDone ? songs.length - 1 : currentSongIndex
+  function goPrev() {
+    clearReturnToOverview()
+    setViewIndex((i) => Math.max(i - 1, 0))
+  }
+  function goNext() {
+    clearReturnToOverview()
+    setViewIndex((i) => Math.min(i + 1, maxReachableIndex))
+  }
+  function goToIndex(i: number) {
+    if (i > maxReachableIndex) return
+    clearReturnToOverview()
+    setViewIndex(i)
+  }
+  // A swipe on the song card is a second way to trigger the exact same
+  // goPrev/goNext as the buttons below it - shared by both places SongCard
+  // is rendered (mid-round and the wrap-up edit view). Declared before the
+  // early return below so this hook call is never skipped conditionally.
+  const swipeHandlers = useSwipeNavigation(goNext, goPrev)
+  // Dots replace the old Prev/Next buttons entirely (per host feedback, once
+  // swipe/tap covered the same ground) - one per song, filled for the one
+  // being viewed, dimmed and unclickable past maxReachableIndex just like
+  // the old Next button was disabled there.
+  const songDots = (
+    <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+      {songs.map((_, i) => {
+        const reachable = i <= maxReachableIndex
+        return (
+          <button
+            key={i}
+            type="button"
+            disabled={!reachable}
+            aria-label={`Song ${i + 1}`}
+            onClick={() => goToIndex(i)}
+            className={`h-2 w-2 rounded-full transition ${
+              i === viewIndex ? 'bg-primary' : reachable ? 'bg-border-strong' : 'bg-border-strong/30'
+            }`}
+          />
+        )
+      })}
+    </div>
+  )
+
   if (!localPlayerId || songs.length === 0) {
     return (
       <div className="mx-auto max-w-md px-6 py-8 text-text-secondary">
@@ -367,20 +415,6 @@ export function GuessAndRate() {
   function closeOverviewEditing() {
     clearReturnToOverview()
     setWrapUpEditing(false)
-  }
-
-  // Browse the round's songs with a simple prev/next stepper. Neither button
-  // moves the group - during play you can only step back as far as the song
-  // that's currently playing; once the round has played through you can
-  // range over every song to finish up.
-  const maxReachableIndex = roundPlaythroughDone ? songs.length - 1 : currentSongIndex
-  function goPrev() {
-    clearReturnToOverview()
-    setViewIndex((i) => Math.max(i - 1, 0))
-  }
-  function goNext() {
-    clearReturnToOverview()
-    setViewIndex((i) => Math.min(i + 1, maxReachableIndex))
   }
 
   function handleSubmit(guessedPlayerId: string, rating: number | null) {
@@ -463,7 +497,7 @@ export function GuessAndRate() {
               ← Back to overview
             </button>
 
-            <div className="mb-4">
+            <div className="mb-4" {...swipeHandlers}>
               <SongCard
                 title={song.title}
                 artist={song.artist}
@@ -475,27 +509,7 @@ export function GuessAndRate() {
               />
             </div>
 
-            <div className="mb-6 flex items-stretch gap-2">
-              <button
-                type="button"
-                disabled={viewIndex === 0}
-                onClick={goPrev}
-                className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                ← Previous
-              </button>
-              <span className="flex-shrink-0 self-center text-xs text-text-muted">
-                {viewIndex + 1}/{songs.length}
-              </span>
-              <button
-                type="button"
-                disabled={viewIndex >= maxReachableIndex}
-                onClick={goNext}
-                className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                Next →
-              </button>
-            </div>
+            {songDots}
 
             <AnswerForm
               key={song.id}
@@ -653,7 +667,7 @@ export function GuessAndRate() {
             Now playing: <span className="font-semibold text-text">Song {currentSongIndex + 1}</span>
           </div>
 
-          <div className="mb-4">
+          <div className="mb-4" {...swipeHandlers}>
             <SongCard
               title={song.title}
               artist={song.artist}
@@ -675,30 +689,10 @@ export function GuessAndRate() {
             </button>
           )}
 
-          {/* Bigger, higher up (right under the song card) so browsing back
-              and forth to review or fix an earlier answer doesn't mean
-              hunting for small buttons further down the page. */}
-          <div className="mb-6 flex items-stretch gap-2">
-            <button
-              type="button"
-              disabled={viewIndex === 0}
-              onClick={goPrev}
-              className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              ← Previous
-            </button>
-            <span className="flex-shrink-0 self-center text-xs text-text-muted">
-              {viewIndex + 1}/{songs.length}
-            </span>
-            <button
-              type="button"
-              disabled={viewIndex >= maxReachableIndex}
-              onClick={goNext}
-              className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              Next →
-            </button>
-          </div>
+          {/* Dots, right under the song card, so browsing back and forth to
+              review or fix an earlier answer doesn't mean hunting further
+              down the page - swipe works here too (see swipeHandlers above). */}
+          {songDots}
 
           <AnswerForm
             key={song.id}

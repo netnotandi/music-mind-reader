@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AwardCard, type AwardIconKind } from './AwardCard'
+import { useSwipeNavigation } from '../logic/useSwipeNavigation'
 
 export interface FinalScoretableCard {
   icon: AwardIconKind
@@ -12,14 +13,19 @@ interface FinalScoretableCardsProps {
   cards: FinalScoretableCard[]
 }
 
-// A plain paginated deck - no swipe gesture, no transition/animation
-// (deliberately, per the host: "just the cards"), just Prev/Next and dots.
+// A plain paginated deck - no transition/animation between cards
+// (deliberately, per the host: "just the cards"), just Prev/Next, dots, and
+// (per later feedback) a swipe gesture as a third way to move between them.
 // Pure browsing within itself - the caller (06-Results.tsx) renders this
 // alongside GameStatsCard and owns the single "Continue to Scoreboard"
 // action for both, since the host asked for the two to read as one combined
 // screen rather than separate steps each gated behind their own button.
 export function FinalScoretableCards({ cards }: FinalScoretableCardsProps) {
   const [index, setIndex] = useState(0)
+  const swipeHandlers = useSwipeNavigation(
+    () => setIndex((i) => Math.min(i + 1, cards.length - 1)),
+    () => setIndex((i) => Math.max(i - 1, 0))
+  )
 
   if (cards.length === 0) return null
 
@@ -29,7 +35,9 @@ export function FinalScoretableCards({ cards }: FinalScoretableCardsProps) {
 
   return (
     <div>
-      <AwardCard {...card} />
+      <div {...swipeHandlers}>
+        <AwardCard {...card} />
+      </div>
 
       <div className="mt-4 flex items-center justify-center gap-2">
         {cards.map((c, i) => (
