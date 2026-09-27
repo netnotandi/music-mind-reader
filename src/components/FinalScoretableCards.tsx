@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useIsTouchDevice } from '../logic/useIsTouchDevice'
 import { AwardCard, type AwardIconKind } from './AwardCard'
 import { SwipeCarousel } from './SwipeCarousel'
 
@@ -23,6 +24,7 @@ interface FinalScoretableCardsProps {
 // both, since the host asked for the two to read as one combined screen
 // rather than separate steps each gated behind their own button.
 export function FinalScoretableCards({ cards }: FinalScoretableCardsProps) {
+  const isTouchDevice = useIsTouchDevice()
   const [index, setIndex] = useState(0)
 
   if (cards.length === 0) return null
@@ -42,36 +44,42 @@ export function FinalScoretableCards({ cards }: FinalScoretableCardsProps) {
         renderNext={() => (atEnd ? null : <AwardCard {...cards[index + 1]} />)}
       />
 
-      <div className="mt-4 flex items-center justify-center gap-2">
-        {cards.map((c, i) => (
+      {/* Touch devices already have swipe (see SwipeCarousel above) and get
+          the dots as a position indicator; mouse/keyboard devices have no
+          gesture to reach for, so they get Prev/Next buttons instead -
+          see useIsTouchDevice.ts. */}
+      {isTouchDevice ? (
+        <div className="mt-4 flex items-center justify-center gap-2">
+          {cards.map((c, i) => (
+            <button
+              key={c.icon}
+              type="button"
+              aria-label={`Card ${i + 1}`}
+              onClick={() => setIndex(i)}
+              className={`h-2 w-2 rounded-full transition ${i === index ? 'bg-primary' : 'bg-border-strong'}`}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4 flex gap-2">
           <button
-            key={c.icon}
             type="button"
-            aria-label={`Card ${i + 1}`}
-            onClick={() => setIndex(i)}
-            className={`h-2 w-2 rounded-full transition ${i === index ? 'bg-primary' : 'bg-border-strong'}`}
-          />
-        ))}
-      </div>
-
-      <div className="mt-4 flex gap-2">
-        <button
-          type="button"
-          disabled={atStart}
-          onClick={() => setIndex((i) => i - 1)}
-          className="flex-1 rounded-xl border border-border-strong px-4 py-2.5 text-sm font-semibold text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          ← Previous
-        </button>
-        <button
-          type="button"
-          disabled={atEnd}
-          onClick={() => setIndex((i) => i + 1)}
-          className="flex-1 rounded-xl border border-border-strong px-4 py-2.5 text-sm font-semibold text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Next →
-        </button>
-      </div>
+            disabled={atStart}
+            onClick={() => setIndex((i) => i - 1)}
+            className="flex-1 rounded-xl border border-border-strong px-4 py-2.5 text-sm font-semibold text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            ← Previous
+          </button>
+          <button
+            type="button"
+            disabled={atEnd}
+            onClick={() => setIndex((i) => i + 1)}
+            className="flex-1 rounded-xl border border-border-strong px-4 py-2.5 text-sm font-semibold text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   )
 }

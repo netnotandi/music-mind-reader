@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { accentColorFor } from '../logic/accentColors'
+import { useIsTouchDevice } from '../logic/useIsTouchDevice'
 import { MAX_SELECTED_CATEGORIES } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 import type { Category } from '../types'
+import { SwipeCarousel } from './SwipeCarousel'
 
 interface CategoryPickerProps {
   categories: Category[]
@@ -21,6 +23,7 @@ interface CategoryPickerProps {
 const PAGE_SIZE = 10
 
 export function CategoryPicker({ categories, selectedCategoryIds, onToggle, onRandomPick }: CategoryPickerProps) {
+  const isTouchDevice = useIsTouchDevice()
   // Local to this component instance - paged browsing is a pure UI concern,
   // and resets naturally to page 0 each time the picker (re)mounts (e.g. the
   // next round's fresh category choice).
@@ -32,7 +35,6 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle, onRa
   const resolvedTheme = useThemeStore((s) => s.resolvedTheme)
   const isLight = resolvedTheme === 'light'
   const totalPages = Math.max(Math.ceil(categories.length / PAGE_SIZE), 1)
-  const pageCategories = categories.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
 
   // At MAX_SELECTED_CATEGORIES === 1, other buttons stay enabled - clicking
   // one swaps the selection (see toggleCategorySelection) instead of
@@ -43,42 +45,17 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle, onRa
     setPage(Math.min(Math.max(next, 0), totalPages - 1))
   }
 
-  // Excludes whatever's already selected (when there's more than one
-  // category to choose from) so the button always visibly does something,
-  // rather than occasionally re-picking the current category and looking
-  // like a dead click. Also jumps the page to wherever the new pick landed,
-  // since it could be on a page the host isn't currently looking at.
-  function handleRandom() {
-    const pool = categories.filter((c) => !selectedCategoryIds.includes(c.id))
-    const candidates = pool.length > 0 ? pool : categories
-    const choice = candidates[Math.floor(Math.random() * candidates.length)]
-    if (!choice) return
-    const globalIndex = categories.findIndex((c) => c.id === choice.id)
-    setPage(Math.floor(globalIndex / PAGE_SIZE))
-    onRandomPick(choice.id)
-  }
-
-  return (
-    <div>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-sm text-text-secondary">
-          {MAX_SELECTED_CATEGORIES === 1
-            ? 'Pick a category'
-            : `Pick up to ${MAX_SELECTED_CATEGORIES} categories (${selectedCategoryIds.length}/${MAX_SELECTED_CATEGORIES} selected)`}
-        </p>
-        <button
-          type="button"
-          onClick={handleRandom}
-          className={`flex-shrink-0 rounded-full border border-border-strong px-3 py-1.5 text-xs font-semibold text-text-secondary transition hover:border-primary hover:text-primary ${isLight ? 'bg-surface' : ''}`}
-        >
-          🎲 Random
-        </button>
-      </div>
+  // Pulled out so SwipeCarousel can render the adjacent pages too (needed to
+  // peek them mid-drag) - identical to what used to be inlined directly for
+  // just the current page.
+  function renderPageGrid(pageIndex: number) {
+    const items = categories.slice(pageIndex * PAGE_SIZE, pageIndex * PAGE_SIZE + PAGE_SIZE)
+    return (
       <div className="grid grid-cols-2 gap-3">
-        {pageCategories.map((c, i) => {
+        {items.map((c, i) => {
           // Global index (not the page-relative one) so a category's accent
           // color stays the same regardless of which page it's shown on.
-          const globalIndex = page * PAGE_SIZE + i
+          const globalIndex = pageIndex * PAGE_SIZE + i
           const selected = selectedCategoryIds.includes(c.id)
           const disabled = !selected && atMax
           const accent = accentColorFor(globalIndex, resolvedTheme)
@@ -116,65 +93,122 @@ export function CategoryPicker({ categories, selectedCategoryIds, onToggle, onRa
           )
         })}
       </div>
+    )
+  }
+
+  // Excludes whatever's already selected (when there's more than one
+  // category to choose from) so the button always visibly does something,
+  // rather than occasionally re-picking the current category and looking
+  // like a dead click. Also jumps the page to wherever the new pick landed,
+  // since it could be on a page the host isn't currently looking at.
+  function handleRandom() {
+    const pool = categories.filter((c) => !selectedCategoryIds.includes(c.id))
+    const candidates = pool.length > 0 ? pool : categories
+    const choice = candidates[Math.floor(Math.random() * candidates.length)]
+    if (!choice) return
+    const globalIndex = categories.findIndex((c) => c.id === choice.id)
+    setPage(Math.floor(globalIndex / PAGE_SIZE))
+    onRandomPick(choice.id)
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-sm text-text-secondary">
+          {MAX_SELECTED_CATEGORIES === 1
+            ? 'Pick a category'
+            : `Pick up to ${MAX_SELECTED_CATEGORIES} categories (${selectedCategoryIds.length}/${MAX_SELECTED_CATEGORIES} selected)`}
+        </p>
+        <button
+          type="button"
+          onClick={handleRandom}
+          className={`flex-shrink-0 rounded-full border border-border-strong px-3 py-1.5 text-xs font-semibold text-text-secondary transition hover:border-primary hover:text-primary ${isLight ? 'bg-surface' : ''}`}
+        >
+          🎲 Random
+        </button>
+      </div>
+      {totalPages > 1 ? (
+        <SwipeCarousel
+          canGoPrev={page > 0}
+          canGoNext={page < totalPages - 1}
+          onCommitPrev={() => goToPage(page - 1)}
+          onCommitNext={() => goToPage(page + 1)}
+          renderPrev={() => (page > 0 ? renderPageGrid(page - 1) : null)}
+          renderCurrent={() => renderPageGrid(page)}
+          renderNext={() => (page < totalPages - 1 ? renderPageGrid(page + 1) : null)}
+        />
+      ) : (
+        renderPageGrid(page)
+      )}
 
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-center gap-4">
-          <button
-            type="button"
-            disabled={page === 0}
-            onClick={() => goToPage(page - 1)}
-            aria-label="Previous categories"
-            className={`grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-border-strong text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30 ${isLight ? 'bg-surface' : ''}`}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-4 w-4"
+          {/* Touch devices already have swipe (see SwipeCarousel above) and
+              get the dots as a position indicator; mouse/keyboard devices
+              have no gesture to reach for, so they get the arrows back
+              instead - see useIsTouchDevice.ts. */}
+          {!isTouchDevice && (
+            <button
+              type="button"
+              disabled={page === 0}
+              onClick={() => goToPage(page - 1)}
+              aria-label="Previous categories"
+              className={`grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-border-strong text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30 ${isLight ? 'bg-surface' : ''}`}
             >
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+          )}
 
           <div className="flex flex-col items-center gap-2">
             <span className="text-xs text-text-secondary">
               {page + 1} / {totalPages}
             </span>
-            <div className="flex gap-1.5">
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => goToPage(i)}
-                  aria-label={`Go to page ${i + 1}`}
-                  className={`h-1.5 w-1.5 rounded-full transition ${i === page ? 'bg-cyan' : 'bg-border-strong'}`}
-                />
-              ))}
-            </div>
+            {isTouchDevice && (
+              <div className="flex gap-1.5">
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => goToPage(i)}
+                    aria-label={`Go to page ${i + 1}`}
+                    className={`h-1.5 w-1.5 rounded-full transition ${i === page ? 'bg-cyan' : 'bg-border-strong'}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
-          <button
-            type="button"
-            disabled={page === totalPages - 1}
-            onClick={() => goToPage(page + 1)}
-            aria-label="Next categories"
-            className={`grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-border-strong text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30 ${isLight ? 'bg-surface' : ''}`}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-4 w-4"
+          {!isTouchDevice && (
+            <button
+              type="button"
+              disabled={page === totalPages - 1}
+              onClick={() => goToPage(page + 1)}
+              aria-label="Next categories"
+              className={`grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-border-strong text-text-secondary transition hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-30 ${isLight ? 'bg-surface' : ''}`}
             >
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
     </div>

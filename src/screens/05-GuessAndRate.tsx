@@ -6,6 +6,7 @@ import { SongCard } from '../components/SongCard'
 import { SwipeCarousel } from '../components/SwipeCarousel'
 import { hasCascadeRoom } from '../logic/ratingCascade'
 import { songLabel } from '../logic/songLabel'
+import { useIsTouchDevice } from '../logic/useIsTouchDevice'
 import { getCurrentRoundSongs, useGameStore } from '../state/gameStore'
 import { useThemeStore } from '../state/themeStore'
 import type { Player, Song } from '../types'
@@ -180,6 +181,7 @@ function AnswerForm({
 }
 
 export function GuessAndRate() {
+  const isTouchDevice = useIsTouchDevice()
   const songs = useGameStore(useShallow(getCurrentRoundSongs))
   const currentSongIndex = useGameStore((s) => s.currentSongIndex)
   const roundMode = useGameStore((s) => s.roundMode)
@@ -356,11 +358,13 @@ export function GuessAndRate() {
       }}
     />
   )
-  // Dots replace the old Prev/Next buttons entirely (per host feedback, once
-  // swipe/tap covered the same ground) - one per song, filled for the one
+  // On a touch device, dots replace Prev/Next entirely (per host feedback,
+  // once swipe covered the same ground) - one per song, filled for the one
   // being viewed, dimmed and unclickable past maxReachableIndex just like
-  // the old Next button was disabled there.
-  const songDots = (
+  // the old Next button was disabled there. On a mouse/keyboard device
+  // (no swipe gesture available), Prev/Next buttons come back instead - see
+  // useIsTouchDevice.ts.
+  const songNavControls = isTouchDevice ? (
     <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
       {songs.map((_, i) => {
         const reachable = i <= maxReachableIndex
@@ -377,6 +381,28 @@ export function GuessAndRate() {
           />
         )
       })}
+    </div>
+  ) : (
+    <div className="mb-6 flex items-stretch gap-2">
+      <button
+        type="button"
+        disabled={viewIndex === 0}
+        onClick={goPrev}
+        className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
+      >
+        ← Previous
+      </button>
+      <span className="flex-shrink-0 self-center text-xs text-text-muted">
+        {viewIndex + 1}/{songs.length}
+      </span>
+      <button
+        type="button"
+        disabled={viewIndex >= maxReachableIndex}
+        onClick={goNext}
+        className="flex-1 rounded-xl border-2 border-border-strong px-3 py-3.5 text-sm font-semibold text-text-secondary transition hover:border-text-secondary hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
+      >
+        Next →
+      </button>
     </div>
   )
 
@@ -538,7 +564,7 @@ export function GuessAndRate() {
 
             <div className="mb-4">{songCarousel}</div>
 
-            {songDots}
+            {songNavControls}
 
             <AnswerForm
               key={song.id}
@@ -708,10 +734,11 @@ export function GuessAndRate() {
             </button>
           )}
 
-          {/* Dots, right under the song card, so browsing back and forth to
-              review or fix an earlier answer doesn't mean hunting further
-              down the page - swipe (drag the card itself) works here too. */}
-          {songDots}
+          {/* Dots (touch) or Prev/Next (mouse/keyboard), right under the song
+              card, so browsing back and forth to review or fix an earlier
+              answer doesn't mean hunting further down the page - swipe
+              (drag the card itself) works here too on a touch device. */}
+          {songNavControls}
 
           <AnswerForm
             key={song.id}
